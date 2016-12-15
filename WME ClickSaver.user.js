@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         WME ClickSaver
+// @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.5.2
+// @version      0.5.b12
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include      https://beta.waze.com/*editor/*
@@ -621,7 +621,9 @@
             init();
         } else {
             log('Bootstrap failed. Trying again...', 0);
-            setTimeout(bootstrap, 1000);
+            setTimeout(function () {
+                bootstrap();
+            }, 1000);
         }
     }
 
