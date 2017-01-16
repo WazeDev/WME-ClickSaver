@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.5.b12
+// @version      0.5.b13
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include      https://beta.waze.com/*editor/*
@@ -11,6 +11,10 @@
 // @require      https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js?version=158477
 // @grant        none
 // ==/UserScript==
+
+/* global GM_info */
+/* global W */
+/* global Node */
 
 (function() {
     //'use strict';
@@ -25,7 +29,6 @@
     var _settingsStoreName = 'clicksaver_settings';
     var _lastScriptVersion;
     var _scriptVersion = GM_info.script.version;
-    var _setPLRAttributes = true;
     var _scriptVersionChanges = [
         GM_info.script.name + '\nv' + _scriptVersion + '\n\nWhat\'s New\n------------------------------',
         '\n- Fix to work with latest WME updates that broke a lot of scripts.'
@@ -140,7 +143,7 @@
         var segment = W.model.segments.get(segmentID);
         [W.model.nodes.get(segment.attributes.fromNodeID), W.model.nodes.get(segment.attributes.toNodeID)].forEach(function(node) {
             node.attributes.segIDs.forEach(function(segID) {
-                if (segID != segmentID) { IDs.push(segID); }
+                if (segID !== segmentID) { IDs.push(segID); }
             });
         });
         return IDs;
