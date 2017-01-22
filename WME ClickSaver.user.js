@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.5.b13
+// @version      0.5.b14
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include      https://beta.waze.com/*editor/*
@@ -285,6 +285,7 @@
         var selItems = W.selectionManager.selectedItems;
         var item = selItems[0];
         var isSegments = (item.model.type === "segment");
+        var isJunctionBox = (item.model.type === "bigJunction");
         var attr = item.model.attributes;
         var autoRank = attr.rank;
         var manualRank = attr.lockRank;
@@ -293,6 +294,10 @@
         var maxAutoRank = autoRank;
         var multiRanks = false;
         var isOutranked =( manualRank > userRank || (manualRank === null && autoRank > userRank));
+
+        // If it's a junction box, don't change the lock stuff.
+        if (isJunctionBox) return;
+
         for (var i=1; i<selItems.length; i++) {
             item = selItems[i];
             attr = item.model.attributes;
