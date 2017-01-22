@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.5.b14
+// @version      0.5.14
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include      https://beta.waze.com/*editor/*
@@ -30,9 +30,13 @@
     var _lastScriptVersion;
     var _scriptVersion = GM_info.script.version;
     var _scriptVersionChanges = [
-        GM_info.script.name + '\nv' + _scriptVersion + '\n\nWhat\'s New\n------------------------------',
-        '\n- Fix to work with latest WME updates that broke a lot of scripts.'
-    ].join('');
+        GM_info.script.name,
+        'v' + _scriptVersion,
+        '',
+        'What\'s New',
+        '------------------------------',
+        '- Doesn\'t mess with locks for junction boxes'
+    ].join('\n');
     var _roadTypes = {
         St:{val:1, title:'Street', wmeColor:'#ffffeb', svColor:'#ffffff', category:'streets', visible:true},
         PS:{val:2, title:'Primary Street', wmeColor:'#f0ea58', svColor:'#cba12e', category:'streets', visible:true},
