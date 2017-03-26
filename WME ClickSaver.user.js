@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         WME ClickSaver (beta)
+// @name         WME ClickSaver
 // @namespace    https://greasyfork.org/users/45389
 // @version      0.6.0
 // @description  Various UI changes to make editing faster and easier.
