@@ -1,14 +1,13 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.5.b14
+// @version      0.6.0
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include      https://beta.waze.com/*editor/*
 // @include      https://www.waze.com/*editor/*
 // @exclude      https://www.waze.com/*user/editor/*
 // @license      GNU GPLv3
-// @require      https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js?version=158477
 // @grant        none
 // ==/UserScript==
 
@@ -31,7 +30,7 @@
     var _scriptVersion = GM_info.script.version;
     var _scriptVersionChanges = [
         GM_info.script.name + '\nv' + _scriptVersion + '\n\nWhat\'s New\n------------------------------',
-        '\n- Fix to work with latest WME updates that broke a lot of scripts.'
+        '\n- NEW - Pasting ALL CAPITAL LETTER words into street name boxes will automatically title case them.'
     ].join('');
     var _roadTypes = {
         St:{val:1, title:'Street', wmeColor:'#ffffeb', svColor:'#ffffff', category:'streets', visible:true},
@@ -516,7 +515,7 @@
 
         $panel.append(
             $('<div>',{style:'margin-top:10px;font-size:10px;color:#999999;'})
-            .append($('<div>').text('version ' + _scriptVersion))
+            .append($('<div>').text('version ' + _scriptVersion + (GM_info.script.name.toLowerCase().indexOf('beta') > -1 ? ' beta' : '')))
             .append(
                 $('<div>').append(
                     $('<a>',{href:'https://www.waze.com/forum/viewtopic.php?f=819&t=199894', target:'__blank'}).text('Discussion Forum')
@@ -574,17 +573,31 @@
     }
 
     function init() {
+        document.addEventListener("paste", function (e) {
+            var target = e.target;
+            if (target.name === 'streetName' || target.className.indexOf('street-name') > -1) {
+                var pastedText = e.clipboardData.getData('text/plain');
+                if (/^[^a-z]*$/.test(pastedText)) {
+                    e.preventDefault();
+                    var newText = pastedText.toLowerCase().replace(/(?:^|\s)\w/g, function(match) {
+                        return match.toUpperCase();
+                    });
+                    $(target)[0].setRangeText(newText);
+                    return false;
+                }
+            }
+            return true;
+        });
+
         _lastScriptVersion = localStorage.getItem('wmeClickSaver_lastVersion');
         localStorage.setItem('wmeClickSaver_lastVersion', _scriptVersion);
         showScriptInfoAlert();
         // check for changes in the edit-panel
         var observer = new MutationObserver(function(mutations) {
             mutations.forEach(function(mutation) {
-                // Mutation is a NodeList and doesn't support forEach like an array
                 for (var i = 0; i < mutation.addedNodes.length; i++) {
                     var addedNode = mutation.addedNodes[i];
 
-                    // Only fire up if it's a node
                     if (addedNode.nodeType === Node.ELEMENT_NODE) {
                         if(addedNode.querySelector(_roadTypeDropDownSelector)) {
                             if(isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
