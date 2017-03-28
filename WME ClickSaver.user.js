@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.6.0
+// @version      0.6.1
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include      https://beta.waze.com/*editor/*
@@ -34,7 +34,8 @@
         '',
         'What\'s New',
         '------------------------------',
-        '- NEW: Pasting ALL CAPITAL LETTER words into street name boxes will automatically title case them.'
+        '0.6.1: Capitalization algorithm improvements.',
+        '0.6.0: NEW - Pasting ALL CAPITAL LETTER words into street name boxes will automatically title case them.'
     ].join('\n');
     var _roadTypes = {
         St:{val:1, title:'Street', wmeColor:'#ffffeb', svColor:'#ffffff', category:'streets', visible:true},
@@ -576,23 +577,68 @@
         }
     }
 
-    function init() {
-        document.addEventListener("paste", function (e) {
-            var target = e.target;
-            if (target.name === 'streetName' || target.className.indexOf('street-name') > -1) {
-                var pastedText = e.clipboardData.getData('text/plain');
-                if (/^[^a-z]*$/.test(pastedText)) {
-                    e.preventDefault();
-                    var newText = pastedText.toLowerCase().replace(/(?:^|\s)\w/g, function(match) {
-                        return match.toUpperCase();
-                    });
-                    $(target)[0].setRangeText(newText);
-                    return false;
-                }
-            }
-            return true;
-        });
+    function replaceWord(target, searchWord, replaceWithWord) {
+        return target.replace(new RegExp('\\b' + searchWord + '\\b','g'), replaceWithWord);
+    }
 
+    function titleCase(word) {
+        return word.charAt(0).toUpperCase() + word.substring(1).toLowerCase();
+    }
+    function mcCase(word) {
+        return word.charAt(0).toUpperCase() + word.charAt(1).toLowerCase() + word.charAt(2).toUpperCase() + word.substring(3).toLowerCase();
+    }
+    function upperCase(word) {
+        return word.toUpperCase();
+    }
+
+    function processSubstring(target, substringRegex, processFunction) {
+        var substrings = target.match(substringRegex);
+        if (substrings) {
+            for (var idx=0; idx<substrings.length; idx++) {
+                var substring = substrings[idx];
+                var newSubstring = processFunction(substring);
+                target = replaceWord(target, substring, newSubstring);
+            }
+        }
+        return target;
+    }
+
+    function onPaste(e) {
+        var targetNode = e.target;
+        if (targetNode.name === 'streetName' ||
+            targetNode.className.indexOf('street-name') > -1) {
+
+            // Get the text that's being pasted.
+            var pastedText = e.clipboardData.getData('text/plain');
+
+            // If pasting text in ALL CAPS...
+            if (/^[^a-z]*$/.test(pastedText)) {
+                [
+                    // Title case all words first.
+                    [/\b[a-zA-Z]+(?:'S)?\b/g, titleCase],
+                    
+                    // Then process special cases.
+                    [/\bMC\w+\b/ig, mcCase],  // e.g. McCaulley
+                    [/\b(?:I|US|SH|SR|CH|CR|CS|PR|PS)\s*-?\s*\d+\w*\b/ig, upperCase], // e.g. US-25, US25
+                    [/\b(?:AL|AK|AS|AZ|AR|CA|CO|CT|DE|DC|FM|FL|GA|GU|HI|ID|IL|IN|IA|KS|KY|LA|ME|MH|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|MP|OH|OK|OR|PW|PA|PR|RI|SC|SD|TN|TX|UT|VT|VI|VA|WA|WV|WI|WY)\s*-?\s*\d+\w*\b/ig, upperCase], // e.g. WV-52
+                    [/\b(?:NE|NW|SE|SW)\b/ig, upperCase],
+                ].forEach(function(item) {
+                    pastedText = processSubstring(pastedText,item[0],item[1]);
+                });
+
+                // Insert new text in the focused node.
+                document.execCommand("insertText", false, pastedText);
+
+                // Prevent the default paste behavior.
+                e.preventDefault();
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function init() {
+        document.addEventListener("paste", onPaste);
         _lastScriptVersion = localStorage.getItem('wmeClickSaver_lastVersion');
         localStorage.setItem('wmeClickSaver_lastVersion', _scriptVersion);
         showScriptInfoAlert();
@@ -636,22 +682,23 @@
             AddOrGetStreet = require("Waze/Action/AddOrGetStreet");
             MultiAction = require("Waze/Action/MultiAction");
         }
+        log('Initialized', 1);
     }
 
     function bootstrap() {
         if (window.require && W && W.loginManager &&
             W.loginManager.events.register &&
             W.map && W.loginManager.isLoggedIn()) {
-            log('Initializing...', 0);
+            log('Initializing...', 1);
             init();
         } else {
-            log('Bootstrap failed. Trying again...', 0);
+            log('Bootstrap failed. Trying again...', 1);
             setTimeout(function () {
                 bootstrap();
-            }, 1000);
+            }, 250);
         }
     }
 
-    log('Bootstrap...', 0);
+    log('Bootstrap...', 1);
     bootstrap();
 })();
