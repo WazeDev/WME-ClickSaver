@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.6.1
+// @version      0.6.2
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include      https://beta.waze.com/*editor/*
@@ -23,7 +23,7 @@
     var _lockDropDownSelector = 'select[name="lockRank"]';
     var _directionDropDownSelector = 'select[name="direction"]';
     var _elevationDropDownSelector = 'select[name="level"]';
-    var _alertUpdate = false;
+    var _alertUpdate = true;
     var _settings = {};
     var _settingsStoreName = 'clicksaver_settings';
     var _lastScriptVersion;
@@ -34,6 +34,7 @@
         '',
         'What\'s New',
         '------------------------------',
+        '0.6.2: NEW - Added delete icons to segment Alt Names.',
         '0.6.1: Capitalization algorithm improvements.',
         '0.6.0: NEW - Pasting ALL CAPITAL LETTER words into street name boxes will automatically title case them.'
     ].join('\n');
@@ -445,29 +446,40 @@
         }
     }
 
+    function createSettingRadio(settingName, groupName, groupLabel, buttonMetas) {
+        var $container = $('<div>',{class:'controls-container'});
+        $('<input>', {type:'checkbox', class:'csSettingsCheckBox', id:groupName, 'data-setting-name':groupName}).appendTo($container);
+        $('<label>', {for:groupName}).text(groupLabel).css({marginRight:'10px'}).appendTo($container);
+        buttonMetas.forEach(function(meta) {
+            var $input = $('<input>', {type:'radio', class:'csSettingsCheckBox', name:groupName, id:meta.id, 'data-setting-name':groupName}).css({marginLeft:'5px'}).appendTo($container);
+            var $label = $('<label>', {for:meta.id}).text(meta.labelText).appendTo($container);
+        });
+        return $container;
+    }
+
+    function createSettingsCheckbox(id, settingName, labelText, titleText, divCss, labelCss) {
+        var $container = $('<div>',{class:'controls-container'});
+        var $input = $('<input>', {type:'checkbox',class:'csSettingsCheckBox',name:id, id:id, 'data-setting-name':settingName}).appendTo($container);
+        var $label = $('<label>', {for:id}).text(labelText).appendTo($container);
+        if (divCss) $container.css(divCss);
+        if (labelCss) $label.css(labelCss);
+        if (titleText) $container.attr({title:titleText});
+        return $container;
+    }
+
     function initUserPanel() {
         var $roadTypesDiv = $('<div>', {class:'csRoadTypeButtonsCheckBoxContainer'});
-        $roadTypesDiv.append(
-            $('<div>',{class:'controls-container'})
-            .append($('<input>', {type:'checkbox',class:'csSettingsCheckBox',name:'csUseOldRoadColorsCheckBox',id:'csUseOldRoadColorsCheckBox', 'data-setting-name':'useOldRoadColors'}))
-            .append($('<label>', {for:'csUseOldRoadColorsCheckBox'}).text('Use old road colors (requires refresh)'))
-        );
+        $roadTypesDiv.append( createSettingsCheckbox('csUseOldRoadColorsCheckBox', 'useOldRoadColors', 'Use old road colors (requires refresh)') );
         for (var roadTypeAbbr in _roadTypes) {
             var roadType = _roadTypes[roadTypeAbbr];
             var id = 'cs' + roadTypeAbbr + 'CheckBox';
-            var $check = $roadTypesDiv.append(
-                $('<div>',{class:'controls-container',style:'padding-left: 30px'}).append(
-                    $('<input>', {type:'checkbox',class:'csSettingsCheckBox',name:id, id:id, 'data-setting-name':'roadType', 'data-road-type':roadTypeAbbr})).append(
-                    $('<label>', {for:id}).text(roadType.title)
-                )
-            );
+            $roadTypesDiv.append( createSettingsCheckbox(id, roadTypeAbbr, roadType.title) );
             if (roadTypeAbbr === 'PLR') {
-                id = 'csClearNewPLRCheckBox';
                 $roadTypesDiv.append(
-                    $('<div>',{class:'controls-container',style:'padding-left: 40px'}).append(
-                        $('<input>', {type:'checkbox',class:'csSettingsCheckBox',name:id,id:id,'data-setting-name':'setNewPLRStreetToNone'})).append(
-                        $('<label>', {for:id, style:'font-style: italic;',title:'NOTE: Only works if connected directly or indirectly to a segment with State/Country already set.'})
-                        .text('Set Street/City to None (new PLRs)'))
+                    createSettingsCheckbox('csClearNewPLRCheckBox', 'setNewPLRStreetToNone','Set Street/City to: ',
+                                           'NOTE: Only works if connected directly or indirectly to a segment with State/Country already set.',
+                                           {paddingLeft:'20px', display:'inline', marginRight:'4px'}, {fontStyle:'italic'}),
+                    $('<select style="height:24px;" disabled><option>None</option><option>Closest Segmet</option></select>')
                 );
             }
         }
@@ -476,56 +488,42 @@
             $('<a>', {'data-toggle':'tab', href:'#sidepanel-clicksaver'}).append($('<span>').text('CS'))
         );
 
-        var $panel = $('<div>', {class:'tab-pane', id:'sidepanel-clicksaver'}).append(
-            $('<div>',  {class:'side-panel-section>'}).append(
-                $('<div>', {style: 'margin-bottom:8px;'}).append(
-                    $('<div>', {class:'form-group'}).append(
-                        $('<label>', {class:"control-label"}).text('DROPDOWN HELPERS')
-                    ).append(
-                        $('<div>').append(
-                            $('<div>',{class:'controls-container'})
-                            .append($('<input>', {type:'checkbox',class:'csSettingsCheckBox',name: 'csRoadTypeButtonsCheckBox', id:'csRoadTypeButtonsCheckBox', 'data-setting-name':'roadButtons'}))
-                            .append($('<label>', {for:'csRoadTypeButtonsCheckBox'}).text('Add road type buttons'))
-                        ).append(
-                            $roadTypesDiv
-                        )
-                    ).append(
-                        $('<div>',{class:'controls-container'})
-                        .append($('<input>', {type:'checkbox',class:'csSettingsCheckBox',name:'csDirectionButtonsCheckBox',id:'csDirectionButtonsCheckBox', 'data-setting-name':'directionButtons'}))
-                        .append($('<label>', {for:'csDirectionButtonsCheckBox'}).text('Add road direction buttons'))
-                    ).append(
-                        $('<div>',{class:'controls-container'})
-                        .append($('<input>', {type:'checkbox',class:'csSettingsCheckBox',name:'csElevationButtonsCheckBox',id:'csElevationButtonsCheckBox', 'data-setting-name':'elevationButtons'}))
-                        .append($('<label>', {for:'csElevationButtonsCheckBox'}).text('Add elevation buttons'))
-                    ).append(
-                        $('<div>',{class:'controls-container'})
-                        .append($('<input>', {type:'checkbox',class:'csSettingsCheckBox',name:'csLockButtonsCheckBox',id:'csLockButtonsCheckBox', 'data-setting-name':'lockButtons'}))
-                        .append($('<label>', {for:'csLockButtonsCheckBox'}).text('Add lock buttons'))
+        var $panel = $('<div>', {class:'tab-pane', id:'sidepanel-clicksaver'})
+        .append(
+            $('<div>',  {class:'side-panel-section>'})
+            .append(
+                $('<div>', {style: 'margin-bottom:8px;'})
+                .append(
+                    $('<div>', {class:'form-group'})
+                    .append( $('<label>', {class:"control-label"}).text('DROPDOWN HELPERS') )
+                    .append(
+                        $('<div>').append( createSettingsCheckbox('csRoadTypeButtonsCheckBox', 'roadButtons', 'Add road type buttons') )
+                        .append( $roadTypesDiv )
                     )
-                ).append(
-                    $('<label>', {class:"control-label"}).text('SPACE SAVERS')
-                ).append(
-                    $('<div>', {style:'margin-bottom:20px;'}).append(
-                        $('<div>',{class:'controls-container'})
-                        .append($('<input>', {type:'checkbox',class:'csSettingsCheckBox',name:'csInlineRoadTypesCheckBox',id:'csInlineRoadTypesCheckBox', 'data-setting-name':'inlineRoadTypeCheckboxes'}))
-                        .append($('<label>', {for:'csInlineRoadTypesCheckBox'}).text('Inline road type checkboxes'))
-                    ).append(
-                        $('<div>',{class:'controls-container'})
-                        .append($('<input>', {type:'checkbox',class:'csSettingsCheckBox',name:'csHideAvgSpeedCamerasCheckBox',id:'csHideAvgSpeedCamerasCheckBox', 'data-setting-name':'hideAvgSpeedCameras'}))
-                        .append($('<label>', {for:'csHideAvgSpeedCamerasCheckBox'}).text('Hide "Avg Speed Cameras" section'))
-                    )
+                    .append( createSettingsCheckbox('csDirectionButtonsCheckBox', 'directionButtons', 'Add road direction buttons') )
+                    .append( createSettingsCheckbox('csElevationButtonsCheckBox', 'elevationButtons', 'Add elevation buttons') )
+                    .append( createSettingsCheckbox('csLockButtonsCheckBox', 'lockButtons', 'Add lock buttons') )
                 )
+                .append( $('<label>', {class:"control-label"}).text('SPACE SAVERS') )
+                .append(
+                    $('<div>', {style:'margin-bottom:8px;'})
+                    .append( createSettingsCheckbox('csInlineRoadTypesCheckBox', 'inlineRoadTypeCheckboxes', 'Inline road type checkboxes') )
+                    .append( createSettingsCheckbox('csHideAvgSpeedCamerasCheckBox', 'hideAvgSpeedCameras', 'Avg Speed Cameras') )
+                )
+                // .append( $('<label>', {class:"control-label"}).text('BEHAVIOR MODIFIERS') )
+                // .append(
+                //     $('<div>', {style:'margin-bottom:20px;'})
+                //     .append(
+                //         createRadioGroup('cs-plr-default-address', 'PLR:', [{id:'cs-plr-default-address-none', labelText: 'None'}, {id:'cs-plr-default-address-closest', labelText: 'Closest Segment'}])
+                //     )
+                // )
             )
         );
 
         $panel.append(
-            $('<div>',{style:'margin-top:10px;font-size:10px;color:#999999;'})
+            $('<div>',{style:'margin-top:20px;font-size:10px;color:#999999;'})
             .append($('<div>').text('version ' + _scriptVersion + (GM_info.script.name.toLowerCase().indexOf('beta') > -1 ? ' beta' : '')))
-            .append(
-                $('<div>').append(
-                    $('<a>',{href:'https://www.waze.com/forum/viewtopic.php?f=819&t=199894', target:'__blank'}).text('Discussion Forum')
-                )
-            )
+            .append( $('<div>').append( $('<a>',{href:'https://www.waze.com/forum/viewtopic.php?f=819&t=199894', target:'__blank'}).text('Discussion Forum') ) )
         );
 
         $('#user-tabs > .nav-tabs').append($tab);
@@ -616,7 +614,7 @@
                 [
                     // Title case all words first.
                     [/\b[a-zA-Z]+(?:'S)?\b/g, titleCase],
-                    
+
                     // Then process special cases.
                     [/\bMC\w+\b/ig, mcCase],  // e.g. McCaulley
                     [/\b(?:I|US|SH|SR|CH|CR|CS|PR|PS)\s*-?\s*\d+\w*\b/ig, upperCase], // e.g. US-25, US25
@@ -701,4 +699,103 @@
 
     log('Bootstrap...', 1);
     bootstrap();
+
+
+
+    //---------------------------------------------------------------------------------------------
+    // ==UserScript==
+    // @name         WMEQuickAltDel
+    // @namespace    http://tampermonkey.net/
+    // @version      0.0.1
+    // @description  try to take over the world!
+    // @author       Jonathan Angliss
+    // @include      /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/.*$/
+    // @grant        none
+    // ==/UserScript==
+
+    (function() {
+        'use strict';
+
+        var UpdateObject;
+debugger;
+        function WMEaltStreet_Remove( elemClicked ) {
+            var altID = parseInt($(elemClicked.currentTarget).parent()[0].dataset.id);
+            var selectedObjs = W.selectionManager.selectedItems;
+            selectedObjs.forEach(function(element) {
+                if (element.model.type == 'segment') {
+                    var segment = element.model;
+                    if (segment.attributes.streetIDs.indexOf(altID) != -1) {
+                        var newStreets = [];
+                        segment.attributes.streetIDs.forEach(function(sID) {
+                            if (altID !== sID) {
+                                newStreets.push(sID);
+                            }
+                        });
+                        var sUpdate = new UpdateObject(segment, {streetIDs: newStreets});
+                        W.model.actionManager.add(sUpdate);
+                        updateAltStreetCtrls();
+                    }
+                }
+            });
+        }
+
+        function bootstrap_WMEQuickAltDel() {
+            if (window.require && W && W.loginManager &&
+                W.loginManager.events.register &&
+                W.map && W.loginManager.isLoggedIn()) {
+                init_WMEQuickAltDel();
+            } else {
+                setTimeout(function () {
+                    bootstrap_WMEQuickAltDel();
+                }, 250);
+            }
+        }
+
+        function init_WMEQuickAltDel() {
+            W.selectionManager.events.register("selectionchanged", null, updateAltStreetCtrls);
+            W.model.actionManager.events.register("afterundoaction",null, updateAltStreetCtrls);
+            W.model.actionManager.events.register("hasActions",null, function(){setTimeout(updateAltStreetCtrls, 250);});
+            W.model.actionManager.events.register("noActions",null, function(){setTimeout(updateAltStreetCtrls, 250);});
+            W.model.actionManager.events.register("afteraction",null, updateAltStreetCtrls);
+
+            if (typeof(require) !== "undefined") {
+                UpdateObject = require("Waze/Action/UpdateObject");
+            }
+        }
+
+        function updateAltStreetCtrls() {
+            if (W.selectionManager.selectedItems.length > 0) {
+                var selItems = W.selectionManager.selectedItems;
+                var doAltStreets = false;
+                for (var i = 0; i < selItems.length; i++) {
+                    if (selItems[i].model.type == 'segment') {
+                        doAltStreets = true;
+                        break;
+                    }
+                }
+
+                if (doAltStreets) {
+                    var mTrObj = $('tr.alt-street');
+                    var mLiObj = $('li.alt-street');
+                    for (i = 0; i < mTrObj.length; i++) {
+                        var element = mTrObj[i];
+                        if($(mLiObj[i]).find('i').length === 0){//prevent duplicate entries
+                            mLiObj[i].dataset.id = element.dataset.id;
+                            var nA = document.createElement("i");
+                            nA.className = "fa fa-times-circle";
+                            nA.onclick = WMEaltStreet_Remove;
+                            nA.style.cssText = "cursor:pointer";
+                            mLiObj[i].appendChild(nA);
+                        }
+                    }
+                }
+            }
+        }
+
+        bootstrap_WMEQuickAltDel();
+    })();
+
 })();
+
+
+
