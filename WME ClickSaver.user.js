@@ -34,7 +34,7 @@
         '',
         'What\'s New',
         '------------------------------',
-        '0.6.2: NEW - Added delete icons to segment Alt Names.',
+        '0.6.2: NEW - Added delete icons to segment Alt Names. (thanks to jangliss)',
         '0.6.1: Capitalization algorithm improvements.',
         '0.6.0: NEW - Pasting ALL CAPITAL LETTER words into street name boxes will automatically title case them.'
     ].join('\n');
