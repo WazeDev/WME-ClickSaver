@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.6.2
+// @version      0.6.3
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include      https://beta.waze.com/*editor/*
@@ -23,7 +23,7 @@
     var _lockDropDownSelector = 'select[name="lockRank"]';
     var _directionDropDownSelector = 'select[name="direction"]';
     var _elevationDropDownSelector = 'select[name="level"]';
-    var _alertUpdate = true;
+    var _alertUpdate = false;
     var _settings = {};
     var _settingsStoreName = 'clicksaver_settings';
     var _lastScriptVersion;
@@ -717,7 +717,7 @@
         'use strict';
 
         var UpdateObject;
-debugger;
+
         function WMEaltStreet_Remove( elemClicked ) {
             var altID = parseInt($(elemClicked.currentTarget).parent()[0].dataset.id);
             var selectedObjs = W.selectionManager.selectedItems;
@@ -761,6 +761,13 @@ debugger;
             if (typeof(require) !== "undefined") {
                 UpdateObject = require("Waze/Action/UpdateObject");
             }
+
+            var observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if ($(mutation.target).hasClass('preview')) updateAltStreetCtrls();
+                });
+            });
+            observer.observe(document.getElementById('edit-panel'), { childList: true, subtree: true });
         }
 
         function updateAltStreetCtrls() {
@@ -796,6 +803,3 @@ debugger;
     })();
 
 })();
-
-
-
