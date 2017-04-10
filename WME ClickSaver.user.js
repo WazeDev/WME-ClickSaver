@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.6.5
+// @version      0.6.6
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include      https://beta.waze.com/*editor/*
@@ -457,13 +457,14 @@
         return $container;
     }
 
-    function createSettingsCheckbox(id, settingName, labelText, titleText, divCss, labelCss) {
+    function createSettingsCheckbox(id, settingName, labelText, titleText, divCss, labelCss, optionalAttributes) {
         var $container = $('<div>',{class:'controls-container'});
         var $input = $('<input>', {type:'checkbox',class:'csSettingsCheckBox',name:id, id:id, 'data-setting-name':settingName}).appendTo($container);
         var $label = $('<label>', {for:id}).text(labelText).appendTo($container);
         if (divCss) $container.css(divCss);
         if (labelCss) $label.css(labelCss);
         if (titleText) $container.attr({title:titleText});
+        if (optionalAttributes) $input.attr(optionalAttributes);
         return $container;
     }
 
@@ -473,13 +474,13 @@
         for (var roadTypeAbbr in _roadTypes) {
             var roadType = _roadTypes[roadTypeAbbr];
             var id = 'cs' + roadTypeAbbr + 'CheckBox';
-            $roadTypesDiv.append( createSettingsCheckbox(id, roadTypeAbbr, roadType.title) );
+            $roadTypesDiv.append( createSettingsCheckbox(id, 'roadType', roadType.title, null, null, null, {'data-road-type':roadTypeAbbr}) );
             if (roadTypeAbbr === 'PLR') {
                 $roadTypesDiv.append(
-                    createSettingsCheckbox('csClearNewPLRCheckBox', 'setNewPLRStreetToNone','Set Street/City to: ',
+                    createSettingsCheckbox('csClearNewPLRCheckBox', 'setNewPLRStreetToNone','Set Street/City to None (new PLR only)',
                                            'NOTE: Only works if connected directly or indirectly to a segment with State/Country already set.',
-                                           {paddingLeft:'20px', display:'inline', marginRight:'4px'}, {fontStyle:'italic'}),
-                    $('<select style="height:24px;" disabled><option>None</option><option>Closest Segmet</option></select>')
+                                           {paddingLeft:'20px', display:'inline', marginRight:'4px'}, {fontStyle:'italic'}) //,
+                    //$('<select style="height:24px;" disabled><option>None</option><option>Closest Segmet</option></select>')
                 );
             }
         }
@@ -619,7 +620,7 @@
                     [/\bMC\w+\b/ig, mcCase],  // e.g. McCaulley
                     [/\b(?:I|US|SH|SR|CH|CR|CS|PR|PS)\s*-?\s*\d+\w*\b/ig, upperCase], // e.g. US-25, US25
                     [/\b(?:AL|AK|AS|AZ|AR|CA|CO|CT|DE|DC|FM|FL|GA|GU|HI|ID|IL|IN|IA|KS|KY|LA|ME|MH|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|MP|OH|OK|OR|PW|PA|PR|RI|SC|SD|TN|TX|UT|VT|VI|VA|WA|WV|WI|WY)\s*-?\s*\d+\w*\b/ig, upperCase], // e.g. WV-52
-                    [/\b(?:NE|NW|SE|SW)\b/ig, upperCase],
+                    [/\b(?:NE|NW|SE|SW)\b/ig, upperCase]
                 ].forEach(function(item) {
                     pastedText = processSubstring(pastedText,item[0],item[1]);
                 });
