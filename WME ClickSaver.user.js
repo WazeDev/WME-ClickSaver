@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.6.6
+// @version      0.6.7
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include      https://beta.waze.com/*editor/*
@@ -34,9 +34,7 @@
         '',
         'What\'s New',
         '------------------------------',
-        '0.6.2: NEW - Added delete icons to segment Alt Names. (thanks to jangliss)',
-        '0.6.1: Capitalization algorithm improvements.',
-        '0.6.0: NEW - Pasting ALL CAPITAL LETTER words into street name boxes will automatically title case them.'
+        '0.6.7: FIXED - Lock buttons don\'t always match available options in the original dropdown.'
     ].join('\n');
     var _roadTypes = {
         St:{val:1, title:'Street', wmeColor:'#ffffeb', svColor:'#ffffff', category:'streets', visible:true},
@@ -270,14 +268,17 @@
         var $form = $('<div>', {id:"csDirectionButtonsContainer",style:"height:30px;padding-top:0px"});
         for (var prop in _directions) {
             if (prop !== 'unknown' || $('select[name="direction"]').has('option[value="0"]').length > 0) {
+                var $input = $('<input>', {type:"radio", name:"direction", title:_directions[prop].title, id:prop, value:_directions[prop].val})
+                    .click(function() {
+                        $(_directionDropDownSelector).val($(this).attr('value')).change();
+                        hideAvgSpeedCameras();
+                    });
+                if (String(_directions[prop].val) == String($dropDown.val())) $input.prop('checked', 'true');
                 $form.append(
                     $('<div class="controls-container" style="float: left; margin-right: 10px;margin-left:0px">').append(
-                        $('<input type="radio" name="direction" title="' + _directions[prop].title + '" id="' + prop + '" value="' + _directions[prop].val + '"' + (_directions[prop].val == $dropDown.val() ? ' checked' : '') + '>)')
-                        .click(function() {
-                            $(_directionDropDownSelector).val($(this).attr('value')).change();
-                            hideAvgSpeedCameras();
-                        })).append(
-                        $('<label for="' + prop + '" style="padding-left: 20px;">').text(_directions[prop].text))
+                         $input,
+                        $('<label for="' + prop + '" style="padding-left: 20px;">').text(_directions[prop].text)
+                    )
                 );
             }
         }
@@ -312,35 +313,48 @@
             isOutranked |= (manualRank > userRank || (manualRank === null && autoRank > userRank));
             maxAutoRank = autoRank > maxAutoRank ? autoRank : maxAutoRank;
         }
-        var $div = $('#csLockButtonsContainer');
-        $div.remove();
-        $div = $('<div>',{id:'csLockButtonsContainer',style:'margin-bottom:5px;'});
+        $('#csLockButtonsContainer').remove();
+        var $div = $('<div>',{id:'csLockButtonsContainer',style:'margin-bottom:5px;'});
         var btnInfos = [];
-        var disabled = $lockDropDown.attr('disabled') === 'disabled';
-        if (isSegments) {btnInfos.push({r:maxAutoRank,title:'Auto (' + (maxAutoRank + 1) + ')',val:null});}
-        for(var iBtn=0;iBtn<=6;iBtn++){btnInfos.push({r:iBtn,val:iBtn});}
+        var dropdownDisabled = $lockDropDown.attr('disabled') === 'disabled';
+        if (isSegments) {btnInfos.push({r:maxAutoRank,title:'Auto (' + (maxAutoRank + 1) + ')',val:"null"});}
+        for(var iBtn=0;iBtn<6;iBtn++){btnInfos.push({r:iBtn,val:iBtn.toString()});}
+        var optionNodes = $('select[name="lockRank"] option');
+        var optionValues = [];
+        for (i=0; i<optionNodes.length; i++) {
+            optionValues.push($(optionNodes[i]).val());
+        }
         btnInfos.forEach(function(btnInfo){
-            var selected = !multiRanks && (btnInfo.val === manualRank);
-            if (btnInfo.val !== 6 || (!multiRanks && firstManualRank === 6)) {
-                $div.append(
-                    $('<div>', {
-                        class:'btn btn-lh' + (selected ? ' btn-lh-selected':'') + (btnInfo.r < 6 & (userRank < btnInfo.r || isOutranked || disabled) ? ' disabled' : '')
-                    })
-                    .text(btnInfo.hasOwnProperty('title') ? btnInfo.title : btnInfo.r + 1)
-                    .data('val',btnInfo.hasOwnProperty('val') ? btnInfo.val : btnInfo.r + 1)
-                    .hover(function() {})
-                    .click(function() {
-                        if(btnInfo.r < 6 || !isOutranked) {
-                            $(_lockDropDownSelector).val($(this).data('val')).change();
-                            addLockButtons($(_lockDropDownSelector));
-                        } else {
-                            var a = new Audio('https://c6.rbxcdn.com/6db610c9a3bf131f1db6c785f465406d');
-                            a.play();
-                        }
-                    })
-                );
-            }
+            var selected = !multiRanks && btnInfo.val === String(manualRank);
+            var isDisabled = dropdownDisabled || optionValues.indexOf(btnInfo.val) === -1;
+            $div.append(
+                $('<div>', {
+                    class:'btn btn-lh' + (selected ? ' btn-lh-selected':'') + (isDisabled ? ' disabled' : '')
+                })
+                .text(btnInfo.hasOwnProperty('title') ? btnInfo.title : btnInfo.r + 1)
+                .data('val',btnInfo.hasOwnProperty('val') ? btnInfo.val : btnInfo.r + 1)
+                .hover(function() {})
+                .click(function() {
+                    if(!isDisabled) {
+                        $(_lockDropDownSelector).val($(this).data('val')).change();
+                        addLockButtons($(_lockDropDownSelector));
+                    }
+                })
+            );
         });
+        if (optionValues.indexOf('6') > -1) {
+            $div.append(
+                $('<div>', {class:'btn btn-lh' + (selected ? ' btn-lh-selected':'') + ' disabled'})
+                .text('7')
+                .data('val',7)
+                .hover(function() {})
+                .click(function() {
+                    var a = new Audio('https://c6.rbxcdn.com/6db610c9a3bf131f1db6c785f465406d');
+                    a.play();
+                })
+            );
+        }
+
         if (multiRanks) {
             $div.append($('<div>').text('Multiple lock levels selected!').css({color:'red',fontSize:'smaller',fontWeight:'bold',marginLeft:'20px'}));
         }
@@ -723,9 +737,9 @@
             var altID = parseInt($(elemClicked.currentTarget).parent()[0].dataset.id);
             var selectedObjs = W.selectionManager.selectedItems;
             selectedObjs.forEach(function(element) {
-                if (element.model.type == 'segment') {
+                if (element.model.type === 'segment') {
                     var segment = element.model;
-                    if (segment.attributes.streetIDs.indexOf(altID) != -1) {
+                    if (segment.attributes.streetIDs.indexOf(altID) !== -1) {
                         var newStreets = [];
                         segment.attributes.streetIDs.forEach(function(sID) {
                             if (altID !== sID) {
@@ -776,7 +790,7 @@
                 var selItems = W.selectionManager.selectedItems;
                 var doAltStreets = false;
                 for (var i = 0; i < selItems.length; i++) {
-                    if (selItems[i].model.type == 'segment') {
+                    if (selItems[i].model.type === 'segment') {
                         doAltStreets = true;
                         break;
                     }
