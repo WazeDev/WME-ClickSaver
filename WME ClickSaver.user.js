@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.6.7
+// @version      0.7.0
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include      https://beta.waze.com/*editor/*
@@ -23,7 +23,7 @@
     var _lockDropDownSelector = 'select[name="lockRank"]';
     var _directionDropDownSelector = 'select[name="direction"]';
     var _elevationDropDownSelector = 'select[name="level"]';
-    var _alertUpdate = false;
+    var _alertUpdate = true;
     var _settings = {};
     var _settingsStoreName = 'clicksaver_settings';
     var _lastScriptVersion;
@@ -34,6 +34,7 @@
         '',
         'What\'s New',
         '------------------------------',
+        '0.7.0: NEW - Option to set City to closest attached segment City, for new PLR road segments.',
         '0.6.7: FIXED - Lock buttons don\'t always match available options in the original dropdown.'
     ].join('\n');
     var _roadTypes = {
@@ -90,6 +91,7 @@
             inlineRoadTypeCheckboxes: true,
             hideAvgSpeedCameras: true,
             setNewPLRStreetToNone: true,
+            setNewPLRCity: true,
             useOldRoadColors: false
         };
         _settings = loadedSettings ? loadedSettings : defaultSettings;
@@ -117,6 +119,7 @@
         setChecked('csHideAvgSpeedCamerasCheckBox', _settings.hideAvgSpeedCameras);
         setChecked('csClearNewPLRCheckBox', _settings.setNewPLRStreetToNone);
         setChecked('csUseOldRoadColorsCheckBox', _settings.useOldRoadColors);
+        setChecked('csSetNewPLRCityCheckBox', _settings.setNewPLRCity);
     }
 
     function saveSettingsToStorage() {
@@ -130,7 +133,8 @@
                 inlineRoadTypeCheckboxes: _settings.inlineRoadTypeCheckboxes,
                 hideAvgSpeedCameras: _settings.hideAvgSpeedCameras,
                 setNewPLRStreetToNone: _settings.setNewPLRStreetToNone,
-                useOldRoadColors: _settings.useOldRoadColors
+                useOldRoadColors: _settings.useOldRoadColors,
+                setNewPLRCity: _settings.setNewPLRCity
             };
             settings.roadTypeButtons = [];
             for (var roadTypeAbbr in _roadTypes) {
@@ -183,6 +187,36 @@
         return null;
     }
 
+    function getFirstConnectedCityID(startSegment) {
+        var cityID = null;
+        var nonMatches = [];
+        var segmentIDsToSearch = [startSegment.attributes.id];
+        while (cityID === null && segmentIDsToSearch.length > 0) {
+            var startSegmentID = segmentIDsToSearch.pop();
+            startSegment = W.model.segments.get(startSegmentID);
+            var connectedSegmentIDs = getConnectedSegmentIDs(startSegmentID);
+            for (var i=0;i<connectedSegmentIDs.length;i++) {
+                var streetID = W.model.segments.get(connectedSegmentIDs[i]).attributes.primaryStreetID;
+                if (streetID !== null && typeof(streetID) !== 'undefined') {
+                    cityID = W.model.streets.get(streetID).cityID;
+                    break;
+                }
+            }
+
+            if (cityID === null) {
+                nonMatches.push(startSegmentID);
+                connectedSegmentIDs.forEach(function(segmentID) {
+                    if (nonMatches.indexOf(segmentID) === -1 && segmentIDsToSearch.indexOf(segmentID) === -1) {
+                        segmentIDsToSearch.push(segmentID);
+                    }
+                });
+            } else {
+                return cityID;
+            }
+        }
+        return null;
+    }
+
     function getEmptyCity(stateID) {
         var emptyCity = null;
         W.model.cities.getObjectArray().forEach(function(city) {
@@ -192,9 +226,18 @@
         });
         return emptyCity;
     }
+    function getCity(cityID) {
+        var cities = W.model.cities.getByIds([cityID]);
+        if (cities.length > 0) {
+            return cities[0];
+        } else {
+            return null;
+        }
+    }
 
-    function clearStreetAndCity () {
+    function setStreetAndCity () {
         var segments = W.selectionManager.selectedItems;
+        var setCity = isChecked('csSetNewPLRCityCheckBox');
         if (segments.length === 0 || segments[0].model.type !== 'segment') {
             return;
         }
@@ -208,17 +251,19 @@
                     var country = W.model.countries.get(state.countryID);
 
                     var m_action = new MultiAction();
+                    var cityToSet;
                     m_action.setModel(W.model);
-                    var emptyCity = getEmptyCity(state.id);
-                    if (!emptyCity) {
+                    if (setCity) cityToSet = getCity(getFirstConnectedCityID(segment.model));
+                    if (!cityToSet) cityToSet = getEmptyCity(state.id);
+                    if (!cityToSet) {
                         var addCityAction = new AddOrGetCity(state, country, "", true);
                         m_action.doSubAction(addCityAction);
-                        emptyCity = getEmptyCity(state.id);
+                        cityToSet = getEmptyCity(state.id);
                     }
-                    var newStreet = {isEmpty:true, cityID:emptyCity.attributes.id};
+                    var newStreet = {isEmpty:true, cityID:cityToSet.attributes.id};
                     var emptyStreet = W.model.streets.getByAttributes(newStreet)[0];
                     if (!emptyStreet) {
-                        var addStreetAction = new AddOrGetStreet("", emptyCity, true);
+                        var addStreetAction = new AddOrGetStreet("", cityToSet, true);
                         m_action.doSubAction(addStreetAction);
                         emptyStreet = W.model.streets.getByAttributes(newStreet)[0];
                     }
@@ -233,7 +278,7 @@
     function onRoadTypeButtonClick(roadTypeAbbr) {
         $(_roadTypeDropDownSelector).val(_roadTypes[roadTypeAbbr].val).change();
         if (roadTypeAbbr === 'PLR' && isChecked('csClearNewPLRCheckBox') && require) {
-            clearStreetAndCity();
+            setStreetAndCity();
         }
     }
 
@@ -269,14 +314,14 @@
         for (var prop in _directions) {
             if (prop !== 'unknown' || $('select[name="direction"]').has('option[value="0"]').length > 0) {
                 var $input = $('<input>', {type:"radio", name:"direction", title:_directions[prop].title, id:prop, value:_directions[prop].val})
-                    .click(function() {
-                        $(_directionDropDownSelector).val($(this).attr('value')).change();
-                        hideAvgSpeedCameras();
-                    });
+                .click(function() {
+                    $(_directionDropDownSelector).val($(this).attr('value')).change();
+                    hideAvgSpeedCameras();
+                });
                 if (String(_directions[prop].val) == String($dropDown.val())) $input.prop('checked', 'true');
                 $form.append(
                     $('<div class="controls-container" style="float: left; margin-right: 10px;margin-left:0px">').append(
-                         $input,
+                        $input,
                         $('<label for="' + prop + '" style="padding-left: 20px;">').text(_directions[prop].text)
                     )
                 );
@@ -493,7 +538,9 @@
                 $roadTypesDiv.append(
                     createSettingsCheckbox('csClearNewPLRCheckBox', 'setNewPLRStreetToNone','Set Street/City to None (new PLR only)',
                                            'NOTE: Only works if connected directly or indirectly to a segment with State/Country already set.',
-                                           {paddingLeft:'20px', display:'inline', marginRight:'4px'}, {fontStyle:'italic'}) //,
+                                           {paddingLeft:'20px', display:'inline', marginRight:'4px'}, {fontStyle:'italic'}),
+                    createSettingsCheckbox('csSetNewPLRCityCheckBox', 'setNewPLRCity','Set City to connected segment\'s City',
+                                           '', {paddingLeft:'30px', marginRight:'4px'}, {fontStyle:'italic'})
                     //$('<select style="height:24px;" disabled><option>None</option><option>Closest Segmet</option></select>')
                 );
             }
@@ -565,7 +612,6 @@
                 } else if (!checked && index !== -1) {
                     array.splice(index, 1);
                 }
-
             } else {
                 _settings[settingName] = checked;
             }
