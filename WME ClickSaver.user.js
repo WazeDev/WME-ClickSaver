@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.7.0
+// @version      0.7.1
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include      https://beta.waze.com/*editor/*
@@ -23,6 +23,7 @@
     var _lockDropDownSelector = 'select[name="lockRank"]';
     var _directionDropDownSelector = 'select[name="direction"]';
     var _elevationDropDownSelector = 'select[name="level"]';
+    var _routingTypeDropDownSelector = 'select[name="routingRoadType"]';
     var _alertUpdate = true;
     var _settings = {};
     var _settingsStoreName = 'clicksaver_settings';
@@ -34,6 +35,7 @@
         '',
         'What\'s New',
         '------------------------------',
+        '0.7.1: NEW - Added option to replace Routing Road Type drop down with radio buttons.',
         '0.7.0: NEW - Option to set City to closest attached segment City, for new PLR road segments.',
         '0.6.7: FIXED - Lock buttons don\'t always match available options in the original dropdown.'
     ].join('\n');
@@ -88,6 +90,7 @@
             lockButtons: true,
             elevationButtons: true,
             directionButtons: true,
+            routingTypeButtons: true,
             inlineRoadTypeCheckboxes: true,
             hideAvgSpeedCameras: true,
             setNewPLRStreetToNone: true,
@@ -115,6 +118,7 @@
         setChecked('csLockButtonsCheckBox', _settings.lockButtons);
         setChecked('csElevationButtonsCheckBox', _settings.elevationButtons);
         setChecked('csDirectionButtonsCheckBox', _settings.directionButtons);
+        setChecked('csRoutingTypeCheckBox', _settings.routingTypeButtons);
         setChecked('csInlineRoadTypesCheckBox', _settings.inlineRoadTypeCheckboxes);
         setChecked('csHideAvgSpeedCamerasCheckBox', _settings.hideAvgSpeedCameras);
         setChecked('csClearNewPLRCheckBox', _settings.setNewPLRStreetToNone);
@@ -331,6 +335,41 @@
         $dropDown.hide();
     }
 
+    function addRoutingTypeButtons() {
+        var $dropDown = $(_routingTypeDropDownSelector);
+        if ($dropDown.length > 0) {
+            var options = $dropDown.children();
+            if (options.length === 3) {
+                var buttonInfos = [
+                    ['-1', options[0].value, options[0].text],
+                    [options[1].text, options[1].value, ''],
+                    ['+1', options[2].value, options[2].text],
+                ];
+                $('#csRoutingTypeContainer').remove();
+                var $form = $('<div>', {id:"csRoutingTypeContainer",style:"height:30px;padding-top:0px"});
+                for (var i=0; i<buttonInfos.length; i++) {
+                    var btnInfo = buttonInfos[i];
+                    var $input = $('<input>', {type:"radio", name:"routingRoadType", id:"routingRoadType" + i, value:btnInfo[1]})
+                    .click(function() {
+                        $(_routingTypeDropDownSelector).val($(this).attr('value')).change();
+                        //hideAvgSpeedCameras();
+                    });
+                    if (String(btnInfo[1]) == String($dropDown.val())) $input.prop('checked', 'true');
+                    $form.append(
+                        $('<div class="controls-container" style="float: left; margin-right: 10px;margin-left:0px">').append(
+                            $input,
+                            $('<label>', {for:'routingRoadType' + i, style:"padding-left: 20px;", title:btnInfo[2]}).text(btnInfo[0])
+                        )
+                    );
+
+                }
+
+                $dropDown.before($form);
+                $dropDown.hide();
+            }
+        }
+    }
+
     function addLockButtons() {
         var $lockDropDown = $(_lockDropDownSelector);
         var selItems = W.selectionManager.selectedItems;
@@ -466,6 +505,7 @@
     function injectCss() {
         var css =  [
             // Road type button formatting
+            '.csRoadTypeButtonsCheckBoxContainer {margin-left:15px;}',
             '.rth-btn-container {margin-bottom:5px;}',
             '.rth-btn-container .btn-rth {font-size:11px;line-height:20px;color:black;padding:0px 4px;height:20px;margin-right:2px;border-style:solid;border-width:1px;}',
             buildRoadTypeButtonCss(),
@@ -556,29 +596,28 @@
             .append(
                 $('<div>', {style: 'margin-bottom:8px;'})
                 .append(
-                    $('<div>', {class:'form-group'})
-                    .append( $('<label>', {class:"control-label"}).text('DROPDOWN HELPERS') )
-                    .append(
-                        $('<div>').append( createSettingsCheckbox('csRoadTypeButtonsCheckBox', 'roadButtons', 'Add road type buttons') )
-                        .append( $roadTypesDiv )
+                    $('<div>', {class:'form-group'}).append(
+                        $('<label>', {class:"control-label"}).text('DROPDOWN HELPERS'),
+                        $('<div>').append( createSettingsCheckbox('csRoadTypeButtonsCheckBox', 'roadButtons', 'Add road type buttons') ).append( $roadTypesDiv ),
+                        createSettingsCheckbox('csRoutingTypeCheckBox', 'routingTypeButtons', 'Add routing type buttons'),
+                        createSettingsCheckbox('csDirectionButtonsCheckBox', 'directionButtons', 'Add road direction buttons'),
+                        createSettingsCheckbox('csElevationButtonsCheckBox', 'elevationButtons', 'Add elevation buttons'),
+                        createSettingsCheckbox('csLockButtonsCheckBox', 'lockButtons', 'Add lock buttons')
                     )
-                    .append( createSettingsCheckbox('csDirectionButtonsCheckBox', 'directionButtons', 'Add road direction buttons') )
-                    .append( createSettingsCheckbox('csElevationButtonsCheckBox', 'elevationButtons', 'Add elevation buttons') )
-                    .append( createSettingsCheckbox('csLockButtonsCheckBox', 'lockButtons', 'Add lock buttons') )
+                    .append( $('<label>', {class:"control-label"}).text('SPACE SAVERS') )
+                    .append(
+                        $('<div>', {style:'margin-bottom:8px;'})
+                        .append( createSettingsCheckbox('csInlineRoadTypesCheckBox', 'inlineRoadTypeCheckboxes', 'Inline road type checkboxes') )
+                        .append( createSettingsCheckbox('csHideAvgSpeedCamerasCheckBox', 'hideAvgSpeedCameras', 'Avg Speed Cameras') )
+                    )
+                    // .append( $('<label>', {class:"control-label"}).text('BEHAVIOR MODIFIERS') )
+                    // .append(
+                    //     $('<div>', {style:'margin-bottom:20px;'})
+                    //     .append(
+                    //         createRadioGroup('cs-plr-default-address', 'PLR:', [{id:'cs-plr-default-address-none', labelText: 'None'}, {id:'cs-plr-default-address-closest', labelText: 'Closest Segment'}])
+                    //     )
+                    // )
                 )
-                .append( $('<label>', {class:"control-label"}).text('SPACE SAVERS') )
-                .append(
-                    $('<div>', {style:'margin-bottom:8px;'})
-                    .append( createSettingsCheckbox('csInlineRoadTypesCheckBox', 'inlineRoadTypeCheckboxes', 'Inline road type checkboxes') )
-                    .append( createSettingsCheckbox('csHideAvgSpeedCamerasCheckBox', 'hideAvgSpeedCameras', 'Avg Speed Cameras') )
-                )
-                // .append( $('<label>', {class:"control-label"}).text('BEHAVIOR MODIFIERS') )
-                // .append(
-                //     $('<div>', {style:'margin-bottom:20px;'})
-                //     .append(
-                //         createRadioGroup('cs-plr-default-address', 'PLR:', [{id:'cs-plr-default-address-none', labelText: 'None'}, {id:'cs-plr-default-address-closest', labelText: 'Closest Segment'}])
-                //     )
-                // )
             )
         );
 
@@ -630,6 +669,9 @@
         }
         if($(_directionDropDownSelector).length>0) {
             if(isChecked('csDirectionButtonsCheckBox')) addDirectionButtons();
+        }
+        if($(_routingTypeDropDownSelector).length>0) {
+            if(isChecked('csRoutingTypeCheckBox')) addRoutingTypeButtons();
         }
         if ($(_elevationDropDownSelector).length>0) {
             if(isChecked('csElevationButtonsCheckBox')) addElevationButtons();
@@ -715,6 +757,9 @@
                         }
                         if(addedNode.querySelector(_lockDropDownSelector)) {
                             if(isChecked('csLockButtonsCheckBox')) addLockButtons();
+                        }
+                        if(addedNode.querySelector(_routingTypeDropDownSelector)) {
+                            if(isChecked('csRoutingTypeCheckBox')) addRoutingTypeButtons();
                         }
                         if(addedNode.querySelector(_directionDropDownSelector)) {
                             if(isChecked('csDirectionButtonsCheckBox')) addDirectionButtons();
