@@ -153,9 +153,11 @@
         var IDs = [];
         var segment = W.model.segments.get(segmentID);
         [W.model.nodes.get(segment.attributes.fromNodeID), W.model.nodes.get(segment.attributes.toNodeID)].forEach(function(node) {
-            node.attributes.segIDs.forEach(function(segID) {
-                if (segID !== segmentID) { IDs.push(segID); }
-            });
+            if (node) {
+                node.attributes.segIDs.forEach(function(segID) {
+                    if (segID !== segmentID) { IDs.push(segID); }
+                });
+            }
         });
         return IDs;
     }
@@ -322,7 +324,7 @@
                     $(_directionDropDownSelector).val($(this).attr('value')).change();
                     hideAvgSpeedCameras();
                 });
-                if (String(_directions[prop].val) == String($dropDown.val())) $input.prop('checked', 'true');
+                if (String(_directions[prop].val) === String($dropDown.val())) $input.prop('checked', 'true');
                 $form.append(
                     $('<div class="controls-container" style="float: left; margin-right: 10px;margin-left:0px">').append(
                         $input,
@@ -343,7 +345,7 @@
                 var buttonInfos = [
                     ['-1', options[0].value, options[0].text],
                     [options[1].text, options[1].value, ''],
-                    ['+1', options[2].value, options[2].text],
+                    ['+1', options[2].value, options[2].text]
                 ];
                 $('#csRoutingTypeContainer').remove();
                 var $form = $('<div>', {id:"csRoutingTypeContainer",style:"height:30px;padding-top:0px"});
@@ -354,7 +356,7 @@
                         $(_routingTypeDropDownSelector).val($(this).attr('value')).change();
                         //hideAvgSpeedCameras();
                     });
-                    if (String(btnInfo[1]) == String($dropDown.val())) $input.prop('checked', 'true');
+                    if (String(btnInfo[1]) === String($dropDown.val())) $input.prop('checked', 'true');
                     $form.append(
                         $('<div class="controls-container" style="float: left; margin-right: 10px;margin-left:0px">').append(
                             $input,
@@ -427,6 +429,7 @@
             );
         });
         if (optionValues.indexOf('6') > -1) {
+            var selected = !multiRanks && '6' === String(manualRank);
             $div.append(
                 $('<div>', {class:'btn btn-lh' + (selected ? ' btn-lh-selected':'') + ' disabled'})
                 .text('7')
