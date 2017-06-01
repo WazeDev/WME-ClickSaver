@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.8.0
+// @version      0.8.1
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include      https://beta.waze.com/*editor/*
@@ -37,6 +37,7 @@
         '',
         'What\'s New',
         '------------------------------',
+        '0.8.1: NEW - Added option to make Parking Type and Payment Type checkboxes inline (space saver).',
         '0.8.0: NEW - Added options to replace PLA "cost" and "estimated spaces" dropdowns with buttons.'
     ].join('\n');
     var _roadTypes = {
@@ -95,6 +96,7 @@
             parkingSpacesButtons: true,
             inlineRoadTypeCheckboxes: true,
             hideAvgSpeedCameras: true,
+            inlineParkingCheckboxes: true,
             setNewPLRStreetToNone: true,
             setNewPLRCity: true,
             useOldRoadColors: false
@@ -125,6 +127,7 @@
         setChecked('csRoutingTypeCheckBox', _settings.routingTypeButtons);
         setChecked('csInlineRoadTypesCheckBox', _settings.inlineRoadTypeCheckboxes);
         setChecked('csHideAvgSpeedCamerasCheckBox', _settings.hideAvgSpeedCameras);
+        setChecked('csInlineParkingBoxesCheckBox', _settings.inlineParkingCheckboxes);
         setChecked('csClearNewPLRCheckBox', _settings.setNewPLRStreetToNone);
         setChecked('csUseOldRoadColorsCheckBox', _settings.useOldRoadColors);
         setChecked('csSetNewPLRCityCheckBox', _settings.setNewPLRCity);
@@ -141,6 +144,7 @@
                 parkingCostButtons: _settings.parkingCostButtons,
                 parkingSpacesButtons: _settings.parkingSpacesButtons,
                 inlineRoadTypeCheckboxes: _settings.inlineRoadTypeCheckboxes,
+                inlineParkingCheckboxes: _settings.inlineParkingCheckboxes,
                 hideAvgSpeedCameras: _settings.hideAvgSpeedCameras,
                 setNewPLRStreetToNone: _settings.setNewPLRStreetToNone,
                 useOldRoadColors: _settings.useOldRoadColors,
@@ -624,6 +628,17 @@
         $(_roadTypeDropDownSelector).after($div);
     }
 
+    function inlineParkingCheckboxes() {
+        var css = {display: 'inline-block', marginRight: '5px'};
+        var $div = $('<div>');
+        $('i.parkingType-tooltip').after($div);
+        $('div.parking-type-option').appendTo($div).css(css);
+
+        $div = $('<div>');
+        $('div.payment-checkbox').parent().append($div);
+        $('div.payment-checkbox').appendTo($div).css(css);
+    }
+
     function hideAvgSpeedCameras() {
         $('#fwdSpeedCameraCheckbox').closest('.form-group').hide();
         $('#revSpeedCameraCheckbox').closest('.form-group').hide();
@@ -683,10 +698,8 @@
 
         var $panel = $('<div>', {class:'tab-pane', id:'sidepanel-clicksaver'})
         .append(
-            $('<div>',  {class:'side-panel-section>'})
-            .append(
-                $('<div>', {style: 'margin-bottom:8px;'})
-                .append(
+            $('<div>',  {class:'side-panel-section>'}).append(
+                $('<div>', {style: 'margin-bottom:8px;'}).append(
                     $('<div>', {class:'form-group'}).append(
                         $('<label>', {class:"control-label"}).text('DROPDOWN HELPERS'),
                         $('<div>').append( createSettingsCheckbox('csRoadTypeButtonsCheckBox', 'roadButtons', 'Add road type buttons') ).append( $roadTypesDiv ),
@@ -696,20 +709,13 @@
                         createSettingsCheckbox('csLockButtonsCheckBox', 'lockButtons', 'Add lock buttons'),
                         createSettingsCheckbox('csParkingCostButtonsCheckBox', 'parkingCostButtons', 'Add PLA cost buttons'),
                         createSettingsCheckbox('csParkingSpacesButtonsCheckBox', 'parkingSpacesButtons', 'Add PLA estimated spaces buttons')
+                    ),
+                    $('<label>', {class:"control-label"}).text('SPACE SAVERS'),
+                    $('<div>', {style:'margin-bottom:8px;'}).append(
+                        createSettingsCheckbox('csInlineRoadTypesCheckBox', 'inlineRoadTypeCheckboxes', 'Inline road type checkboxes'),
+                        createSettingsCheckbox('csHideAvgSpeedCamerasCheckBox', 'hideAvgSpeedCameras', 'Avg Speed Cameras'),
+                        createSettingsCheckbox('csInlineParkingBoxesCheckBox', 'inlineParkingCheckboxes', 'Inline parking/payment type checkboxes')
                     )
-                    .append( $('<label>', {class:"control-label"}).text('SPACE SAVERS') )
-                    .append(
-                        $('<div>', {style:'margin-bottom:8px;'})
-                        .append( createSettingsCheckbox('csInlineRoadTypesCheckBox', 'inlineRoadTypeCheckboxes', 'Inline road type checkboxes') )
-                        .append( createSettingsCheckbox('csHideAvgSpeedCamerasCheckBox', 'hideAvgSpeedCameras', 'Avg Speed Cameras') )
-                    )
-                    // .append( $('<label>', {class:"control-label"}).text('BEHAVIOR MODIFIERS') )
-                    // .append(
-                    //     $('<div>', {style:'margin-bottom:20px;'})
-                    //     .append(
-                    //         createRadioGroup('cs-plr-default-address', 'PLR:', [{id:'cs-plr-default-address-none', labelText: 'None'}, {id:'cs-plr-default-address-closest', labelText: 'Closest Segment'}])
-                    //     )
-                    // )
                 )
             )
         );
@@ -756,6 +762,9 @@
             if(isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
             if(isChecked('csHideAvgSpeedCamerasCheckBox')) hideAvgSpeedCameras();
             if(isChecked('csInlineRoadTypesCheckBox')) inlineRoadTypeCheckboxes();
+        }
+        if($(_parkingCostDropDownSelector).length>0 && isChecked('csInlineParkingBoxesCheckBox')) {
+            inlineParkingCheckboxes();
         }
         if($(_lockDropDownSelector).length>0 && isChecked('csLockButtonsCheckBox')) {
             addLockButtons();
@@ -853,6 +862,9 @@
                             if(isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
                             if(isChecked('csHideAvgSpeedCamerasCheckBox')) hideAvgSpeedCameras();
                             if(isChecked('csInlineRoadTypesCheckBox')) inlineRoadTypeCheckboxes();
+                        }
+                        if(addedNode.querySelector(_parkingCostDropDownSelector) && isChecked('csInlineParkingBoxesCheckBox')) {
+                            inlineParkingCheckboxes();
                         }
                         if(addedNode.querySelector(_lockDropDownSelector) && isChecked('csLockButtonsCheckBox')) {
                             addLockButtons();
