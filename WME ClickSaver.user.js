@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.7.1
+// @version      0.8.0
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include      https://beta.waze.com/*editor/*
@@ -24,6 +24,8 @@
     var _directionDropDownSelector = 'select[name="direction"]';
     var _elevationDropDownSelector = 'select[name="level"]';
     var _routingTypeDropDownSelector = 'select[name="routingRoadType"]';
+    var _parkingSpacesDropDownSelector = 'select[name="estimatedNumberOfSpots"]';
+    var _parkingCostDropDownSelector = 'select[name="costType"]';
     var _alertUpdate = true;
     var _settings = {};
     var _settingsStoreName = 'clicksaver_settings';
@@ -35,9 +37,7 @@
         '',
         'What\'s New',
         '------------------------------',
-        '0.7.1: NEW - Added option to replace Routing Road Type drop down with radio buttons.',
-        '0.7.0: NEW - Option to set City to closest attached segment City, for new PLR road segments.',
-        '0.6.7: FIXED - Lock buttons don\'t always match available options in the original dropdown.'
+        '0.8.0: NEW - Added options to replace PLA "cost" and "estimated spaces" dropdowns with buttons.'
     ].join('\n');
     var _roadTypes = {
         St:{val:1, title:'Street', wmeColor:'#ffffeb', svColor:'#ffffff', category:'streets', visible:true},
@@ -91,6 +91,8 @@
             elevationButtons: true,
             directionButtons: true,
             routingTypeButtons: true,
+            parkingCostButtons: true,
+            parkingSpacesButtons: true,
             inlineRoadTypeCheckboxes: true,
             hideAvgSpeedCameras: true,
             setNewPLRStreetToNone: true,
@@ -118,6 +120,8 @@
         setChecked('csLockButtonsCheckBox', _settings.lockButtons);
         setChecked('csElevationButtonsCheckBox', _settings.elevationButtons);
         setChecked('csDirectionButtonsCheckBox', _settings.directionButtons);
+        setChecked('csParkingSpacesButtonsCheckBox', _settings.parkingSpacesButtons);
+        setChecked('csParkingCostButtonsCheckBox', _settings.parkingCostButtons);
         setChecked('csRoutingTypeCheckBox', _settings.routingTypeButtons);
         setChecked('csInlineRoadTypesCheckBox', _settings.inlineRoadTypeCheckboxes);
         setChecked('csHideAvgSpeedCamerasCheckBox', _settings.hideAvgSpeedCameras);
@@ -134,6 +138,8 @@
                 lockButtons: _settings.lockButtons,
                 elevationButtons: _settings.elevationButtons,
                 directionButtons: _settings.directionButtons,
+                parkingCostButtons: _settings.parkingCostButtons,
+                parkingSpacesButtons: _settings.parkingSpacesButtons,
                 inlineRoadTypeCheckboxes: _settings.inlineRoadTypeCheckboxes,
                 hideAvgSpeedCameras: _settings.hideAvgSpeedCameras,
                 setNewPLRStreetToNone: _settings.setNewPLRStreetToNone,
@@ -450,6 +456,88 @@
         $lockDropDown.hide();
     }
 
+    function isPLA(item) {
+        return (item.model.type === "venue") &&  item.model.attributes.categories.indexOf('PARKING_LOT') > -1;
+    }
+
+    function addParkingSpacesButtons() {
+        var $dropDown = $(_parkingSpacesDropDownSelector);
+        var selItems = W.selectionManager.selectedItems;
+        var item = selItems[0];
+        var attr = item.model.attributes;
+
+        // If it's not a PLA, exit.
+        if (!isPLA(item)) return;
+
+        $('#csParkingSpacesContainer').remove();
+        var $div = $('<div>',{id:'csParkingSpacesContainer'});
+        var dropdownDisabled = $dropDown.attr('disabled') === 'disabled';
+        var optionNodes = $(_parkingSpacesDropDownSelector + ' option');
+        var optionValues = [];
+        for (i=0; i<optionNodes.length; i++) {
+            var $option = $(optionNodes[i]);
+            var text = $option.text();
+            var selected = $option.val() === $dropDown.val();
+            $div.append(
+                $('<div>', {
+                    class:'btn btn-lh' + (selected ? ' btn-lh-selected':'') + (dropdownDisabled ? ' disabled' : ''),
+                    style: 'margin-bottom: 5px;'
+                })
+                .text(text)
+                .data('val',$option.val())
+                .hover(function() {})
+                .click(function() {
+                    if(!dropdownDisabled) {
+                        $(_parkingSpacesDropDownSelector).val($(this).data('val')).change();
+                        addParkingSpacesButtons();
+                    }
+                })
+            );
+        }
+
+        $dropDown.before($div);
+        $dropDown.hide();
+    }
+
+    function addParkingCostButtons() {
+        var $dropDown = $(_parkingCostDropDownSelector);
+        var selItems = W.selectionManager.selectedItems;
+        var item = selItems[0];
+        var attr = item.model.attributes;
+
+        // If it's not a PLA, exit.
+        if (!isPLA(item)) return;
+
+        $('#csParkingCostContainer').remove();
+        var $div = $('<div>',{id:'csParkingCostContainer'});
+        var dropdownDisabled = $dropDown.attr('disabled') === 'disabled';
+        var optionNodes = $(_parkingCostDropDownSelector + ' option');
+        var optionValues = [];
+        for (i=0; i<optionNodes.length; i++) {
+            var $option = $(optionNodes[i]);
+            var text = $option.text();
+            var selected = $option.val() === $dropDown.val();
+            $div.append(
+                $('<div>', {
+                    class:'btn btn-lh' + (selected ? ' btn-lh-selected':'') + (dropdownDisabled ? ' disabled' : ''),
+                    style: 'margin-bottom: 5px;'
+                })
+                .text(text !== '' ? text : '?')
+                .data('val',$option.val())
+                .hover(function() {})
+                .click(function() {
+                    if(!dropdownDisabled) {
+                        $(_parkingCostDropDownSelector).val($(this).data('val')).change();
+                        addParkingCostButtons();
+                    }
+                })
+            );
+        }
+
+        $dropDown.before($div);
+        $dropDown.hide();
+    }
+
     function addElevationButtons() {
         var id = 'csElevationButtonsContainer';
         if ($('#' + id).length===0) {
@@ -605,7 +693,9 @@
                         createSettingsCheckbox('csRoutingTypeCheckBox', 'routingTypeButtons', 'Add routing type buttons'),
                         createSettingsCheckbox('csDirectionButtonsCheckBox', 'directionButtons', 'Add road direction buttons'),
                         createSettingsCheckbox('csElevationButtonsCheckBox', 'elevationButtons', 'Add elevation buttons'),
-                        createSettingsCheckbox('csLockButtonsCheckBox', 'lockButtons', 'Add lock buttons')
+                        createSettingsCheckbox('csLockButtonsCheckBox', 'lockButtons', 'Add lock buttons'),
+                        createSettingsCheckbox('csParkingCostButtonsCheckBox', 'parkingCostButtons', 'Add PLA cost buttons'),
+                        createSettingsCheckbox('csParkingSpacesButtonsCheckBox', 'parkingSpacesButtons', 'Add PLA estimated spaces buttons')
                     )
                     .append( $('<label>', {class:"control-label"}).text('SPACE SAVERS') )
                     .append(
@@ -667,17 +757,23 @@
             if(isChecked('csHideAvgSpeedCamerasCheckBox')) hideAvgSpeedCameras();
             if(isChecked('csInlineRoadTypesCheckBox')) inlineRoadTypeCheckboxes();
         }
-        if($(_lockDropDownSelector).length>0) {
-            if(isChecked('csLockButtonsCheckBox')) addLockButtons();
+        if($(_lockDropDownSelector).length>0 && isChecked('csLockButtonsCheckBox')) {
+            addLockButtons();
         }
-        if($(_directionDropDownSelector).length>0) {
-            if(isChecked('csDirectionButtonsCheckBox')) addDirectionButtons();
+        if($(_directionDropDownSelector).length>0 && isChecked('csDirectionButtonsCheckBox')) {
+            addDirectionButtons();
         }
-        if($(_routingTypeDropDownSelector).length>0) {
-            if(isChecked('csRoutingTypeCheckBox')) addRoutingTypeButtons();
+        if($(_routingTypeDropDownSelector && isChecked('csRoutingTypeCheckBox')).length>0) {
+            addRoutingTypeButtons();
         }
-        if ($(_elevationDropDownSelector).length>0) {
-            if(isChecked('csElevationButtonsCheckBox')) addElevationButtons();
+        if ($(_elevationDropDownSelector).length>0 && isChecked('csElevationButtonsCheckBox')) {
+            addElevationButtons();
+        }
+        if ($(_parkingSpacesDropDownSelector).length>0 && isChecked('csParkingSpacesButtonsCheckBox')) {
+            addParkingSpacesButtons();  // TODO - add option setting
+        }
+        if ($(_parkingCostDropDownSelector).length>0 && isChecked('csParkingCostButtonsCheckBox')) {
+            addParkingCostButtons();  // TODO - add option setting
         }
     }
 
@@ -758,17 +854,23 @@
                             if(isChecked('csHideAvgSpeedCamerasCheckBox')) hideAvgSpeedCameras();
                             if(isChecked('csInlineRoadTypesCheckBox')) inlineRoadTypeCheckboxes();
                         }
-                        if(addedNode.querySelector(_lockDropDownSelector)) {
-                            if(isChecked('csLockButtonsCheckBox')) addLockButtons();
+                        if(addedNode.querySelector(_lockDropDownSelector) && isChecked('csLockButtonsCheckBox')) {
+                            addLockButtons();
                         }
-                        if(addedNode.querySelector(_routingTypeDropDownSelector)) {
-                            if(isChecked('csRoutingTypeCheckBox')) addRoutingTypeButtons();
+                        if(addedNode.querySelector(_routingTypeDropDownSelector) && isChecked('csRoutingTypeCheckBox')) {
+                            addRoutingTypeButtons();
                         }
-                        if(addedNode.querySelector(_directionDropDownSelector)) {
-                            if(isChecked('csDirectionButtonsCheckBox')) addDirectionButtons();
+                        if(addedNode.querySelector(_directionDropDownSelector) && isChecked('csDirectionButtonsCheckBox')) {
+                            addDirectionButtons();
                         }
-                        if (addedNode.querySelector(_elevationDropDownSelector)) {
-                            if(isChecked('csElevationButtonsCheckBox')) addElevationButtons();
+                        if (addedNode.querySelector(_elevationDropDownSelector) && isChecked('csElevationButtonsCheckBox')) {
+                            addElevationButtons();
+                        }
+                        if (addedNode.querySelector(_parkingSpacesDropDownSelector) && isChecked('csParkingSpacesButtonsCheckBox')) {
+                            addParkingSpacesButtons();  // TODO - add option setting
+                        }
+                        if (addedNode.querySelector(_parkingCostDropDownSelector) && isChecked('csParkingCostButtonsCheckBox')) {
+                            addParkingCostButtons();  // TODO - add option setting
                         }
                     }
                 }
