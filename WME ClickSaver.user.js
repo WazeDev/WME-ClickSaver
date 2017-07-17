@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.8.2
+// @version      0.8.3
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include      https://beta.waze.com/*editor/*
@@ -40,6 +40,7 @@
             '',
             'What\'s New',
             '------------------------------',
+            '0.8.3: FIXED - Crashes on load for people with no access to Google docs.',
             '0.8.2: NEW - Improvements to language translations.',
             '0.8.1: NEW - Added option to make Parking Type and Payment Type checkboxes inline (space saver).',
             '0.8.0: NEW - Added options to replace PLA "cost" and "estimated spaces" dropdowns with buttons.'
@@ -847,11 +848,15 @@
         }
 
         function getTranslationObject() {
-            var locale = I18n.currentLocale().toLowerCase();
-            if (!argsObject.translations.hasOwnProperty(locale)) {
-                locale = 'en-us';
+            if (argsObject.useDefaultTranslation) {
+                return DEFAULT_TRANSLATION;
+            } else {
+                var locale = I18n.currentLocale().toLowerCase();
+                if (!argsObject.translations.hasOwnProperty(locale)) {
+                    locale = 'en-us';
+                }
+                return argsObject.translations[locale];
             }
-            return argsObject.translations[locale];
         }
 
         function init() {
@@ -938,11 +943,56 @@
             }
         }
 
+        var DEFAULT_TRANSLATION = {
+            "roadTypeButtons":{
+                "St":{"title":"Street","text":"St"},
+                "PS":{"title":"Primary Street","text":"PS"},
+                "mH":{"title":"Minor Highway","text":"mH"},
+                "MH":{"title":"Major Highway","text":"MH"},
+                "Fw":{"title":"Freeway","text":"Fw"},
+                "Rmp":{"title":"Ramp","text":"Rmp"},
+                "OR":{"title":"Off-road / Not Maintained","text":"OR"},
+                "PLR":{"title":"Parking Lot Road","text":"PLR"},
+                "PR":{"title":"Private Road","text":"PR"},
+                "Fer":{"title":"Ferry","text":"Fer"},
+                "WT":{"title":"Walking Trail (non-drivable)","text":"WT"},
+                "PB":{"title":"Pedestrian Boardwalk (non-drivable)","text":"PB"},
+                "Sw":{"title":"Stairway (non-drivable)","text":"Sw"},
+                "RR":{"title":"Railroad (non-drivable)","text":"RR"},
+                "RT":{"title":"Runway/Taxiway (non-drivable)","text":"RT"}
+            },
+            "directionButtons":{
+                "twoWay":{"title":"Two way","text":"Two way"},
+                "oneWayAB":{"title":"One way (A → B)","text":"A → B"},
+                "oneWayBA":{"title":"One way (B → A)","text":"B → A"},
+                "unknown":{"title":"Unknown","text":"?"}
+            },
+            "groundButtonText":"Ground",
+            "autoLockButtonText":"Auto",
+            "multiLockLevelWarning":"Multiple lock levels selected!",
+            "prefs":{
+                "dropdownHelperGroup":"DROPDOWN HELPERS",
+                "roadTypeButtons":"Add road type buttons",
+                "useOldRoadColors":"Use old road colors (requires refresh)",
+                "setStreetCityToNone":"Set Street/City to None (new PLR only)",
+                "setStreetCityToNone_Title":"NOTE: Only works if connected directly or indirectly to a segment with State/Country already set.",
+                "setCityToConnectedSegCity":"Set City to connected segment's City",
+                "routingTypeButtons":"Add routing type buttons",
+                "directionButtons":"Add direction buttons",
+                "elevationButtons":"Add elevation buttons",
+                "lockButtons":"Add lock buttons",
+                "parkingCostButtons":"Add PLA cost buttons",
+                "parkingSpacesButtons":"Add PLA estimated spaces buttons",
+                "spaceSaversGroup":"SPACE SAVERS",
+                "inlineRoadType":"Inline road type checkboxes",
+                "avgSpeedCameras":"Hide Avg Speed Cameras",
+                "inlineParkingStuff":"Inline parking/payment type checkboxes",
+                "discussionForumLinkText":"Discussion Forum"
+            }
+        };
+
         log('Bootstrap...', 1);
         bootstrap();
-
-
-
 
         //---------------------------------------------------------------------------------------------
         // ==UserScript==
@@ -1084,18 +1134,22 @@
     }
 
     GM_xmlhttpRequest({
-        url: 'https://docs.google.com/spreadsheets/d/1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/pub?gid=0&single=true&output=tsv',
+        url: 'https://docs.google.com/spreadsheets/d/aaa1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/pub?gid=0&single=true&output=tsv',
         method: 'GET',
         overrideMimeType: 'text/csv',
         onload: function(res) {
+            var args;
             if (res.status === 200) {
                 var translationsArray = res.responseText.split(/\r?\n/).map(function(t) { return t.split(/\t/); });
-                injectMain({
-                    scriptName: GM_info.script.name,
-                    scriptVersion: GM_info.script.version,
-                    translations: convertTranslationsArrayToObject(translationsArray)
-                });
+                args = { scriptName: GM_info.script.name, scriptVersion: GM_info.script.version, translations: convertTranslationsArrayToObject(translationsArray) };
+            } else {
+                args = { scriptName: GM_info.script.name, scriptVersion: GM_info.script.version, useDefaultTranslation: true };
             }
+            injectMain(args);
+        },
+        onerror: function() {
+            injectMain({ scriptName: GM_info.script.name, scriptVersion: GM_info.script.version, useDefaultTranslation: true });
         }
     });
+
 })();
