@@ -1,12 +1,10 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.8.3
+// @version      0.8.4
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
-// @include      https://beta.waze.com/*editor/*
-// @include      https://www.waze.com/*editor/*
-// @exclude      https://www.waze.com/*user/editor/*
+// @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
 // @license      GNU GPLv3
 // @connect      google.com
 // @grant        GM_xmlhttpRequest
@@ -40,6 +38,7 @@
             '',
             'What\'s New',
             '------------------------------',
+            '0.8.4: FIXED - Does not run on URLs without a trailing slash.',
             '0.8.3: FIXED - Crashes on load for people with no access to Google docs.',
             '0.8.2: NEW - Improvements to language translations.',
             '0.8.1: NEW - Added option to make Parking Type and Payment Type checkboxes inline (space saver).',
