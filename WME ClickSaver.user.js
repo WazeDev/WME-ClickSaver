@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.8.4
+// @version      0.8.5
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -27,7 +27,7 @@
         var _routingTypeDropDownSelector = 'select[name="routingRoadType"]';
         var _parkingSpacesDropDownSelector = 'select[name="estimatedNumberOfSpots"]';
         var _parkingCostDropDownSelector = 'select[name="costType"]';
-        var _alertUpdate = true;
+        var _alertUpdate = false;
         var _settings = {};
         var _settingsStoreName = 'clicksaver_settings';
         var _lastScriptVersion;
@@ -38,6 +38,7 @@
             '',
             'What\'s New',
             '------------------------------',
+            '0.8.5: FIXED - Turned off update alerts.',
             '0.8.4: FIXED - Does not run on URLs without a trailing slash.',
             '0.8.3: FIXED - Crashes on load for people with no access to Google docs.',
             '0.8.2: NEW - Improvements to language translations.',
