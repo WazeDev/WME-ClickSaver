@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.8.5
+// @version      0.8.6
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -38,6 +38,7 @@
             '',
             'What\'s New',
             '------------------------------',
+            '0.8.6: FIXED - Alt street quick-delete icons.',
             '0.8.5: FIXED - Turned off update alerts.',
             '0.8.4: FIXED - Does not run on URLs without a trailing slash.',
             '0.8.3: FIXED - Crashes on load for people with no access to Google docs.',
@@ -998,9 +999,9 @@
         // ==UserScript==
         // @name         WMEQuickAltDel
         // @namespace    http://tampermonkey.net/
-        // @version      0.0.1
+        // @version      0.0.2
         // @description  try to take over the world!
-        // @author       Jonathan Angliss
+        // @author       Jonathan Angliss (modifications by MapOMatic)
         // @include      /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/.*$/
         // @grant        none
         // ==/UserScript==
@@ -1011,7 +1012,7 @@
             var UpdateObject;
 
             function WMEaltStreet_Remove( elemClicked ) {
-                var altID = parseInt($(elemClicked.currentTarget).parent()[0].dataset.id);
+                var altID = parseInt($(elemClicked.currentTarget).data('id'));
                 var selectedObjs = W.selectionManager.selectedItems;
                 selectedObjs.forEach(function(element) {
                     if (element.model.type === 'segment') {
@@ -1065,26 +1066,16 @@
             function updateAltStreetCtrls() {
                 if (W.selectionManager.selectedItems.length > 0) {
                     var selItems = W.selectionManager.selectedItems;
-                    var doAltStreets = false;
-                    for (var i = 0; i < selItems.length; i++) {
-                        if (selItems[i].model.type === 'segment') {
-                            doAltStreets = true;
-                            break;
-                        }
-                    }
-
-                    if (doAltStreets) {
-                        var mTrObj = $('tr.alt-street');
-                        var mLiObj = $('li.alt-street');
-                        for (i = 0; i < mTrObj.length; i++) {
-                            var element = mTrObj[i];
-                            if($(mLiObj[i]).find('i').length === 0){//prevent duplicate entries
-                                mLiObj[i].dataset.id = element.dataset.id;
-                                var nA = document.createElement("i");
-                                nA.className = "fa fa-times-circle";
-                                nA.onclick = WMEaltStreet_Remove;
-                                nA.style.cssText = "cursor:pointer";
-                                mLiObj[i].appendChild(nA);
+                    if (selItems.length > 0 && selItems[0].model.type === 'segment') {
+                        var $idElements = $('.add-alt-street-form .alt-street');
+                        var $liElements = $('li.alt-street');
+                        for (var i = 0; i < $idElements.length; i++) {
+                            var $idElem = $idElements.eq(i);
+                            var $liElem = $liElements.eq(i);
+                            if($liElem.find('i').length === 0){//prevent duplicate entries
+                                $liElem.append(
+                                    $('<i>', {class:'fa fa-times-circle'}).css({cursor:'pointer'}).data('id', $idElem.data('id')).click(WMEaltStreet_Remove)
+                                );
                             }
                         }
                     }
