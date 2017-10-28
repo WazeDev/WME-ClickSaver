@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.8.6
+// @version      0.8.7
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -38,6 +38,7 @@
             '',
             'What\'s New',
             '------------------------------',
+            '0.8.7: FIXED - Removed outdated features.  Updated styling for new UI.',
             '0.8.6: FIXED - Alt street quick-delete icons.',
             '0.8.5: FIXED - Turned off update alerts.',
             '0.8.4: FIXED - Does not run on URLs without a trailing slash.',
@@ -325,30 +326,6 @@
             $dropDown.before($container);
         }
 
-        function addDirectionButtons() {
-            var $dropDown = $(_directionDropDownSelector);
-            $('#csDirectionButtonsContainer').remove();
-            var $form = $('<div>', {id:"csDirectionButtonsContainer",style:"height:30px;padding-top:0px"});
-            for (var prop in _directions) {
-                if (prop !== 'unknown' || $('select[name="direction"]').has('option[value="0"]').length > 0) {
-                    var $input = $('<input>', {type:"radio", name:"direction", title:_directions[prop].title, id:prop, value:_directions[prop].val})
-                    .click(function() {
-                        $(_directionDropDownSelector).val($(this).attr('value')).change();
-                        hideAvgSpeedCameras();
-                    });
-                    if (String(_directions[prop].val) === String($dropDown.val())) $input.prop('checked', 'true');
-                    $form.append(
-                        $('<div class="controls-container" style="float: left; margin-right: 10px;margin-left:0px">').append(
-                            $input,
-                            $('<label for="' + prop + '" style="padding-left: 20px;">').text(_directions[prop].text)
-                        )
-                    );
-                }
-            }
-            $dropDown.before($form);
-            $dropDown.hide();
-        }
-
         function addRoutingTypeButtons() {
             var $dropDown = $(_routingTypeDropDownSelector);
             if ($dropDown.length > 0) {
@@ -384,84 +361,6 @@
             }
         }
 
-        function addLockButtons() {
-            var $lockDropDown = $(_lockDropDownSelector);
-            var selItems = W.selectionManager.selectedItems;
-            var item = selItems[0];
-            var isSegments = (item.model.type === "segment");
-            var isJunctionBox = (item.model.type === "bigJunction");
-            var attr = item.model.attributes;
-            var autoRank = attr.rank;
-            var manualRank = attr.lockRank;
-            var firstManualRank = manualRank;
-            var userRank = W.loginManager.getUserRank();
-            var maxAutoRank = autoRank;
-            var multiRanks = false;
-            var isOutranked =( manualRank > userRank || (manualRank === null && autoRank > userRank));
-
-            // If it's a junction box, don't change the lock stuff.
-            if (isJunctionBox) return;
-
-            for (var i=1; i<selItems.length; i++) {
-                item = selItems[i];
-                attr = item.model.attributes;
-                autoRank = attr.rank;
-                manualRank = attr.lockRank;
-                multiRanks |= (manualRank !== firstManualRank);
-                isOutranked |= (manualRank > userRank || (manualRank === null && autoRank > userRank));
-                maxAutoRank = autoRank > maxAutoRank ? autoRank : maxAutoRank;
-            }
-            $('#csLockButtonsContainer').remove();
-            var $div = $('<div>',{id:'csLockButtonsContainer',style:'margin-bottom:5px;'});
-            var btnInfos = [];
-            var dropdownDisabled = $lockDropDown.attr('disabled') === 'disabled';
-            if (isSegments) {btnInfos.push({r:maxAutoRank,title:_trans.autoLockButtonText + ' (' + (maxAutoRank + 1) + ')',val:"null"});}
-            for(var iBtn=0;iBtn<6;iBtn++){btnInfos.push({r:iBtn,val:iBtn.toString()});}
-            var optionNodes = $('select[name="lockRank"] option');
-            var optionValues = [];
-            for (i=0; i<optionNodes.length; i++) {
-                optionValues.push($(optionNodes[i]).val());
-            }
-            btnInfos.forEach(function(btnInfo){
-                var selected = !multiRanks && btnInfo.val === String(manualRank);
-                var isDisabled = dropdownDisabled || optionValues.indexOf(btnInfo.val) === -1;
-                $div.append(
-                    $('<div>', {
-                        class:'btn btn-lh' + (selected ? ' btn-lh-selected':'') + (isDisabled ? ' disabled' : '')
-                    })
-                    .text(btnInfo.hasOwnProperty('title') ? btnInfo.title : btnInfo.r + 1)
-                    .data('val',btnInfo.hasOwnProperty('val') ? btnInfo.val : btnInfo.r + 1)
-                    .hover(function() {})
-                    .click(function() {
-                        if(!isDisabled) {
-                            $(_lockDropDownSelector).val($(this).data('val')).change();
-                            addLockButtons($(_lockDropDownSelector));
-                        }
-                    })
-                );
-            });
-            if (optionValues.indexOf('6') > -1) {
-                var selected = !multiRanks && '6' === String(manualRank);
-                $div.append(
-                    $('<div>', {class:'btn btn-lh' + (selected ? ' btn-lh-selected':'') + ' disabled'})
-                    .text('7')
-                    .data('val',7)
-                    .hover(function() {})
-                    .click(function() {
-                        var a = new Audio('https://c6.rbxcdn.com/6db610c9a3bf131f1db6c785f465406d');
-                        a.play();
-                    })
-                );
-            }
-
-            if (multiRanks) {
-                $div.append($('<div>').text(_trans.multiLockLevelWarning).css({color:'red',fontSize:'smaller',fontWeight:'bold',marginLeft:'20px'}));
-            }
-
-            $lockDropDown.before($div);
-            $lockDropDown.hide();
-        }
-
         function isPLA(item) {
             return (item.model.type === "venue") &&  item.model.attributes.categories.indexOf('PARKING_LOT') > -1;
         }
@@ -486,8 +385,8 @@
                 var selected = $option.val() === $dropDown.val();
                 $div.append(
                     $('<div>', {
-                        class:'btn btn-lh' + (selected ? ' btn-lh-selected':'') + (dropdownDisabled ? ' disabled' : ''),
-                        style: 'margin-bottom: 5px;'
+                        class:'btn waze-btn waze-btn-white' + (selected ? ' waze-btn-blue':'') + (dropdownDisabled ? ' disabled' : ''),
+                        style: 'margin-bottom: 5px; height: 22px; padding: 2px 8px 0px 8px; margin-right: 3px;'
                     })
                     .text(text)
                     .data('val',$option.val())
@@ -525,8 +424,8 @@
                 var selected = $option.val() === $dropDown.val();
                 $div.append(
                     $('<div>', {
-                        class:'btn btn-lh' + (selected ? ' btn-lh-selected':'') + (dropdownDisabled ? ' disabled' : ''),
-                        style: 'margin-bottom: 5px;'
+                        class:'btn waze-btn waze-btn-white' + (selected ? ' waze-btn-blue':'') + (dropdownDisabled ? ' disabled' : ''),
+                        style: 'margin-bottom: 5px; height: 22px; padding: 2px 8px 0px 8px; margin-right: 4px;'
                     })
                     .text(text !== '' ? text : '?')
                     .data('val',$option.val())
@@ -548,8 +447,8 @@
             var id = 'csElevationButtonsContainer';
             if ($('#' + id).length===0) {
                 var $dropDown = $(_elevationDropDownSelector);
-                var baseClass = 'btn btn-default' + ($dropDown.attr('disabled') ? ' disabled' : '');
-                var style = 'height: 20px;line-height: 20px;padding-left: 8px;padding-right: 8px;margin-right: 4px;padding-top: 1px;';
+                var baseClass = 'btn waze-btn waze-btn-white' + ($dropDown.attr('disabled') ? ' disabled' : '');
+                var style = 'height: 20px;padding-left: 8px;padding-right: 8px;margin-right: 4px;padding-top: 1px;';
                 var $div = $('<div>', {id:id, style:'margin-bottom: 5px;'}).append(
                     $('<div>',{class:baseClass, style:style}).text('-').click(function() {
                         var level = parseInt($(_elevationDropDownSelector).val());
@@ -615,7 +514,8 @@
                 '.btn.btn-lh.btn-lh-selected {background-color:#6999ae;color:white}',
                 '.btn.btn-lh.btn-lh-selected:hover {color:white}',
                 '.btn.btn-lh.disabled {color:#909090;background-color:#f7f7f7;}',
-                '.btn.btn-lh.btn-lh-selected.disabled {color:white;background-color:#6999ae;}'
+                '.btn.btn-lh.btn-lh-selected.disabled {color:white;background-color:#6999ae;}',
+                '.cs-group-label {font-size: 11px; width: 100%; font-family: Poppins, sans-serif; text-transform: uppercase; font-weight: 700; color: #354148; margin-bottom: 6px;}'
             ].join(' ');
             $('<style type="text/css">' + css + '</style>').appendTo('head');
         }
@@ -703,16 +603,14 @@
                 $('<div>',  {class:'side-panel-section>'}).append(
                     $('<div>', {style: 'margin-bottom:8px;'}).append(
                         $('<div>', {class:'form-group'}).append(
-                            $('<label>', {class:"control-label"}).text(_trans.prefs.dropdownHelperGroup),
+                            $('<label>', {class:"cs-group-label"}).text(_trans.prefs.dropdownHelperGroup),
                             $('<div>').append( createSettingsCheckbox('csRoadTypeButtonsCheckBox', 'roadButtons', _trans.prefs.roadTypeButtons) ).append( $roadTypesDiv ),
                             createSettingsCheckbox('csRoutingTypeCheckBox', 'routingTypeButtons', _trans.prefs.routingTypeButtons),
-                            createSettingsCheckbox('csDirectionButtonsCheckBox', 'directionButtons', _trans.prefs.directionButtons),
                             createSettingsCheckbox('csElevationButtonsCheckBox', 'elevationButtons', _trans.prefs.elevationButtons),
-                            createSettingsCheckbox('csLockButtonsCheckBox', 'lockButtons', _trans.prefs.lockButtons),
                             createSettingsCheckbox('csParkingCostButtonsCheckBox', 'parkingCostButtons', _trans.prefs.parkingCostButtons),
                             createSettingsCheckbox('csParkingSpacesButtonsCheckBox', 'parkingSpacesButtons', _trans.prefs.parkingSpacesButtons)
                         ),
-                        $('<label>', {class:"control-label"}).text(_trans.prefs.spaceSaversGroup),
+                        $('<label>', {class:"cs-group-label"}).text(_trans.prefs.spaceSaversGroup),
                         $('<div>', {style:'margin-bottom:8px;'}).append(
                             createSettingsCheckbox('csInlineRoadTypesCheckBox', 'inlineRoadTypeCheckboxes', _trans.prefs.inlineRoadType),
                             createSettingsCheckbox('csHideAvgSpeedCamerasCheckBox', 'hideAvgSpeedCameras', _trans.prefs.avgSpeedCameras),
@@ -767,12 +665,6 @@
             }
             if($(_parkingCostDropDownSelector).length>0 && isChecked('csInlineParkingBoxesCheckBox')) {
                 inlineParkingCheckboxes();
-            }
-            if($(_lockDropDownSelector).length>0 && isChecked('csLockButtonsCheckBox')) {
-                addLockButtons();
-            }
-            if($(_directionDropDownSelector).length>0 && isChecked('csDirectionButtonsCheckBox')) {
-                addDirectionButtons();
             }
             if($(_routingTypeDropDownSelector && isChecked('csRoutingTypeCheckBox')).length>0) {
                 addRoutingTypeButtons();
@@ -890,14 +782,8 @@
                             if(addedNode.querySelector(_parkingCostDropDownSelector) && isChecked('csInlineParkingBoxesCheckBox')) {
                                 inlineParkingCheckboxes();
                             }
-                            if(addedNode.querySelector(_lockDropDownSelector) && isChecked('csLockButtonsCheckBox')) {
-                                addLockButtons();
-                            }
                             if(addedNode.querySelector(_routingTypeDropDownSelector) && isChecked('csRoutingTypeCheckBox')) {
                                 addRoutingTypeButtons();
-                            }
-                            if(addedNode.querySelector(_directionDropDownSelector) && isChecked('csDirectionButtonsCheckBox')) {
-                                addDirectionButtons();
                             }
                             if (addedNode.querySelector(_elevationDropDownSelector) && isChecked('csElevationButtonsCheckBox')) {
                                 addElevationButtons();
@@ -979,9 +865,7 @@
                 "setStreetCityToNone_Title":"NOTE: Only works if connected directly or indirectly to a segment with State/Country already set.",
                 "setCityToConnectedSegCity":"Set City to connected segment's City",
                 "routingTypeButtons":"Add routing type buttons",
-                "directionButtons":"Add direction buttons",
                 "elevationButtons":"Add elevation buttons",
-                "lockButtons":"Add lock buttons",
                 "parkingCostButtons":"Add PLA cost buttons",
                 "parkingSpacesButtons":"Add PLA estimated spaces buttons",
                 "spaceSaversGroup":"SPACE SAVERS",
