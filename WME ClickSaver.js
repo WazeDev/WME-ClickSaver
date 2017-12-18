@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver
 // @namespace    https://greasyfork.org/users/45389
-// @version      0.8.7
+// @version      2017.12.18.001
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -21,8 +21,6 @@
 
         var _debugLevel = 0;
         var _roadTypeDropDownSelector = 'select[name="roadType"]';
-        var _lockDropDownSelector = 'select[name="lockRank"]';
-        var _directionDropDownSelector = 'select[name="direction"]';
         var _elevationDropDownSelector = 'select[name="level"]';
         var _routingTypeDropDownSelector = 'select[name="routingRoadType"]';
         var _parkingSpacesDropDownSelector = 'select[name="estimatedNumberOfSpots"]';
@@ -38,14 +36,7 @@
             '',
             'What\'s New',
             '------------------------------',
-            '0.8.7: FIXED - Removed outdated features.  Updated styling for new UI.',
-            '0.8.6: FIXED - Alt street quick-delete icons.',
-            '0.8.5: FIXED - Turned off update alerts.',
-            '0.8.4: FIXED - Does not run on URLs without a trailing slash.',
-            '0.8.3: FIXED - Crashes on load for people with no access to Google docs.',
-            '0.8.2: NEW - Improvements to language translations.',
-            '0.8.1: NEW - Added option to make Parking Type and Payment Type checkboxes inline (space saver).',
-            '0.8.0: NEW - Added options to replace PLA "cost" and "estimated spaces" dropdowns with buttons.'
+            '' // Add important changes here and set _alertUpdate=true
         ].join('\n');
         var _roadTypes = {
             St:{val:1, wmeColor:'#ffffeb', svColor:'#ffffff', category:'streets', visible:true},
@@ -89,7 +80,7 @@
             var defaultSettings = {
                 lastVersion: null,
                 roadButtons: true,
-                roadTypeButtons: ['St','PS','mH','MH','OR','PLR','PR'],
+                roadTypeButtons: ['St','PS','mH','MH','Fw','Rmp','PLR','PR'],
                 lockButtons: true,
                 elevationButtons: true,
                 directionButtons: true,
