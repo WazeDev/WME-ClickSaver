@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver
 // @namespace    https://greasyfork.org/users/45389
-// @version      2017.12.18.001
+// @version      2018.04.12.001
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -245,7 +245,7 @@
         }
 
         function setStreetAndCity () {
-            var segments = W.selectionManager.selectedItems;
+            var segments = W.selectionManager.getSelectedFeatures();
             var setCity = isChecked('csSetNewPLRCityCheckBox');
             if (segments.length === 0 || segments[0].model.type !== 'segment') {
                 return;
@@ -358,7 +358,7 @@
 
         function addParkingSpacesButtons() {
             var $dropDown = $(_parkingSpacesDropDownSelector);
-            var selItems = W.selectionManager.selectedItems;
+            var selItems = W.selectionManager.getSelectedFeatures();
             var item = selItems[0];
             var attr = item.model.attributes;
 
@@ -397,7 +397,7 @@
 
         function addParkingCostButtons() {
             var $dropDown = $(_parkingCostDropDownSelector);
-            var selItems = W.selectionManager.selectedItems;
+            var selItems = W.selectionManager.getSelectedFeatures();
             var item = selItems[0];
             var attr = item.model.attributes;
 
@@ -514,7 +514,7 @@
         function inlineRoadTypeCheckboxes() {
             // TODO - move styling to css.
             var $div = $('<div>',{style:'font-size:11px;display:inline-block;'});
-            ['tollRoadCheck','unpavedCheckbox','tunnelCheckbox'].forEach(function(id) {
+            ['tollRoadCheck','unpavedCheckbox','tunnelCheckbox','headlightsCheckbox','nearbyHOVCheckbox'].forEach(function(id) {
                 $('label[for="' + id + '"]').css({paddingLeft:'20px'});
                 $('#' + id).parent().css({float:'left',marginRight:'4px'}).detach().appendTo($div);
             });
@@ -744,6 +744,13 @@
         }
 
         function init() {
+            // 2018-04-12 (mapomatic) This is only needed until the latest WME beta is pushed to production.
+            // **************************************************
+            if (!W.selectionManager.getSelectedFeatures) {
+                W.selectionManager.getSelectedFeatures = W.selectionManager.getSelectedItems;
+            }
+            // **************************************************
+
             _trans = getTranslationObject();
             for (var rtName in _roadTypes) {
                 _roadTypes[rtName].title = _trans.roadTypeButtons[rtName].title;
@@ -888,7 +895,7 @@
 
             function WMEaltStreet_Remove( elemClicked ) {
                 var altID = parseInt($(elemClicked.currentTarget).data('id'));
-                var selectedObjs = W.selectionManager.selectedItems;
+                var selectedObjs = W.selectionManager.getSelectedFeatures();
                 selectedObjs.forEach(function(element) {
                     if (element.model.type === 'segment') {
                         var segment = element.model;
@@ -939,8 +946,8 @@
             }
 
             function updateAltStreetCtrls() {
-                if (W.selectionManager.selectedItems.length > 0) {
-                    var selItems = W.selectionManager.selectedItems;
+                if (W.selectionManager.getSelectedFeatures().length > 0) {
+                    var selItems = W.selectionManager.getSelectedFeatures();
                     if (selItems.length > 0 && selItems[0].model.type === 'segment') {
                         var $idElements = $('.add-alt-street-form .alt-street');
                         var $liElements = $('li.alt-street');
