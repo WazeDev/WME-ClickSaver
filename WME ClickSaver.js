@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      2018.04.29.001
+// @version      2018.04.29.002
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -283,7 +283,7 @@
         function onAddAltCityButtonClick() {
             $('.full-address').click();
             $('.add-alt-street-btn').click();
-            $('.alt-street-block input.street-name').val($('input.street-name').first().val());
+            $('.alt-street-block input.street-name').val($('input.street-name').first().val()).blur().change();
             if ($('input.alt-address.empty-city').is(':checked')) $('input.alt-address.empty-city').click();
             $('.alt-street-block input.city-name').val('').focus();
         }
@@ -470,9 +470,9 @@
         function addAddAltCityButton() {
             let id = 'csAddAltCityButton';
             if (W.selectionManager.getSelectedFeatures()[0].model.type === 'segment' && $('#' + id).length === 0) {
-                $('label.control-label').filter(function() { return $(this).text() == "Address"; }).append(
+                $('label.control-label').filter(function() { return $(this).text() === "Address"; }).append(
                     $('<a>', {href:'#',style:'float: right;text-transform: none;'}).text('Add Alt City').click(onAddAltCityButtonClick)
-                )
+                );
             }
         }
 
