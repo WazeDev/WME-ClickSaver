@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         WME ClickSaver
+// @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
 // @version      2018.04.30.001
 // @description  Various UI changes to make editing faster and easier.
@@ -19,18 +19,18 @@
     function main(argsObject) {
         //'use strict';
 
-        var _debugLevel = 0;
-        var _roadTypeDropDownSelector = 'select[name="roadType"]';
-        var _elevationDropDownSelector = 'select[name="level"]';
-        var _routingTypeDropDownSelector = 'select[name="routingRoadType"]';
-        var _parkingSpacesDropDownSelector = 'select[name="estimatedNumberOfSpots"]';
-        var _parkingCostDropDownSelector = 'select[name="costType"]';
-        var _alertUpdate = false;
-        var _settings = {};
-        var _settingsStoreName = 'clicksaver_settings';
-        var _lastScriptVersion;
-        var _trans;  // Translation object
-        var _scriptVersionChanges = [
+        let _debugLevel = 0;
+        let _roadTypeDropDownSelector = 'select[name="roadType"]';
+        let _elevationDropDownSelector = 'select[name="level"]';
+        let _routingTypeDropDownSelector = 'select[name="routingRoadType"]';
+        let _parkingSpacesDropDownSelector = 'select[name="estimatedNumberOfSpots"]';
+        let _parkingCostDropDownSelector = 'select[name="costType"]';
+        let _alertUpdate = false;
+        let _settings = {};
+        let _settingsStoreName = 'clicksaver_settings';
+        let _lastScriptVersion;
+        let _trans;  // Translation object
+        let _scriptVersionChanges = [
             argsObject.scriptName,
             'v' + argsObject.scriptVersion,
             '',
@@ -38,7 +38,7 @@
             '------------------------------',
             '' // Add important changes here and set _alertUpdate=true
         ].join('\n');
-        var _roadTypes = {
+        let _roadTypes = {
             St:{val:1, wmeColor:'#ffffeb', svColor:'#ffffff', category:'streets', visible:true},
             PS:{val:2, wmeColor:'#f0ea58', svColor:'#cba12e', category:'streets', visible:true},
             mH:{val:7, wmeColor:'#69bf88', svColor:'#ece589', category:'highways', visible:true},
@@ -55,9 +55,9 @@
             RR:{val:18, wmeColor:'#c62925', svColor:'#ffffff', category:'nonDrivable', visible:false},
             RT:{val:19, wmeColor:'#ffffff', svColor:'#00ff00', category:'nonDrivable', visible:false}
         };
-        var _directions = { twoWay: {val:3}, oneWayAB: {val:1}, oneWayBA: {val:2}, unknown: {val:0} };
+        let _directions = { twoWay: {val:3}, oneWayAB: {val:1}, oneWayBA: {val:2}, unknown: {val:0} };
 
-        var UpdateObject,
+        let UpdateObject,
             AddOrGetCity,
             AddOrGetStreet,
             MultiAction;
@@ -76,8 +76,8 @@
             $('#' + checkboxId).prop('checked', checked);
         }
         function loadSettingsFromStorage() {
-            var loadedSettings = $.parseJSON(localStorage.getItem(_settingsStoreName));
-            var defaultSettings = {
+            let loadedSettings = $.parseJSON(localStorage.getItem(_settingsStoreName));
+            let defaultSettings = {
                 lastVersion: null,
                 roadButtons: true,
                 roadTypeButtons: ['St','PS','mH','MH','Fw','Rmp','PLR','PR'],
@@ -91,10 +91,11 @@
                 inlineParkingCheckboxes: true,
                 setNewPLRStreetToNone: true,
                 setNewPLRCity: true,
+                addAltCityButton: true,
                 useOldRoadColors: false
             };
             _settings = loadedSettings ? loadedSettings : defaultSettings;
-            for (var prop in defaultSettings) {
+            for (let prop in defaultSettings) {
                 if (!_settings.hasOwnProperty(prop)) {
                     _settings[prop] = defaultSettings[prop];
                 }
@@ -102,7 +103,7 @@
 
             setChecked('csRoadTypeButtonsCheckBox', _settings.roadButtons);
             if (_settings.roadTypeButtons) {
-                for (var roadTypeAbbr1 in _roadTypes) {
+                for (let roadTypeAbbr1 in _roadTypes) {
                     setChecked('cs' + roadTypeAbbr1 + 'CheckBox', _settings.roadTypeButtons.indexOf(roadTypeAbbr1) !== -1);
                 }
             }
@@ -122,11 +123,12 @@
             setChecked('csClearNewPLRCheckBox', _settings.setNewPLRStreetToNone);
             setChecked('csUseOldRoadColorsCheckBox', _settings.useOldRoadColors);
             setChecked('csSetNewPLRCityCheckBox', _settings.setNewPLRCity);
+            setChecked('csAddAltCityButtonCheckBox', _settings.addAltCityButton);
         }
 
         function saveSettingsToStorage() {
             if (localStorage) {
-                var settings = {
+                let settings = {
                     lastVersion: argsObject.scriptVersion,
                     roadButtons: _settings.roadButtons,
                     lockButtons: _settings.lockButtons,
@@ -138,10 +140,11 @@
                     inlineParkingCheckboxes: _settings.inlineParkingCheckboxes,
                     setNewPLRStreetToNone: _settings.setNewPLRStreetToNone,
                     useOldRoadColors: _settings.useOldRoadColors,
-                    setNewPLRCity: _settings.setNewPLRCity
+                    setNewPLRCity: _settings.setNewPLRCity,
+                    addAltCityButton: _settings.addAltCityButton
                 };
                 settings.roadTypeButtons = [];
-                for (var roadTypeAbbr in _roadTypes) {
+                for (let roadTypeAbbr in _roadTypes) {
                     if(_settings.roadTypeButtons.indexOf(roadTypeAbbr) !== -1) { settings.roadTypeButtons.push(roadTypeAbbr); }
                 }
                 localStorage.setItem(_settingsStoreName, JSON.stringify(settings));
@@ -150,8 +153,8 @@
         }
 
         function getConnectedSegmentIDs(segmentID) {
-            var IDs = [];
-            var segment = W.model.segments.get(segmentID);
+            let IDs = [];
+            let segment = W.model.segments.get(segmentID);
             [W.model.nodes.get(segment.attributes.fromNodeID), W.model.nodes.get(segment.attributes.toNodeID)].forEach(function(node) {
                 if (node) {
                     node.attributes.segIDs.forEach(function(segID) {
@@ -163,17 +166,17 @@
         }
 
         function getFirstConnectedStateID(startSegment) {
-            var stateID = null;
-            var nonMatches = [];
-            var segmentIDsToSearch = [startSegment.attributes.id];
+            let stateID = null;
+            let nonMatches = [];
+            let segmentIDsToSearch = [startSegment.attributes.id];
             while (stateID === null && segmentIDsToSearch.length > 0) {
-                var startSegmentID = segmentIDsToSearch.pop();
+                let startSegmentID = segmentIDsToSearch.pop();
                 startSegment = W.model.segments.get(startSegmentID);
-                var connectedSegmentIDs = getConnectedSegmentIDs(startSegmentID);
-                for (var i=0;i<connectedSegmentIDs.length;i++) {
-                    var streetID = W.model.segments.get(connectedSegmentIDs[i]).attributes.primaryStreetID;
+                let connectedSegmentIDs = getConnectedSegmentIDs(startSegmentID);
+                for (let i=0;i<connectedSegmentIDs.length;i++) {
+                    let streetID = W.model.segments.get(connectedSegmentIDs[i]).attributes.primaryStreetID;
                     if (streetID !== null && typeof(streetID) !== 'undefined') {
-                        var cityID = W.model.streets.get(streetID).cityID;
+                        let cityID = W.model.streets.get(streetID).cityID;
                         stateID = W.model.cities.get(cityID).attributes.stateID;
                         break;
                     }
@@ -194,15 +197,15 @@
         }
 
         function getFirstConnectedCityID(startSegment) {
-            var cityID = null;
-            var nonMatches = [];
-            var segmentIDsToSearch = [startSegment.attributes.id];
+            let cityID = null;
+            let nonMatches = [];
+            let segmentIDsToSearch = [startSegment.attributes.id];
             while (cityID === null && segmentIDsToSearch.length > 0) {
-                var startSegmentID = segmentIDsToSearch.pop();
+                let startSegmentID = segmentIDsToSearch.pop();
                 startSegment = W.model.segments.get(startSegmentID);
-                var connectedSegmentIDs = getConnectedSegmentIDs(startSegmentID);
-                for (var i=0;i<connectedSegmentIDs.length;i++) {
-                    var streetID = W.model.segments.get(connectedSegmentIDs[i]).attributes.primaryStreetID;
+                let connectedSegmentIDs = getConnectedSegmentIDs(startSegmentID);
+                for (let i=0;i<connectedSegmentIDs.length;i++) {
+                    let streetID = W.model.segments.get(connectedSegmentIDs[i]).attributes.primaryStreetID;
                     if (streetID !== null && typeof(streetID) !== 'undefined') {
                         cityID = W.model.streets.get(streetID).cityID;
                         break;
@@ -224,7 +227,7 @@
         }
 
         function getEmptyCity(stateID) {
-            var emptyCity = null;
+            let emptyCity = null;
             W.model.cities.getObjectArray().forEach(function(city) {
                 if (city.attributes.stateID === stateID && city.attributes.isEmpty) {
                     emptyCity = city;
@@ -233,52 +236,56 @@
             return emptyCity;
         }
         function getCity(cityID) {
-            var cities = W.model.cities.getByIds([cityID]);
-            if (cities.length > 0) {
-                return cities[0];
-            } else {
-                return null;
-            }
+            let cities = W.model.cities.getByIds([cityID]);
+            return cities.length ? cities[0] : null;
         }
 
         function setStreetAndCity () {
-            var segments = W.selectionManager.getSelectedFeatures();
-            var setCity = isChecked('csSetNewPLRCityCheckBox');
+            let segments = W.selectionManager.getSelectedFeatures();
+            let setCity = isChecked('csSetNewPLRCityCheckBox');
             if (segments.length === 0 || segments[0].model.type !== 'segment') {
                 return;
             }
 
             segments.forEach(function(segment) {
-                var segModel = segment.model;
+                let segModel = segment.model;
                 if (segModel.attributes.primaryStreetID === null) {
-                    var stateID = getFirstConnectedStateID(segment.model);
+                    let stateID = getFirstConnectedStateID(segment.model);
                     if (stateID) {
-                        var state = W.model.states.get(stateID);
-                        var country = W.model.countries.get(state.countryID);
+                        let state = W.model.states.get(stateID);
+                        let country = W.model.countries.get(state.countryID);
 
-                        var m_action = new MultiAction();
-                        var cityToSet;
+                        let m_action = new MultiAction();
+                        let cityToSet;
                         m_action.setModel(W.model);
                         if (setCity) cityToSet = getCity(getFirstConnectedCityID(segment.model));
                         if (!cityToSet) cityToSet = getEmptyCity(state.id);
                         if (!cityToSet) {
-                            var addCityAction = new AddOrGetCity(state, country, "", true);
+                            let addCityAction = new AddOrGetCity(state, country, "", true);
                             m_action.doSubAction(addCityAction);
                             cityToSet = getEmptyCity(state.id);
                         }
-                        var newStreet = {isEmpty:true, cityID:cityToSet.attributes.id};
-                        var emptyStreet = W.model.streets.getByAttributes(newStreet)[0];
+                        let newStreet = {isEmpty:true, cityID:cityToSet.attributes.id};
+                        let emptyStreet = W.model.streets.getByAttributes(newStreet)[0];
                         if (!emptyStreet) {
-                            var addStreetAction = new AddOrGetStreet("", cityToSet, true);
+                            let addStreetAction = new AddOrGetStreet("", cityToSet, true);
                             m_action.doSubAction(addStreetAction);
                             emptyStreet = W.model.streets.getByAttributes(newStreet)[0];
                         }
-                        var action3 = new UpdateObject(segModel, {primaryStreetID: emptyStreet.id});
+                        let action3 = new UpdateObject(segModel, {primaryStreetID: emptyStreet.id});
                         m_action.doSubAction(action3);
                         W.model.actionManager.add(m_action);
                     }
                 }
             });
+        }
+
+        function onAddAltCityButtonClick() {
+            $('.full-address').click();
+            $('.add-alt-street-btn').click();
+            $('.alt-street-block input.street-name').val($('input.street-name').first().val()).blur().change();
+            if ($('input.alt-address.empty-city').is(':checked')) $('input.alt-address.empty-city').click();
+            $('.alt-street-block input.city-name').val('').focus();
         }
 
         function onRoadTypeButtonClick(roadTypeAbbr) {
@@ -289,18 +296,18 @@
         }
 
         function addRoadTypeButtons() {
-            var $dropDown = $(_roadTypeDropDownSelector);
+            let $dropDown = $(_roadTypeDropDownSelector);
             $('#csRoadTypeButtonsContainer').remove();
-            var $container = $('<div>',{id:'csRoadTypeButtonsContainer',class:'rth-btn-container'});
-            var $street = $('<div>', {id:'csStreetButtonContainer',class:'cs-rt-btn-container'});
-            var $highway = $('<div>', {id:'csHighwayButtonContainer',class:'cs-rt-btn-container'});
-            var $otherDrivable = $('<div>', {id:'csOtherDrivableButtonContainer',class:'cs-rt-btn-container'});
-            var $nonDrivable = $('<div>', {id:'csNonDrivableButtonContainer',class:'cs-rt-btn-container'});
-            var divs = {streets:$street, highways:$highway, otherDrivable:$otherDrivable, nonDrivable:$nonDrivable};
-            for (var roadTypeKey in _roadTypes) {
+            let $container = $('<div>',{id:'csRoadTypeButtonsContainer',class:'rth-btn-container'});
+            let $street = $('<div>', {id:'csStreetButtonContainer',class:'cs-rt-btn-container'});
+            let $highway = $('<div>', {id:'csHighwayButtonContainer',class:'cs-rt-btn-container'});
+            let $otherDrivable = $('<div>', {id:'csOtherDrivableButtonContainer',class:'cs-rt-btn-container'});
+            let $nonDrivable = $('<div>', {id:'csNonDrivableButtonContainer',class:'cs-rt-btn-container'});
+            let divs = {streets:$street, highways:$highway, otherDrivable:$otherDrivable, nonDrivable:$nonDrivable};
+            for (let roadTypeKey in _roadTypes) {
                 if (_settings.roadTypeButtons.indexOf(roadTypeKey) !== -1) {
-                    var roadType = _roadTypes[roadTypeKey];
-                    var $div = divs[roadType.category];
+                    let roadType = _roadTypes[roadTypeKey];
+                    let $div = divs[roadType.category];
                     $div.append(
                         $('<div>', {class:'btn btn-rth btn-rth-' + roadTypeKey + ($dropDown.attr('disabled') ? ' disabled' : '') + ' btn-positive',title:_trans.roadTypeButtons[roadTypeKey].title})
                         .text(_trans.roadTypeButtons[roadTypeKey].text)
@@ -315,20 +322,20 @@
         }
 
         function addRoutingTypeButtons() {
-            var $dropDown = $(_routingTypeDropDownSelector);
+            let $dropDown = $(_routingTypeDropDownSelector);
             if ($dropDown.length > 0) {
-                var options = $dropDown.children();
+                let options = $dropDown.children();
                 if (options.length === 3) {
-                    var buttonInfos = [
+                    let buttonInfos = [
                         ['-1', options[0].value, options[0].text],
                         [options[1].text, options[1].value, ''],
                         ['+1', options[2].value, options[2].text]
                     ];
                     $('#csRoutingTypeContainer').remove();
-                    var $form = $('<div>', {id:"csRoutingTypeContainer",style:"height:30px;padding-top:0px"});
-                    for (var i=0; i<buttonInfos.length; i++) {
-                        var btnInfo = buttonInfos[i];
-                        var $input = $('<input>', {type:"radio", name:"routingRoadType", id:"routingRoadType" + i, value:btnInfo[1]})
+                    let $form = $('<div>', {id:"csRoutingTypeContainer",style:"height:30px;padding-top:0px"});
+                    for (let i=0; i<buttonInfos.length; i++) {
+                        let btnInfo = buttonInfos[i];
+                        let $input = $('<input>', {type:"radio", name:"routingRoadType", id:"routingRoadType" + i, value:btnInfo[1]})
                         .click(function() {
                             $(_routingTypeDropDownSelector).val($(this).attr('value')).change();
                         });
@@ -353,23 +360,23 @@
         }
 
         function addParkingSpacesButtons() {
-            var $dropDown = $(_parkingSpacesDropDownSelector);
-            var selItems = W.selectionManager.getSelectedFeatures();
-            var item = selItems[0];
-            var attr = item.model.attributes;
+            let $dropDown = $(_parkingSpacesDropDownSelector);
+            let selItems = W.selectionManager.getSelectedFeatures();
+            let item = selItems[0];
+            let attr = item.model.attributes;
 
             // If it's not a PLA, exit.
             if (!isPLA(item)) return;
 
             $('#csParkingSpacesContainer').remove();
-            var $div = $('<div>',{id:'csParkingSpacesContainer'});
-            var dropdownDisabled = $dropDown.attr('disabled') === 'disabled';
-            var optionNodes = $(_parkingSpacesDropDownSelector + ' option');
-            var optionValues = [];
+            let $div = $('<div>',{id:'csParkingSpacesContainer'});
+            let dropdownDisabled = $dropDown.attr('disabled') === 'disabled';
+            let optionNodes = $(_parkingSpacesDropDownSelector + ' option');
+            let optionValues = [];
             for (i=0; i<optionNodes.length; i++) {
-                var $option = $(optionNodes[i]);
-                var text = $option.text();
-                var selected = $option.val() === $dropDown.val();
+                let $option = $(optionNodes[i]);
+                let text = $option.text();
+                let selected = $option.val() === $dropDown.val();
                 $div.append(
                     $('<div>', {
                         class:'btn waze-btn waze-btn-white' + (selected ? ' waze-btn-blue':'') + (dropdownDisabled ? ' disabled' : ''),
@@ -392,23 +399,23 @@
         }
 
         function addParkingCostButtons() {
-            var $dropDown = $(_parkingCostDropDownSelector);
-            var selItems = W.selectionManager.getSelectedFeatures();
-            var item = selItems[0];
-            var attr = item.model.attributes;
+            let $dropDown = $(_parkingCostDropDownSelector);
+            let selItems = W.selectionManager.getSelectedFeatures();
+            let item = selItems[0];
+            let attr = item.model.attributes;
 
             // If it's not a PLA, exit.
             if (!isPLA(item)) return;
 
             $('#csParkingCostContainer').remove();
-            var $div = $('<div>',{id:'csParkingCostContainer'});
-            var dropdownDisabled = $dropDown.attr('disabled') === 'disabled';
-            var optionNodes = $(_parkingCostDropDownSelector + ' option');
-            var optionValues = [];
+            let $div = $('<div>',{id:'csParkingCostContainer'});
+            let dropdownDisabled = $dropDown.attr('disabled') === 'disabled';
+            let optionNodes = $(_parkingCostDropDownSelector + ' option');
+            let optionValues = [];
             for (i=0; i<optionNodes.length; i++) {
-                var $option = $(optionNodes[i]);
-                var text = $option.text();
-                var selected = $option.val() === $dropDown.val();
+                let $option = $(optionNodes[i]);
+                let text = $option.text();
+                let selected = $option.val() === $dropDown.val();
                 $div.append(
                     $('<div>', {
                         class:'btn waze-btn waze-btn-white' + (selected ? ' waze-btn-blue':'') + (dropdownDisabled ? ' disabled' : ''),
@@ -431,25 +438,25 @@
         }
 
         function addElevationButtons() {
-            var id = 'csElevationButtonsContainer';
+            let id = 'csElevationButtonsContainer';
             if ($('#' + id).length===0) {
-                var $dropDown = $(_elevationDropDownSelector);
-                var baseClass = 'btn waze-btn waze-btn-white' + ($dropDown.attr('disabled') ? ' disabled' : '');
-                var style = 'height: 20px;padding-left: 8px;padding-right: 8px;margin-right: 4px;padding-top: 1px;';
-                var $div = $('<div>', {id:id, style:'margin-bottom: 5px;'}).append(
+                let $dropDown = $(_elevationDropDownSelector);
+                let baseClass = 'btn waze-btn waze-btn-white' + ($dropDown.attr('disabled') ? ' disabled' : '');
+                let style = 'height: 20px;padding-left: 8px;padding-right: 8px;margin-right: 4px;padding-top: 1px;';
+                let $div = $('<div>', {id:id, style:'margin-bottom: 5px;'}).append(
                     $('<div>',{class:baseClass, style:style}).text('-').click(function() {
-                        var level = parseInt($(_elevationDropDownSelector).val());
+                        let level = parseInt($(_elevationDropDownSelector).val());
                         if (level > -5) { $(_elevationDropDownSelector).val(level - 1).change(); }
                     })
                 ).append(
                     $('<div>',{class:baseClass, style:style}).text(_trans.groundButtonText)
                     .click(function() {
-                        var level = parseInt($(_elevationDropDownSelector).val());
+                        let level = parseInt($(_elevationDropDownSelector).val());
                         if (level !== 0) { $(_elevationDropDownSelector).val(0).change(); }
                     })
                 ).append(
                     $('<div>',{class:baseClass, style:style}).text('+').click(function() {
-                        var level = parseInt($(_elevationDropDownSelector).val());
+                        let level = parseInt($(_elevationDropDownSelector).val());
                         if (level < 9) { $(_elevationDropDownSelector).val(level + 1).change(); }
                     })
                 );
@@ -457,6 +464,15 @@
                 $dropDown.before($div);
                 $dropDown.detach();
                 $div.prepend($dropDown);
+            }
+        }
+
+        function addAddAltCityButton() {
+            let id = 'csAddAltCityButton';
+            if (W.selectionManager.getSelectedFeatures()[0].model.type === 'segment' && $('#' + id).length === 0) {
+                $('label.control-label').filter(function() { return $(this).text() === "Address"; }).append(
+                    $('<a>', {href:'#',style:'float: right;text-transform: none;'}).text('Add Alt City').click(onAddAltCityButtonClick)
+                );
             }
         }
 
@@ -468,17 +484,17 @@
         }
 
         function shadeColor2(color, percent) {
-            var f=parseInt(color.slice(1),16),t=percent<0?0:255,p=percent<0?percent*-1:percent,R=f>>16,G=f>>8&0x00FF,B=f&0x0000FF;
+            let f=parseInt(color.slice(1),16),t=percent<0?0:255,p=percent<0?percent*-1:percent,R=f>>16,G=f>>8&0x00FF,B=f&0x0000FF;
             return "#"+(0x1000000+(Math.round((t-R)*p)+R)*0x10000+(Math.round((t-G)*p)+G)*0x100+(Math.round((t-B)*p)+B)).toString(16).slice(1);
         }
 
         function buildRoadTypeButtonCss() {
-            var lines = [];
-            var useOldColors = _settings.useOldRoadColors;
-            for (var roadTypeAbbr in _roadTypes) {
-                var roadType = _roadTypes[roadTypeAbbr];
-                var bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
-                var output = '.rth-btn-container .btn-rth-' + roadTypeAbbr + ' {background-color:' + bgColor + ';box-shadow:0 2px ' + shadeColor2(bgColor, -0.5) + ';border-color:' + shadeColor2(bgColor,-0.15) + ';}';
+            let lines = [];
+            let useOldColors = _settings.useOldRoadColors;
+            for (let roadTypeAbbr in _roadTypes) {
+                let roadType = _roadTypes[roadTypeAbbr];
+                let bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
+                let output = '.rth-btn-container .btn-rth-' + roadTypeAbbr + ' {background-color:' + bgColor + ';box-shadow:0 2px ' + shadeColor2(bgColor, -0.5) + ';border-color:' + shadeColor2(bgColor,-0.15) + ';}';
                 output += ' .rth-btn-container .btn-rth-' + roadTypeAbbr + ':hover {background-color:' + shadeColor2(bgColor,0.2) + '}';
                 lines.push(output);
             }
@@ -486,7 +502,7 @@
         }
 
         function injectCss() {
-            var css =  [
+            let css =  [
                 // Road type button formatting
                 '.csRoadTypeButtonsCheckBoxContainer {margin-left:15px;}',
                 '.rth-btn-container {margin-bottom:5px;}',
@@ -509,7 +525,7 @@
 
         function inlineRoadTypeCheckboxes() {
             // TODO - move styling to css.
-            var $div = $('<div>',{style:'font-size:11px;display:inline-block;'});
+            let $div = $('<div>',{style:'font-size:11px;display:inline-block;'});
             ['tollRoadCheck','unpavedCheckbox','tunnelCheckbox','headlightsCheckbox','nearbyHOVCheckbox'].forEach(function(id) {
                 $('label[for="' + id + '"]').css({paddingLeft:'20px'});
                 $('#' + id).parent().css({float:'left',marginRight:'4px'}).detach().appendTo($div);
@@ -518,8 +534,8 @@
         }
 
         function inlineParkingCheckboxes() {
-            var css = {display: 'inline-block', marginRight: '5px'};
-            var $div = $('<div>');
+            let css = {display: 'inline-block', marginRight: '5px'};
+            let $div = $('<div>');
             $('i.parkingType-tooltip').after($div);
             $('div.parking-type-option').appendTo($div).css(css);
 
@@ -536,20 +552,20 @@
         }
 
         function createSettingRadio(settingName, groupName, groupLabel, buttonMetas) {
-            var $container = $('<div>',{class:'controls-container'});
+            let $container = $('<div>',{class:'controls-container'});
             $('<input>', {type:'checkbox', class:'csSettingsCheckBox', id:groupName, 'data-setting-name':groupName}).appendTo($container);
             $('<label>', {for:groupName}).text(groupLabel).css({marginRight:'10px'}).appendTo($container);
             buttonMetas.forEach(function(meta) {
-                var $input = $('<input>', {type:'radio', class:'csSettingsCheckBox', name:groupName, id:meta.id, 'data-setting-name':groupName}).css({marginLeft:'5px'}).appendTo($container);
-                var $label = $('<label>', {for:meta.id}).text(meta.labelText).appendTo($container);
+                let $input = $('<input>', {type:'radio', class:'csSettingsCheckBox', name:groupName, id:meta.id, 'data-setting-name':groupName}).css({marginLeft:'5px'}).appendTo($container);
+                let $label = $('<label>', {for:meta.id}).text(meta.labelText).appendTo($container);
             });
             return $container;
         }
 
         function createSettingsCheckbox(id, settingName, labelText, titleText, divCss, labelCss, optionalAttributes) {
-            var $container = $('<div>',{class:'controls-container'});
-            var $input = $('<input>', {type:'checkbox',class:'csSettingsCheckBox',name:id, id:id, 'data-setting-name':settingName}).appendTo($container);
-            var $label = $('<label>', {for:id}).text(labelText).appendTo($container);
+            let $container = $('<div>',{class:'controls-container'});
+            let $input = $('<input>', {type:'checkbox',class:'csSettingsCheckBox',name:id, id:id, 'data-setting-name':settingName}).appendTo($container);
+            let $label = $('<label>', {for:id}).text(labelText).appendTo($container);
             if (divCss) $container.css(divCss);
             if (labelCss) $label.css(labelCss);
             if (titleText) $container.attr({title:titleText});
@@ -558,11 +574,11 @@
         }
 
         function initUserPanel() {
-            var $roadTypesDiv = $('<div>', {class:'csRoadTypeButtonsCheckBoxContainer'});
+            let $roadTypesDiv = $('<div>', {class:'csRoadTypeButtonsCheckBoxContainer'});
             $roadTypesDiv.append( createSettingsCheckbox('csUseOldRoadColorsCheckBox', 'useOldRoadColors', _trans.prefs.useOldRoadColors) );
-            for (var roadTypeAbbr in _roadTypes) {
-                var roadType = _roadTypes[roadTypeAbbr];
-                var id = 'cs' + roadTypeAbbr + 'CheckBox';
+            for (let roadTypeAbbr in _roadTypes) {
+                let roadType = _roadTypes[roadTypeAbbr];
+                let id = 'cs' + roadTypeAbbr + 'CheckBox';
                 $roadTypesDiv.append( createSettingsCheckbox(id, 'roadType', roadType.title, null, null, null, {'data-road-type':roadTypeAbbr}) );
                 if (roadTypeAbbr === 'PLR') {
                     $roadTypesDiv.append(
@@ -576,11 +592,11 @@
                 }
             }
 
-            var $tab = $('<li>',{title:argsObject.scriptName}).append(
+            let $tab = $('<li>',{title:argsObject.scriptName}).append(
                 $('<a>', {'data-toggle':'tab', href:'#sidepanel-clicksaver'}).append($('<span>').text('CS'))
             );
 
-            var $panel = $('<div>', {class:'tab-pane', id:'sidepanel-clicksaver'})
+            let $panel = $('<div>', {class:'tab-pane', id:'sidepanel-clicksaver'})
             .append(
                 $('<div>',  {class:'side-panel-section>'}).append(
                     $('<div>', {style: 'margin-bottom:8px;'}).append(
@@ -596,6 +612,10 @@
                         $('<div>', {style:'margin-bottom:8px;'}).append(
                             createSettingsCheckbox('csInlineRoadTypesCheckBox', 'inlineRoadTypeCheckboxes', _trans.prefs.inlineRoadType),
                             createSettingsCheckbox('csInlineParkingBoxesCheckBox', 'inlineParkingCheckboxes', _trans.prefs.inlineParkingStuff)
+                        ),
+                        $('<label>', {class:"cs-group-label"}).text('Time Savers'),
+                        $('<div>', {style:'margin-bottom:8px;'}).append(
+                            createSettingsCheckbox('csAddAltCityButtonCheckBox', 'addAltCityButton', 'Show "Add Alt City" button')
                         )
                     )
                 )
@@ -620,12 +640,12 @@
                 saveSettingsToStorage();
             });
             $('.csSettingsCheckBox').change(function() {
-                var checked = this.checked;
-                var settingName = $(this).data('setting-name');
+                let checked = this.checked;
+                let settingName = $(this).data('setting-name');
                 if (settingName === 'roadType') {
-                    var roadType = $(this).data('road-type');
-                    var array = _settings.roadTypeButtons;
-                    var index = array.indexOf(roadType);
+                    let roadType = $(this).data('road-type');
+                    let array = _settings.roadTypeButtons;
+                    let index = array.indexOf(roadType);
                     if(checked && index === -1) {
                         array.push(roadType);
                     } else if (!checked && index !== -1) {
@@ -675,11 +695,11 @@
         }
 
         function processSubstring(target, substringRegex, processFunction) {
-            var substrings = target.match(substringRegex);
+            let substrings = target.match(substringRegex);
             if (substrings) {
-                for (var idx=0; idx<substrings.length; idx++) {
-                    var substring = substrings[idx];
-                    var newSubstring = processFunction(substring);
+                for (let idx=0; idx<substrings.length; idx++) {
+                    let substring = substrings[idx];
+                    let newSubstring = processFunction(substring);
                     target = replaceWord(target, substring, newSubstring);
                 }
             }
@@ -687,12 +707,12 @@
         }
 
         function onPaste(e) {
-            var targetNode = e.target;
+            let targetNode = e.target;
             if (targetNode.name === 'streetName' ||
                 targetNode.className.indexOf('street-name') > -1) {
 
                 // Get the text that's being pasted.
-                var pastedText = e.clipboardData.getData('text/plain');
+                let pastedText = e.clipboardData.getData('text/plain');
 
                 // If pasting text in ALL CAPS...
                 if (/^[^a-z]*$/.test(pastedText)) {
@@ -724,7 +744,7 @@
             if (argsObject.useDefaultTranslation) {
                 return DEFAULT_TRANSLATION;
             } else {
-                var locale = I18n.currentLocale().toLowerCase();
+                let locale = I18n.currentLocale().toLowerCase();
                 if (!argsObject.translations.hasOwnProperty(locale)) {
                     locale = 'en-us';
                 }
@@ -733,19 +753,12 @@
         }
 
         function init() {
-            // 2018-04-12 (mapomatic) This is only needed until the latest WME beta is pushed to production.
-            // **************************************************
-            if (!W.selectionManager.getSelectedFeatures) {
-                W.selectionManager.getSelectedFeatures = W.selectionManager.getSelectedItems;
-            }
-            // **************************************************
-
             _trans = getTranslationObject();
-            for (var rtName in _roadTypes) {
+            for (let rtName in _roadTypes) {
                 _roadTypes[rtName].title = _trans.roadTypeButtons[rtName].title;
                 _roadTypes[rtName].text = _trans.roadTypeButtons[rtName].text;
             }
-            for (var d in _directions) {
+            for (let d in _directions) {
                 _directions[d].text = _trans.directionButtons[d].text;
                 _directions[d].title = _trans.directionButtons[d].title;
             }
@@ -755,10 +768,10 @@
             localStorage.setItem('wmeClickSaver_lastVersion', argsObject.scriptVersion);
             showScriptInfoAlert();
             // check for changes in the edit-panel
-            var observer = new MutationObserver(function(mutations) {
+            let observer = new MutationObserver(function(mutations) {
                 mutations.forEach(function(mutation) {
-                    for (var i = 0; i < mutation.addedNodes.length; i++) {
-                        var addedNode = mutation.addedNodes[i];
+                    for (let i = 0; i < mutation.addedNodes.length; i++) {
+                        let addedNode = mutation.addedNodes[i];
 
                         if (addedNode.nodeType === Node.ELEMENT_NODE) {
                             if(addedNode.querySelector(_roadTypeDropDownSelector)) {
@@ -779,6 +792,9 @@
                             }
                             if (addedNode.querySelector(_parkingCostDropDownSelector) && isChecked('csParkingCostButtonsCheckBox')) {
                                 addParkingCostButtons();  // TODO - add option setting
+                            }
+                            if ($(addedNode).find('label').filter(function() { return $(this).text() === 'Address'; }).length) {
+                                addAddAltCityButton();
                             }
                         }
                     }
@@ -816,7 +832,7 @@
             }
         }
 
-        var DEFAULT_TRANSLATION = {
+        let DEFAULT_TRANSLATION = {
             "roadTypeButtons":{
                 "St":{"title":"Street","text":"St"},
                 "PS":{"title":"Primary Street","text":"PS"},
@@ -879,22 +895,22 @@
         (function() {
             'use strict';
 
-            var UpdateObject;
+            let UpdateObject;
 
             function WMEaltStreet_Remove( elemClicked ) {
-                var altID = parseInt($(elemClicked.currentTarget).data('id'));
-                var selectedObjs = W.selectionManager.getSelectedFeatures();
+                let altID = parseInt($(elemClicked.currentTarget).data('id'));
+                let selectedObjs = W.selectionManager.getSelectedFeatures();
                 selectedObjs.forEach(function(element) {
                     if (element.model.type === 'segment') {
-                        var segment = element.model;
+                        let segment = element.model;
                         if (segment.attributes.streetIDs.indexOf(altID) !== -1) {
-                            var newStreets = [];
+                            let newStreets = [];
                             segment.attributes.streetIDs.forEach(function(sID) {
                                 if (altID !== sID) {
                                     newStreets.push(sID);
                                 }
                             });
-                            var sUpdate = new UpdateObject(segment, {streetIDs: newStreets});
+                            let sUpdate = new UpdateObject(segment, {streetIDs: newStreets});
                             W.model.actionManager.add(sUpdate);
                             updateAltStreetCtrls();
                         }
@@ -925,7 +941,7 @@
                     UpdateObject = require("Waze/Action/UpdateObject");
                 }
 
-                var observer = new MutationObserver(function(mutations) {
+                let observer = new MutationObserver(function(mutations) {
                     mutations.forEach(function(mutation) {
                         if ($(mutation.target).hasClass('preview')) updateAltStreetCtrls();
                     });
@@ -935,13 +951,13 @@
 
             function updateAltStreetCtrls() {
                 if (W.selectionManager.getSelectedFeatures().length > 0) {
-                    var selItems = W.selectionManager.getSelectedFeatures();
+                    let selItems = W.selectionManager.getSelectedFeatures();
                     if (selItems.length > 0 && selItems[0].model.type === 'segment') {
-                        var $idElements = $('.add-alt-street-form .alt-street');
-                        var $liElements = $('li.alt-street');
-                        for (var i = 0; i < $idElements.length; i++) {
-                            var $idElem = $idElements.eq(i);
-                            var $liElem = $liElements.eq(i);
+                        let $idElements = $('.add-alt-street-form .alt-street');
+                        let $liElements = $('li.alt-street');
+                        for (let i = 0; i < $idElements.length; i++) {
+                            let $idElem = $idElements.eq(i);
+                            let $liElem = $liElements.eq(i);
                             if($liElem.find('i').length === 0){//prevent duplicate entries
                                 $liElem.append(
                                     $('<i>', {class:'fa fa-times-circle'}).css({cursor:'pointer'}).data('id', $idElem.data('id')).click(WMEaltStreet_Remove)
@@ -957,16 +973,16 @@
     }
 
     function injectMain(argsObject) {
-        var scriptElem = document.createElement("script");
+        let scriptElem = document.createElement("script");
         scriptElem.textContent = '(function(){' + main.toString() + "\n main(" + JSON.stringify(argsObject).replace("'","\\'") + ")})();";
         scriptElem.setAttribute("type", "application/javascript");
         document.body.appendChild(scriptElem);
     }
 
     function setValue(object, path, value) {
-        var pathParts = path.split('.');
-        for (var i = 0; i < pathParts.length - 1; i++) {
-            var pathPart = pathParts[i];
+        let pathParts = path.split('.');
+        for (let i = 0; i < pathParts.length - 1; i++) {
+            let pathPart = pathParts[i];
             if (pathPart in object) {
                 object = object[pathPart];
             } else {
@@ -978,15 +994,15 @@
     }
 
     function convertTranslationsArrayToObject(arrayIn) {
-        var translations = {};
-        var iRow, iCol;
-        var languages = arrayIn[0].map(function(lang) { return lang.toLowerCase(); });
+        let translations = {};
+        let iRow, iCol;
+        let languages = arrayIn[0].map(function(lang) { return lang.toLowerCase(); });
         for (iCol=1; iCol<languages.length; iCol++) {
             translations[languages[iCol]] = {};
         }
         for (iRow=1; iRow<arrayIn.length; iRow++) {
-            var row = arrayIn[iRow];
-            var propertyPath = row[0];
+            let row = arrayIn[iRow];
+            let propertyPath = row[0];
             for (iCol=1; iCol<row.length; iCol++) {
                 setValue(translations[languages[iCol]], propertyPath, row[iCol]);
             }
@@ -999,9 +1015,9 @@
         method: 'GET',
         overrideMimeType: 'text/csv',
         onload: function(res) {
-            var args;
+            let args;
             if (res.status === 200) {
-                var translationsArray = res.responseText.split(/\r?\n/).map(function(t) { return t.split(/\t/); });
+                let translationsArray = res.responseText.split(/\r?\n/).map(function(t) { return t.split(/\t/); });
                 args = { scriptName: GM_info.script.name, scriptVersion: GM_info.script.version, translations: convertTranslationsArrayToObject(translationsArray) };
             } else {
                 args = { scriptName: GM_info.script.name, scriptVersion: GM_info.script.version, useDefaultTranslation: true };
