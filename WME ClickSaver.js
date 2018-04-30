@@ -995,7 +995,7 @@
     }
 
     GM_xmlhttpRequest({
-        url: 'https://docs.google.com/spreadsheets/d/aaa1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/pub?gid=0&single=true&output=tsv',
+        url: 'https://docs.google.com/spreadsheets/d/1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/pub?gid=0&single=true&output=tsv',
         method: 'GET',
         overrideMimeType: 'text/csv',
         onload: function(res) {
