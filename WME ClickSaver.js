@@ -92,6 +92,7 @@
                 setNewPLRStreetToNone: true,
                 setNewPLRCity: true,
                 addAltCityButton: true,
+                addSwapPrimaryAltRoadNameButtons: true,
                 useOldRoadColors: false
             };
             _settings = loadedSettings ? loadedSettings : defaultSettings;
@@ -288,6 +289,20 @@
             $('.alt-street-block input.city-name').val('').focus();
         }
 
+        function onSwapPrimaryAltRoadNameButtonClick() {
+            // let obj = W.selectionManager.getSelectedFeatures()[0].model;
+            // let toPrimary = $(this).prev().prev().val()
+            // let aliases = obj.attributes.aliases.filter(function(i) {
+            //     return i != toPrimary;
+            // });
+            // aliases.push(obj.attributes.name);
+            // var multiaction = new MultiAction();
+            // multiaction.setModel(W.model);
+            // multiaction.doSubAction(new UpdateObject(obj, {aliases: aliases}));
+            // multiaction.doSubAction(new UpdateObject(obj, {name: toPrimary}));
+            // W.model.actionManager.add(multiaction);
+        }
+
         function onRoadTypeButtonClick(roadTypeAbbr) {
             $(_roadTypeDropDownSelector).val(_roadTypes[roadTypeAbbr].val).change();
             if (roadTypeAbbr === 'PLR' && isChecked('csClearNewPLRCheckBox') && require) {
@@ -476,6 +491,17 @@
             }
         }
 
+        function addSwapPrimaryAltRoadNameButtons() {
+            // let selFeatures = W.selectionManager.getSelectedFeatures();
+            // if(selFeatures.length && selFeatures[0].model.type === 'segment'){
+            //     if($('#landmark-edit-general > form > div:nth-child(1) > div > div > div > ul > li').length > 0){
+            //         var $button = $('<div>', {style:'{border:1px solid gray; display:inline-block; cursor:pointer; margin-left:5px; border-radius:5px; padding:0px 4px 0px 4px; user-select: none; font-size:11px;}'})
+            //         .text("Swap primary").click(onSwapPrimaryAltRoadNameButtonClick);
+            //         $('#landmark-edit-general > form > div:nth-child(1) > div > div > div > ul > li').find('.delete').after($button);
+            //     }
+            // }
+        }
+
         function showScriptInfoAlert() {
             /* Check version and alert on update */
             if (_alertUpdate && argsObject.scriptVersion !== _lastScriptVersion) {
@@ -615,7 +641,8 @@
                         ),
                         $('<label>', {class:"cs-group-label"}).text('Time Savers'),
                         $('<div>', {style:'margin-bottom:8px;'}).append(
-                            createSettingsCheckbox('csAddAltCityButtonCheckBox', 'addAltCityButton', 'Show "Add Alt City" button')
+                            createSettingsCheckbox('csAddAltCityButtonCheckBox', 'addAltCityButton', 'Show "Add Alt City" button'),
+                            createSettingsCheckbox('csAddSwapPrimaryAltRoadNameButtons', 'addSwapPrimaryAltRoadNameButtons', '
                         )
                     )
                 )
