@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      2018.05.07.001
+// @version      2018.05.12.001
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -285,7 +285,7 @@
             $('.add-alt-street-btn').click();
             $('.alt-street-block input.street-name').val($('input.street-name').first().val()).blur().change();
             if ($('input.alt-address.empty-city').is(':checked')) $('input.alt-address.empty-city').click();
-            $('.alt-street-block input.city-name').val('').focus();
+            $('.alt-street-block input.city-name').last().val('').focus();
         }
 
         function onRoadTypeButtonClick(roadTypeAbbr) {
