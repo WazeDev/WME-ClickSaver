@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver
 // @namespace    https://greasyfork.org/users/45389
-// @version      2018.05.12.001
+// @version      2018.05.19.001
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -87,8 +87,6 @@
                 routingTypeButtons: true,
                 parkingCostButtons: true,
                 parkingSpacesButtons: true,
-                inlineRoadTypeCheckboxes: true,
-                inlineParkingCheckboxes: true,
                 setNewPLRStreetToNone: true,
                 setNewPLRCity: true,
                 addAltCityButton: true,
@@ -118,8 +116,6 @@
             setChecked('csParkingSpacesButtonsCheckBox', _settings.parkingSpacesButtons);
             setChecked('csParkingCostButtonsCheckBox', _settings.parkingCostButtons);
             setChecked('csRoutingTypeCheckBox', _settings.routingTypeButtons);
-            setChecked('csInlineRoadTypesCheckBox', _settings.inlineRoadTypeCheckboxes);
-            setChecked('csInlineParkingBoxesCheckBox', _settings.inlineParkingCheckboxes);
             setChecked('csClearNewPLRCheckBox', _settings.setNewPLRStreetToNone);
             setChecked('csUseOldRoadColorsCheckBox', _settings.useOldRoadColors);
             setChecked('csSetNewPLRCityCheckBox', _settings.setNewPLRCity);
@@ -136,8 +132,6 @@
                     directionButtons: _settings.directionButtons,
                     parkingCostButtons: _settings.parkingCostButtons,
                     parkingSpacesButtons: _settings.parkingSpacesButtons,
-                    inlineRoadTypeCheckboxes: _settings.inlineRoadTypeCheckboxes,
-                    inlineParkingCheckboxes: _settings.inlineParkingCheckboxes,
                     setNewPLRStreetToNone: _settings.setNewPLRStreetToNone,
                     useOldRoadColors: _settings.useOldRoadColors,
                     setNewPLRCity: _settings.setNewPLRCity,
@@ -332,10 +326,10 @@
                         ['+1', options[2].value, options[2].text]
                     ];
                     $('#csRoutingTypeContainer').remove();
-                    let $form = $('<div>', {id:"csRoutingTypeContainer",style:"height:30px;padding-top:0px"});
+                    let $form = $('<div>', {id:'csRoutingTypeContainer',style:'height:30px;padding-top:0px'});
                     for (let i=0; i<buttonInfos.length; i++) {
                         let btnInfo = buttonInfos[i];
-                        let $input = $('<input>', {type:"radio", name:"routingRoadType", id:"routingRoadType" + i, value:btnInfo[1]})
+                        let $input = $('<input>', {type:'radio', name:'routingRoadType', id:'routingRoadType' + i, value:btnInfo[1]})
                         .click(function() {
                             $(_routingTypeDropDownSelector).val($(this).attr('value')).change();
                         });
@@ -343,7 +337,7 @@
                         $form.append(
                             $('<div class="controls-container" style="float: left; margin-right: 10px;margin-left:0px">').append(
                                 $input,
-                                $('<label>', {for:'routingRoadType' + i, style:"padding-left: 20px;", title:btnInfo[2]}).text(btnInfo[0])
+                                $('<label>', {for:'routingRoadType' + i, style:'padding-left: 20px;', title:btnInfo[2]}).text(btnInfo[0])
                             )
                         );
 
@@ -356,7 +350,7 @@
         }
 
         function isPLA(item) {
-            return (item.model.type === "venue") &&  item.model.attributes.categories.indexOf('PARKING_LOT') > -1;
+            return (item.model.type === 'venue') &&  item.model.attributes.categories.indexOf('PARKING_LOT') > -1;
         }
 
         function addParkingSpacesButtons() {
@@ -470,7 +464,7 @@
         function addAddAltCityButton() {
             let id = 'csAddAltCityButton';
             if (W.selectionManager.getSelectedFeatures()[0].model.type === 'segment' && $('#' + id).length === 0) {
-                $('label.control-label').filter(function() { return $(this).text() === "Address"; }).append(
+                $('label.control-label').filter(function() { return $(this).text() === 'Address'; }).append(
                     $('<a>', {href:'#',style:'float: right;text-transform: none;font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif;color: #26bae8;font-weight: normal;'}).text('Add alt city').click(onAddAltCityButtonClick)
                 );
             }
@@ -485,7 +479,7 @@
 
         function shadeColor2(color, percent) {
             let f=parseInt(color.slice(1),16),t=percent<0?0:255,p=percent<0?percent*-1:percent,R=f>>16,G=f>>8&0x00FF,B=f&0x0000FF;
-            return "#"+(0x1000000+(Math.round((t-R)*p)+R)*0x10000+(Math.round((t-G)*p)+G)*0x100+(Math.round((t-B)*p)+B)).toString(16).slice(1);
+            return '#'+(0x1000000+(Math.round((t-R)*p)+R)*0x10000+(Math.round((t-G)*p)+G)*0x100+(Math.round((t-B)*p)+B)).toString(16).slice(1);
         }
 
         function buildRoadTypeButtonCss() {
@@ -523,27 +517,6 @@
             $('<style type="text/css">' + css + '</style>').appendTo('head');
         }
 
-        function inlineRoadTypeCheckboxes() {
-            // TODO - move styling to css.
-            let $div = $('<div>',{style:'font-size:11px;display:inline-block;'});
-            ['tollRoadCheck','unpavedCheckbox','tunnelCheckbox','headlightsCheckbox','nearbyHOVCheckbox'].forEach(function(id) {
-                $('label[for="' + id + '"]').css({paddingLeft:'20px'});
-                $('#' + id).parent().css({float:'left',marginRight:'4px'}).detach().appendTo($div);
-            });
-            $(_roadTypeDropDownSelector).after($div);
-        }
-
-        function inlineParkingCheckboxes() {
-            let css = {display: 'inline-block', marginRight: '5px'};
-            let $div = $('<div>');
-            $('i.parkingType-tooltip').after($div);
-            $('div.parking-type-option').appendTo($div).css(css);
-
-            $div = $('<div>');
-            $('div.payment-checkbox').parent().append($div);
-            $('div.payment-checkbox').appendTo($div).css(css);
-        }
-
         function onModeChanged(model, modeId, context) {
             if(!modeId || modeId === 1) {
                 initUserPanel();
@@ -551,16 +524,16 @@
             }
         }
 
-        function createSettingRadio(settingName, groupName, groupLabel, buttonMetas) {
-            let $container = $('<div>',{class:'controls-container'});
-            $('<input>', {type:'checkbox', class:'csSettingsCheckBox', id:groupName, 'data-setting-name':groupName}).appendTo($container);
-            $('<label>', {for:groupName}).text(groupLabel).css({marginRight:'10px'}).appendTo($container);
-            buttonMetas.forEach(function(meta) {
-                let $input = $('<input>', {type:'radio', class:'csSettingsCheckBox', name:groupName, id:meta.id, 'data-setting-name':groupName}).css({marginLeft:'5px'}).appendTo($container);
-                let $label = $('<label>', {for:meta.id}).text(meta.labelText).appendTo($container);
-            });
-            return $container;
-        }
+//         function createSettingRadio(settingName, groupName, groupLabel, buttonMetas) {
+//             let $container = $('<div>',{class:'controls-container'});
+//             $('<input>', {type:'checkbox', class:'csSettingsCheckBox', id:groupName, 'data-setting-name':groupName}).appendTo($container);
+//             $('<label>', {for:groupName}).text(groupLabel).css({marginRight:'10px'}).appendTo($container);
+//             buttonMetas.forEach(function(meta) {
+//                 let $input = $('<input>', {type:'radio', class:'csSettingsCheckBox', name:groupName, id:meta.id, 'data-setting-name':groupName}).css({marginLeft:'5px'}).appendTo($container);
+//                 let $label = $('<label>', {for:meta.id}).text(meta.labelText).appendTo($container);
+//             });
+//             return $container;
+//         }
 
         function createSettingsCheckbox(id, settingName, labelText, titleText, divCss, labelCss, optionalAttributes) {
             let $container = $('<div>',{class:'controls-container'});
@@ -601,19 +574,14 @@
                 $('<div>',  {class:'side-panel-section>'}).append(
                     $('<div>', {style: 'margin-bottom:8px;'}).append(
                         $('<div>', {class:'form-group'}).append(
-                            $('<label>', {class:"cs-group-label"}).text(_trans.prefs.dropdownHelperGroup),
+                            $('<label>', {class:'cs-group-label'}).text(_trans.prefs.dropdownHelperGroup),
                             $('<div>').append( createSettingsCheckbox('csRoadTypeButtonsCheckBox', 'roadButtons', _trans.prefs.roadTypeButtons) ).append( $roadTypesDiv ),
                             createSettingsCheckbox('csRoutingTypeCheckBox', 'routingTypeButtons', _trans.prefs.routingTypeButtons),
                             createSettingsCheckbox('csElevationButtonsCheckBox', 'elevationButtons', _trans.prefs.elevationButtons),
                             createSettingsCheckbox('csParkingCostButtonsCheckBox', 'parkingCostButtons', _trans.prefs.parkingCostButtons),
                             createSettingsCheckbox('csParkingSpacesButtonsCheckBox', 'parkingSpacesButtons', _trans.prefs.parkingSpacesButtons)
                         ),
-                        $('<label>', {class:"cs-group-label"}).text(_trans.prefs.spaceSaversGroup),
-                        $('<div>', {style:'margin-bottom:8px;'}).append(
-                            createSettingsCheckbox('csInlineRoadTypesCheckBox', 'inlineRoadTypeCheckboxes', _trans.prefs.inlineRoadType),
-                            createSettingsCheckbox('csInlineParkingBoxesCheckBox', 'inlineParkingCheckboxes', _trans.prefs.inlineParkingStuff)
-                        ),
-                        $('<label>', {class:"cs-group-label"}).text('Time Savers'),
+                        $('<label>', {class:'cs-group-label'}).text('Time Savers'),
                         $('<div>', {style:'margin-bottom:8px;'}).append(
                             createSettingsCheckbox('csAddAltCityButtonCheckBox', 'addAltCityButton', 'Show "Add Alt City" button')
                         )
@@ -661,10 +629,6 @@
         function updateControls() {
             if($(_roadTypeDropDownSelector).length>0) {
                 if(isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
-                if(isChecked('csInlineRoadTypesCheckBox')) inlineRoadTypeCheckboxes();
-            }
-            if($(_parkingCostDropDownSelector).length>0 && isChecked('csInlineParkingBoxesCheckBox')) {
-                inlineParkingCheckboxes();
             }
             if($(_routingTypeDropDownSelector && isChecked('csRoutingTypeCheckBox')).length>0) {
                 addRoutingTypeButtons();
@@ -730,7 +694,7 @@
                     });
 
                     // Insert new text in the focused node.
-                    document.execCommand("insertText", false, pastedText);
+                    document.execCommand('insertText', false, pastedText);
 
                     // Prevent the default paste behavior.
                     e.preventDefault();
@@ -763,7 +727,7 @@
                 _directions[d].title = _trans.directionButtons[d].title;
             }
 
-            document.addEventListener("paste", onPaste);
+            document.addEventListener('paste', onPaste);
             _lastScriptVersion = localStorage.getItem('wmeClickSaver_lastVersion');
             localStorage.setItem('wmeClickSaver_lastVersion', argsObject.scriptVersion);
             showScriptInfoAlert();
@@ -776,10 +740,6 @@
                         if (addedNode.nodeType === Node.ELEMENT_NODE) {
                             if(addedNode.querySelector(_roadTypeDropDownSelector)) {
                                 if(isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
-                                if(isChecked('csInlineRoadTypesCheckBox')) inlineRoadTypeCheckboxes();
-                            }
-                            if(addedNode.querySelector(_parkingCostDropDownSelector) && isChecked('csInlineParkingBoxesCheckBox')) {
-                                inlineParkingCheckboxes();
                             }
                             if(addedNode.querySelector(_routingTypeDropDownSelector) && isChecked('csRoutingTypeCheckBox')) {
                                 addRoutingTypeButtons();
@@ -793,7 +753,7 @@
                             if (addedNode.querySelector(_parkingCostDropDownSelector) && isChecked('csParkingCostButtonsCheckBox')) {
                                 addParkingCostButtons();  // TODO - add option setting
                             }
-                            if ($(addedNode).find('label').filter(function() { return $(this).text() === 'Address'; }).length) {
+                            if ($(addedNode).find('label').filter(function() { return $(this).text() === 'Address'; }).length && isChecked('csAddAltCityButtonCheckBox')) {
                                 addAddAltCityButton();
                             }
                         }
@@ -805,15 +765,15 @@
             loadSettingsFromStorage();
             injectCss();
             W.app.modeController.model.bind('change:mode', onModeChanged);
-            W.prefs.on("change:isImperial", function() {initUserPanel();loadSettingsFromStorage();});
+            W.prefs.on('change:isImperial', function() {initUserPanel();loadSettingsFromStorage();});
             updateControls();   // In case of PL w/ segments selected.
-            W.selectionManager.events.register("selectionchanged", null, updateControls);
+            W.selectionManager.events.register('selectionchanged', null, updateControls);
 
-            if (typeof(require) !== "undefined") {
-                UpdateObject = require("Waze/Action/UpdateObject");
-                AddOrGetCity = require("Waze/Action/AddOrGetCity");
-                AddOrGetStreet = require("Waze/Action/AddOrGetStreet");
-                MultiAction = require("Waze/Action/MultiAction");
+            if (typeof(require) !== 'undefined') {
+                UpdateObject = require('Waze/Action/UpdateObject');
+                AddOrGetCity = require('Waze/Action/AddOrGetCity');
+                AddOrGetStreet = require('Waze/Action/AddOrGetStreet');
+                MultiAction = require('Waze/Action/MultiAction');
             }
             log('Initialized', 1);
         }
