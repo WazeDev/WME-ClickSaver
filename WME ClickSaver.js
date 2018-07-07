@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WME ClickSaver (beta)
 // @namespace    https://greasyfork.org/users/45389
-// @version      2018.05.19.001
+// @version      2018.07.06.001
 // @description  Various UI changes to make editing faster and easier.
 // @author       MapOMatic
 // @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -716,6 +716,14 @@
             }
         }
 
+        function errorHandler(callback) {
+            try {
+                callback();
+            } catch (ex) {
+                console.error(argsObject.scriptName + ':', ex);
+            }
+        }
+
         function init() {
             _trans = getTranslationObject();
             for (let rtName in _roadTypes) {
@@ -760,14 +768,15 @@
                     }
                 });
             });
+
             observer.observe(document.getElementById('edit-panel'), { childList: true, subtree: true });
             initUserPanel();
             loadSettingsFromStorage();
             injectCss();
-            W.app.modeController.model.bind('change:mode', onModeChanged);
-            W.prefs.on('change:isImperial', function() {initUserPanel();loadSettingsFromStorage();});
+            W.app.modeController.model.bind('change:mode', () => errorHandler(onModeChanged));
+            W.prefs.on('change:isImperial', () => errorHandler(function() {initUserPanel();loadSettingsFromStorage();}));
             updateControls();   // In case of PL w/ segments selected.
-            W.selectionManager.events.register('selectionchanged', null, updateControls);
+            W.selectionManager.events.register('selectionchanged', null, () => errorHandler(updateControls));
 
             if (typeof(require) !== 'undefined') {
                 UpdateObject = require('Waze/Action/UpdateObject');
@@ -891,11 +900,11 @@
             }
 
             function init_WMEQuickAltDel() {
-                W.selectionManager.events.register("selectionchanged", null, updateAltStreetCtrls);
-                W.model.actionManager.events.register("afterundoaction",null, updateAltStreetCtrls);
-                W.model.actionManager.events.register("hasActions",null, function(){setTimeout(updateAltStreetCtrls, 250);});
-                W.model.actionManager.events.register("noActions",null, function(){setTimeout(updateAltStreetCtrls, 250);});
-                W.model.actionManager.events.register("afteraction",null, updateAltStreetCtrls);
+                W.selectionManager.events.register("selectionchanged", null, () => errorHandler(updateAltStreetCtrls));
+                W.model.actionManager.events.register("afterundoaction",null, () => errorHandler(updateAltStreetCtrls));
+                W.model.actionManager.events.register("hasActions",null, () => errorHandler(()=>setTimeout(updateAltStreetCtrls, 250)));
+                W.model.actionManager.events.register("noActions",null, () => errorHandler(()=>setTimeout(updateAltStreetCtrls, 250)));
+                W.model.actionManager.events.register("afteraction",null, () => errorHandler(updateAltStreetCtrls));
 
                 if (typeof(require) !== "undefined") {
                     UpdateObject = require("Waze/Action/UpdateObject");
