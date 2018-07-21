@@ -1,13 +1,14 @@
 // ==UserScript==
-// @name         WME ClickSaver
-// @namespace    https://greasyfork.org/users/45389
-// @version      2018.07.06.001
-// @description  Various UI changes to make editing faster and easier.
-// @author       MapOMatic
-// @include     /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
-// @license      GNU GPLv3
-// @connect      google.com
-// @grant        GM_xmlhttpRequest
+// @name            WME ClickSaver
+// @namespace       https://greasyfork.org/users/45389
+// @version         2018.07.21.001
+// @description     Various UI changes to make editing faster and easier.
+// @author          MapOMatic
+// @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
+// @license         GNU GPLv3
+// @connect         google.com
+// @contributionURL https://github.com/WazeDev/Thank-The-Authors
+// @grant           GM_xmlhttpRequest
 // ==/UserScript==
 
 /* global GM_info */
