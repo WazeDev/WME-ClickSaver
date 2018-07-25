@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2018.07.21.001
+// @version         2018.07.24.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -42,6 +42,7 @@
         let _roadTypes = {
             St:{val:1, wmeColor:'#ffffeb', svColor:'#ffffff', category:'streets', visible:true},
             PS:{val:2, wmeColor:'#f0ea58', svColor:'#cba12e', category:'streets', visible:true},
+            Pw:{val:22, wmeColor:'#beba6c', svColor:'#beba6c', category:'streets', visible:false},
             mH:{val:7, wmeColor:'#69bf88', svColor:'#ece589', category:'highways', visible:true},
             MH:{val:6, wmeColor:'#45b8d1', svColor:'#c13040', category:'highways', visible:true},
             Fw:{val:3, wmeColor:'#c577d2', svColor:'#387fb8', category:'highways', visible:false},
@@ -818,7 +819,8 @@
                 "PB":{"title":"Pedestrian Boardwalk (non-drivable)","text":"PB"},
                 "Sw":{"title":"Stairway (non-drivable)","text":"Sw"},
                 "RR":{"title":"Railroad (non-drivable)","text":"RR"},
-                "RT":{"title":"Runway/Taxiway (non-drivable)","text":"RT"}
+                "RT":{"title":"Runway/Taxiway (non-drivable)","text":"RT"},
+                "Pw":{"title":"Passageway","text":"Pw"}
             },
             "directionButtons":{
                 "twoWay":{"title":"Two way","text":"Two way"},
