@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2018.08.02.001
+// @version         2018.08.02.002
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -165,8 +165,8 @@
 
         function getConnectedSegmentIDs(segmentID) {
             let IDs = [];
-            let segment = W.model.segments.getByObjectId(segmentID);
-            [W.model.nodes.getByObjectId(segment.attributes.fromNodeID), W.model.nodes.getByObjectId(segment.attributes.toNodeID)].forEach(function(node) {
+            let segment = W.model.segments.getObjectById(segmentID);
+            [W.model.nodes.getObjectById(segment.attributes.fromNodeID), W.model.nodes.getObjectById(segment.attributes.toNodeID)].forEach(function(node) {
                 if (node) {
                     node.attributes.segIDs.forEach(function(segID) {
                         if (segID !== segmentID) { IDs.push(segID); }
@@ -182,13 +182,13 @@
             let segmentIDsToSearch = [startSegment.attributes.id];
             while (stateID === null && segmentIDsToSearch.length > 0) {
                 let startSegmentID = segmentIDsToSearch.pop();
-                startSegment = W.model.segments.getByObjectId(startSegmentID);
+                startSegment = W.model.segments.getObjectById(startSegmentID);
                 let connectedSegmentIDs = getConnectedSegmentIDs(startSegmentID);
                 for (let i=0;i<connectedSegmentIDs.length;i++) {
-                    let streetID = W.model.segments.getByObjectId(connectedSegmentIDs[i]).attributes.primaryStreetID;
+                    let streetID = W.model.segments.getObjectById(connectedSegmentIDs[i]).attributes.primaryStreetID;
                     if (streetID !== null && typeof(streetID) !== 'undefined') {
-                        let cityID = W.model.streets.getByObjectId(streetID).cityID;
-                        stateID = W.model.cities.getByObjectId(cityID).attributes.stateID;
+                        let cityID = W.model.streets.getObjectById(streetID).cityID;
+                        stateID = W.model.cities.getObjectById(cityID).attributes.stateID;
                         break;
                     }
                 }
@@ -213,12 +213,12 @@
             let segmentIDsToSearch = [startSegment.attributes.id];
             while (cityID === null && segmentIDsToSearch.length > 0) {
                 let startSegmentID = segmentIDsToSearch.pop();
-                startSegment = W.model.segments.getByObjectId(startSegmentID);
+                startSegment = W.model.segments.getObjectById(startSegmentID);
                 let connectedSegmentIDs = getConnectedSegmentIDs(startSegmentID);
                 for (let i=0;i<connectedSegmentIDs.length;i++) {
-                    let streetID = W.model.segments.getByObjectId(connectedSegmentIDs[i]).attributes.primaryStreetID;
+                    let streetID = W.model.segments.getObjectById(connectedSegmentIDs[i]).attributes.primaryStreetID;
                     if (streetID !== null && typeof(streetID) !== 'undefined') {
-                        cityID = W.model.streets.getByObjectId(streetID).cityID;
+                        cityID = W.model.streets.getObjectById(streetID).cityID;
                         break;
                     }
                 }
@@ -263,8 +263,8 @@
                 if (segModel.attributes.primaryStreetID === null) {
                     let stateID = getFirstConnectedStateID(segment.model);
                     if (stateID) {
-                        let state = W.model.states.getByObjectId(stateID);
-                        let country = W.model.countries.getByObjectId(state.countryID);
+                        let state = W.model.states.getObjectById(stateID);
+                        let country = W.model.countries.getObjectById(state.countryID);
 
                         let m_action = new MultiAction();
                         let cityToSet;
