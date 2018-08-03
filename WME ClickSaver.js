@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2018.07.24.001
+// @version         2018.08.02.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -15,11 +15,14 @@
 /* global W */
 /* global Node */
 /* global I18n */
+/* global OL */
 
 (function() {
+    const TRANSLATIONS_URL = 'https://docs.google.com/spreadsheets/d/1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/pub?gid=0&single=true&output=tsv';
+
+    // This function is injected into the page.
     function main(argsObject) {
         //'use strict';
-
         let _debugLevel = 0;
         let _roadTypeDropDownSelector = 'select[name="roadType"]';
         let _elevationDropDownSelector = 'select[name="level"]';
@@ -51,18 +54,21 @@
             PLR:{val:20, wmeColor:'#ababab', svColor:'#2282ab', category:'otherDrivable', visible:true},
             PR:{val:17, wmeColor:'#beba6c', svColor:'#00ffb3', category:'otherDrivable', visible:true},
             Fer:{val:15, wmeColor:'#d7d8f8', svColor:'#ff8000', category:'otherDrivable', visible:false},
-            WT:{val:5, wmeColor:'#b0a790', svColor:'#00ff00', category:'nonDrivable', visible:false},
-            PB:{val:10, wmeColor:'#9a9a9a', svColor:'#0000ff', category:'nonDrivable', visible:false},
-            Sw:{val:16, wmeColor:'#999999', svColor:'#b700ff', category:'nonDrivable', visible:false},
             RR:{val:18, wmeColor:'#c62925', svColor:'#ffffff', category:'nonDrivable', visible:false},
-            RT:{val:19, wmeColor:'#ffffff', svColor:'#00ff00', category:'nonDrivable', visible:false}
+            RT:{val:19, wmeColor:'#ffffff', svColor:'#00ff00', category:'nonDrivable', visible:false},
+            WT:{val:5, wmeColor:'#b0a790', svColor:'#00ff00', category:'pedestrian', visible:false},
+            PB:{val:10, wmeColor:'#9a9a9a', svColor:'#0000ff', category:'pedestrian', visible:false},
+            Sw:{val:16, wmeColor:'#999999', svColor:'#b700ff', category:'pedestrian', visible:false}
         };
         let _directions = { twoWay: {val:3}, oneWayAB: {val:1}, oneWayBA: {val:2}, unknown: {val:0} };
 
         let UpdateObject,
             AddOrGetCity,
             AddOrGetStreet,
-            MultiAction;
+            MultiAction,
+            AddSeg,
+            reqSegment,
+            DelSeg;
 
         function log(message, level) {
             if (message && level <= _debugLevel) {
@@ -92,7 +98,9 @@
                 setNewPLRStreetToNone: true,
                 setNewPLRCity: true,
                 addAltCityButton: true,
-                useOldRoadColors: false
+                addSwapPedestrianButton: false,
+                useOldRoadColors: false,
+                warnOnPedestrianTypeSwap: true
             };
             _settings = loadedSettings ? loadedSettings : defaultSettings;
             for (let prop in defaultSettings) {
@@ -122,6 +130,7 @@
             setChecked('csUseOldRoadColorsCheckBox', _settings.useOldRoadColors);
             setChecked('csSetNewPLRCityCheckBox', _settings.setNewPLRCity);
             setChecked('csAddAltCityButtonCheckBox', _settings.addAltCityButton);
+            setChecked('csAddSwapPedestrianButtonCheckBox', _settings.addSwapPedestrianButton);
         }
 
         function saveSettingsToStorage() {
@@ -137,7 +146,9 @@
                     setNewPLRStreetToNone: _settings.setNewPLRStreetToNone,
                     useOldRoadColors: _settings.useOldRoadColors,
                     setNewPLRCity: _settings.setNewPLRCity,
-                    addAltCityButton: _settings.addAltCityButton
+                    addAltCityButton: _settings.addAltCityButton,
+                    addSwapPedestrianButton: _settings.addSwapPedestrianButton,
+                    warnOnPedestrianTypeSwap: _settings.warnOnPedestrianTypeSwap
                 };
                 settings.roadTypeButtons = [];
                 for (let roadTypeAbbr in _roadTypes) {
@@ -148,10 +159,14 @@
             }
         }
 
+        function isPedestrianTypeSegment(segment) {
+            return [5, 10, 16].indexOf(segment.attributes.roadType) > -1;
+        }
+
         function getConnectedSegmentIDs(segmentID) {
             let IDs = [];
-            let segment = W.model.segments.get(segmentID);
-            [W.model.nodes.get(segment.attributes.fromNodeID), W.model.nodes.get(segment.attributes.toNodeID)].forEach(function(node) {
+            let segment = W.model.segments.getByObjectId(segmentID);
+            [W.model.nodes.getByObjectId(segment.attributes.fromNodeID), W.model.nodes.getByObjectId(segment.attributes.toNodeID)].forEach(function(node) {
                 if (node) {
                     node.attributes.segIDs.forEach(function(segID) {
                         if (segID !== segmentID) { IDs.push(segID); }
@@ -167,13 +182,13 @@
             let segmentIDsToSearch = [startSegment.attributes.id];
             while (stateID === null && segmentIDsToSearch.length > 0) {
                 let startSegmentID = segmentIDsToSearch.pop();
-                startSegment = W.model.segments.get(startSegmentID);
+                startSegment = W.model.segments.getByObjectId(startSegmentID);
                 let connectedSegmentIDs = getConnectedSegmentIDs(startSegmentID);
                 for (let i=0;i<connectedSegmentIDs.length;i++) {
-                    let streetID = W.model.segments.get(connectedSegmentIDs[i]).attributes.primaryStreetID;
+                    let streetID = W.model.segments.getByObjectId(connectedSegmentIDs[i]).attributes.primaryStreetID;
                     if (streetID !== null && typeof(streetID) !== 'undefined') {
-                        let cityID = W.model.streets.get(streetID).cityID;
-                        stateID = W.model.cities.get(cityID).attributes.stateID;
+                        let cityID = W.model.streets.getByObjectId(streetID).cityID;
+                        stateID = W.model.cities.getByObjectId(cityID).attributes.stateID;
                         break;
                     }
                 }
@@ -198,12 +213,12 @@
             let segmentIDsToSearch = [startSegment.attributes.id];
             while (cityID === null && segmentIDsToSearch.length > 0) {
                 let startSegmentID = segmentIDsToSearch.pop();
-                startSegment = W.model.segments.get(startSegmentID);
+                startSegment = W.model.segments.getByObjectId(startSegmentID);
                 let connectedSegmentIDs = getConnectedSegmentIDs(startSegmentID);
                 for (let i=0;i<connectedSegmentIDs.length;i++) {
-                    let streetID = W.model.segments.get(connectedSegmentIDs[i]).attributes.primaryStreetID;
+                    let streetID = W.model.segments.getByObjectId(connectedSegmentIDs[i]).attributes.primaryStreetID;
                     if (streetID !== null && typeof(streetID) !== 'undefined') {
-                        cityID = W.model.streets.get(streetID).cityID;
+                        cityID = W.model.streets.getByObjectId(streetID).cityID;
                         break;
                     }
                 }
@@ -248,8 +263,8 @@
                 if (segModel.attributes.primaryStreetID === null) {
                     let stateID = getFirstConnectedStateID(segment.model);
                     if (stateID) {
-                        let state = W.model.states.get(stateID);
-                        let country = W.model.countries.get(state.countryID);
+                        let state = W.model.states.getByObjectId(stateID);
+                        let country = W.model.countries.getByObjectId(state.countryID);
 
                         let m_action = new MultiAction();
                         let cityToSet;
@@ -257,14 +272,14 @@
                         if (setCity) cityToSet = getCity(getFirstConnectedCityID(segment.model));
                         if (!cityToSet) cityToSet = getEmptyCity(state.id);
                         if (!cityToSet) {
-                            let addCityAction = new AddOrGetCity(state, country, "", true);
+                            let addCityAction = new AddOrGetCity(state, country, '', true);
                             m_action.doSubAction(addCityAction);
                             cityToSet = getEmptyCity(state.id);
                         }
                         let newStreet = {isEmpty:true, cityID:cityToSet.attributes.id};
                         let emptyStreet = W.model.streets.getByAttributes(newStreet)[0];
                         if (!emptyStreet) {
-                            let addStreetAction = new AddOrGetStreet("", cityToSet, true);
+                            let addStreetAction = new AddOrGetStreet('', cityToSet, true);
                             m_action.doSubAction(addStreetAction);
                             emptyStreet = W.model.streets.getByAttributes(newStreet)[0];
                         }
@@ -292,6 +307,9 @@
         }
 
         function addRoadTypeButtons() {
+            let seg = W.selectionManager.getSelectedFeatures()[0].model;
+            if (seg.type !== 'segment') return;
+            let isPed = isPedestrianTypeSegment(seg);
             let $dropDown = $(_roadTypeDropDownSelector);
             $('#csRoadTypeButtonsContainer').remove();
             let $container = $('<div>',{id:'csRoadTypeButtonsContainer',class:'rth-btn-container'});
@@ -299,21 +317,28 @@
             let $highway = $('<div>', {id:'csHighwayButtonContainer',class:'cs-rt-btn-container'});
             let $otherDrivable = $('<div>', {id:'csOtherDrivableButtonContainer',class:'cs-rt-btn-container'});
             let $nonDrivable = $('<div>', {id:'csNonDrivableButtonContainer',class:'cs-rt-btn-container'});
-            let divs = {streets:$street, highways:$highway, otherDrivable:$otherDrivable, nonDrivable:$nonDrivable};
+            let $pedestrian = $('<div>', {id:'csPedestrianButtonContainer', class:'cs-rt-btn-container'});
+            let divs = {streets:$street, highways:$highway, otherDrivable:$otherDrivable, nonDrivable:$nonDrivable, pedestrian:$pedestrian};
             for (let roadTypeKey in _roadTypes) {
                 if (_settings.roadTypeButtons.indexOf(roadTypeKey) !== -1) {
                     let roadType = _roadTypes[roadTypeKey];
-                    let $div = divs[roadType.category];
-                    $div.append(
-                        $('<div>', {class:'btn btn-rth btn-rth-' + roadTypeKey + ($dropDown.attr('disabled') ? ' disabled' : '') + ' btn-positive',title:_trans.roadTypeButtons[roadTypeKey].title})
-                        .text(_trans.roadTypeButtons[roadTypeKey].text)
-                        .prop('checked', roadType.visible)
-                        .data('key', roadTypeKey)
-                        .click(function() { onRoadTypeButtonClick($(this).data('key')); })
-                    );
+                    if ((roadType.category === 'pedestrian' && isPed) || (roadType.category !== 'pedestrian' && !isPed)) {
+                        let $div = divs[roadType.category];
+                        $div.append(
+                            $('<div>', {class:'btn btn-rth btn-rth-' + roadTypeKey + ($dropDown.attr('disabled') ? ' disabled' : '') + ' btn-positive',title:_trans.roadTypeButtons[roadTypeKey].title})
+                            .text(_trans.roadTypeButtons[roadTypeKey].text)
+                            .prop('checked', roadType.visible)
+                            .data('key', roadTypeKey)
+                            .click(function() { onRoadTypeButtonClick($(this).data('key')); })
+                        );
+                    }
                 }
             }
-            $container.append($street).append($highway).append($otherDrivable).append($nonDrivable);
+            if (isPed) {
+                $container.append($pedestrian);
+            } else {
+                $container.append($street).append($highway).append($otherDrivable).append($nonDrivable);
+            }
             $dropDown.before($container);
         }
 
@@ -328,7 +353,7 @@
                         ['+1', options[2].value, options[2].text]
                     ];
                     $('#csRoutingTypeContainer').remove();
-                    let $form = $('<div>', {id:'csRoutingTypeContainer',style:'height:30px;padding-top:0px'});
+                    let $form = $('<div>', {id:'csRoutingTypeContainer',style:'height:16px;padding-top:0px'});
                     for (let i=0; i<buttonInfos.length; i++) {
                         let btnInfo = buttonInfos[i];
                         let $input = $('<input>', {type:'radio', name:'routingRoadType', id:'routingRoadType' + i, value:btnInfo[1]})
@@ -337,7 +362,7 @@
                         });
                         if (String(btnInfo[1]) === String($dropDown.val())) $input.prop('checked', 'true');
                         $form.append(
-                            $('<div class="controls-container" style="float: left; margin-right: 10px;margin-left:0px">').append(
+                            $('<div class="controls-container" style="float: left; margin-right: 10px;margin-left: 0px;padding-top: 0px;">').append(
                                 $input,
                                 $('<label>', {for:'routingRoadType' + i, style:'padding-left: 20px;', title:btnInfo[2]}).text(btnInfo[0])
                             )
@@ -359,7 +384,6 @@
             let $dropDown = $(_parkingSpacesDropDownSelector);
             let selItems = W.selectionManager.getSelectedFeatures();
             let item = selItems[0];
-            let attr = item.model.attributes;
 
             // If it's not a PLA, exit.
             if (!isPLA(item)) return;
@@ -368,7 +392,7 @@
             let $div = $('<div>',{id:'csParkingSpacesContainer'});
             let dropdownDisabled = $dropDown.attr('disabled') === 'disabled';
             let optionNodes = $(_parkingSpacesDropDownSelector + ' option');
-            let optionValues = [];
+
             for (i=0; i<optionNodes.length; i++) {
                 let $option = $(optionNodes[i]);
                 let text = $option.text();
@@ -398,7 +422,6 @@
             let $dropDown = $(_parkingCostDropDownSelector);
             let selItems = W.selectionManager.getSelectedFeatures();
             let item = selItems[0];
-            let attr = item.model.attributes;
 
             // If it's not a PLA, exit.
             if (!isPLA(item)) return;
@@ -407,7 +430,6 @@
             let $div = $('<div>',{id:'csParkingCostContainer'});
             let dropdownDisabled = $dropDown.attr('disabled') === 'disabled';
             let optionNodes = $(_parkingCostDropDownSelector + ' option');
-            let optionValues = [];
             for (i=0; i<optionNodes.length; i++) {
                 let $option = $(optionNodes[i]);
                 let text = $option.text();
@@ -472,6 +494,54 @@
             }
         }
 
+        function addSwapPedestrianButton(){
+            let id = 'csSwapPedestrianContainer';
+            $('#'+id).remove();
+            if(W.selectionManager.getSelectedFeatures().length === 1){
+                if(W.selectionManager.getSelectedFeatures()[0].model.type === 'segment'){
+                    var $container = $('<div>',{id:id, style:'white-space: nowrap;float: right;display: inline;'});
+                    var $button = $('<div>',{id:'csBtnSwapPedestrianRoadType', title:'', style:'display:inline-block;cursor:pointer;'});
+                    $button.append('<span class="fa fa-arrows-h" style="font-size:20px; color:#e84545;"></span>').attr({title: 'Swap between driving-type and walking-type segments.\nWARNING! This will DELETE and recreate the segment.  Nodes may need to be reconnected.'});
+                    $container.append($button);
+                    let $label = $('#edit-panel .contents').find('label').filter(function() { return $(this).text() === 'Road type'; });
+                    $label.css({display: 'inline'}).after($container);
+
+                    $('#csBtnSwapPedestrianRoadType').click(function(){
+                        if (_settings.warnOnPedestrianTypeSwap) {
+                            _settings.warnOnPedestrianTypeSwap = false;
+                            saveSettingsToStorage();
+                            if (!confirm('This will DELETE the segment and recreate it.  Any speed data will be lost, and nodes will need to be reconnected (if applicable).  This message will only be displayed once.  Continue?')) {
+                                return;
+                            }
+                        }
+
+                        var multiaction = new MultiAction();
+                        multiaction.setModel(W.model);
+
+                        //delete the selected segment
+                        let segment = W.selectionManager.getSelectedFeatures()[0];
+                        let oldGeom = segment.geometry.clone();
+                        multiaction.doSubAction(new DelSeg(segment.model));
+
+                        //create the replacement segment in the other segment type (pedestrian -> road & vice versa)
+                        let newRoadType = isPedestrianTypeSegment(segment.model) ? 1 : 5;
+                        segment = new reqSegment({geometry: oldGeom, roadType: newRoadType});
+                        segment.state = OL.State.INSERT;
+                        multiaction.doSubAction(new AddSeg(segment,{
+                            createNodes: !0,
+                            openAllTurns: W.prefs.get('enableTurnsByDefault'),
+                            createTwoWay: W.prefs.get('twoWaySegmentsByDefault'),
+                            snappedFeatures: [null, null]
+                        }));
+                        W.model.actionManager.add(multiaction);
+                        let newId = W.model.repos.segments.idGenerator.lastValue;
+                        let newSegment = W.model.segments.getObjectById(newId);
+                        W.selectionManager.setSelectedModels([newSegment]);
+                    });
+                }
+            }
+        }
+
         function showScriptInfoAlert() {
             /* Check version and alert on update */
             if (_alertUpdate && argsObject.scriptVersion !== _lastScriptVersion) {
@@ -507,6 +577,7 @@
                 '.btn.btn-rth:active {box-shadow:none;transform:translateY(2px)}',
                 'div .cs-rt-btn-container {float:left; margin: 0px 5px 5px 0px;}',
                 '#sidepanel-clicksaver .controls-container {padding:0px;}',
+                '#sidepanel-clicksaver .controls-container label {white-space: normal;}',
 
                 // Lock button formatting
                 '.btn-lh {cursor:pointer;padding:1px 6px;height:22px;border:solid 1px #c1c1c1;margin-right:3px;}',
@@ -519,23 +590,12 @@
             $('<style type="text/css">' + css + '</style>').appendTo('head');
         }
 
-        function onModeChanged(model, modeId, context) {
+        function onModeChanged(model, modeId) {
             if(!modeId || modeId === 1) {
                 initUserPanel();
                 loadSettingsFromStorage();
             }
         }
-
-//         function createSettingRadio(settingName, groupName, groupLabel, buttonMetas) {
-//             let $container = $('<div>',{class:'controls-container'});
-//             $('<input>', {type:'checkbox', class:'csSettingsCheckBox', id:groupName, 'data-setting-name':groupName}).appendTo($container);
-//             $('<label>', {for:groupName}).text(groupLabel).css({marginRight:'10px'}).appendTo($container);
-//             buttonMetas.forEach(function(meta) {
-//                 let $input = $('<input>', {type:'radio', class:'csSettingsCheckBox', name:groupName, id:meta.id, 'data-setting-name':groupName}).css({marginLeft:'5px'}).appendTo($container);
-//                 let $label = $('<label>', {for:meta.id}).text(meta.labelText).appendTo($container);
-//             });
-//             return $container;
-//         }
 
         function createSettingsCheckbox(id, settingName, labelText, titleText, divCss, labelCss, optionalAttributes) {
             let $container = $('<div>',{class:'controls-container'});
@@ -571,8 +631,7 @@
                 $('<a>', {'data-toggle':'tab', href:'#sidepanel-clicksaver'}).append($('<span>').text('CS'))
             );
 
-            let $panel = $('<div>', {class:'tab-pane', id:'sidepanel-clicksaver'})
-            .append(
+            let $panel = $('<div>', {class:'tab-pane', id:'sidepanel-clicksaver'}).append(
                 $('<div>',  {class:'side-panel-section>'}).append(
                     $('<div>', {style: 'margin-bottom:8px;'}).append(
                         $('<div>', {class:'form-group'}).append(
@@ -585,16 +644,20 @@
                         ),
                         $('<label>', {class:'cs-group-label'}).text('Time Savers'),
                         $('<div>', {style:'margin-bottom:8px;'}).append(
-                            createSettingsCheckbox('csAddAltCityButtonCheckBox', 'addAltCityButton', 'Show "Add Alt City" button')
+                            createSettingsCheckbox('csAddAltCityButtonCheckBox', 'addAltCityButton', 'Show "Add alt city" button'),
+                            W.loginManager.user.rank >= 3 ? createSettingsCheckbox('csAddSwapPedestrianButtonCheckBox', 'addSwapPedestrianButton', 'Show "Swap driving<->walking segment type" button') : ''
                         )
                     )
                 )
             );
 
             $panel.append(
-                $('<div>',{style:'margin-top:20px;font-size:10px;color:#999999;'})
-                .append($('<div>').text('version ' + argsObject.scriptVersion + (argsObject.scriptName.toLowerCase().indexOf('beta') > -1 ? ' beta' : '')))
-                .append( $('<div>').append( $('<a>',{href:'https://www.waze.com/forum/viewtopic.php?f=819&t=199894', target:'__blank'}).text(_trans.prefs.discussionForumLinkText) ) )
+                $('<div>',{style:'margin-top:20px;font-size:10px;color:#999999;'}).append(
+                    $('<div>').text('version ' + argsObject.scriptVersion + (argsObject.scriptName.toLowerCase().indexOf('beta') > -1 ? ' beta' : '')),
+                    $('<div>').append(
+                        $('<a>',{href:'https://www.waze.com/forum/viewtopic.php?f=819&t=199894', target:'__blank'}).text(_trans.prefs.discussionForumLinkText)
+                    )
+                )
             );
 
             $('#user-tabs > .nav-tabs').append($tab);
@@ -766,6 +829,9 @@
                             if ($(addedNode).find('label').filter(function() { return $(this).text() === 'Address'; }).length && isChecked('csAddAltCityButtonCheckBox')) {
                                 addAddAltCityButton();
                             }
+                            if (W.loginManager.user.rank >= 3 && $(addedNode).find('label').filter(function() { return $(this).text() === 'Road type'; }).length && isChecked('csAddSwapPedestrianButtonCheckBox')) {
+                                addSwapPedestrianButton();
+                            }
                         }
                     }
                 });
@@ -785,6 +851,9 @@
                 AddOrGetCity = require('Waze/Action/AddOrGetCity');
                 AddOrGetStreet = require('Waze/Action/AddOrGetStreet');
                 MultiAction = require('Waze/Action/MultiAction');
+                AddSeg = require('Waze/Action/AddSegment');
+                reqSegment = require('Waze/Feature/Vector/Segment');
+                DelSeg = require('Waze/Action/DeleteSegment');
             }
             log('Initialized', 1);
         }
@@ -804,49 +873,49 @@
         }
 
         let DEFAULT_TRANSLATION = {
-            "roadTypeButtons":{
-                "St":{"title":"Street","text":"St"},
-                "PS":{"title":"Primary Street","text":"PS"},
-                "mH":{"title":"Minor Highway","text":"mH"},
-                "MH":{"title":"Major Highway","text":"MH"},
-                "Fw":{"title":"Freeway","text":"Fw"},
-                "Rmp":{"title":"Ramp","text":"Rmp"},
-                "OR":{"title":"Off-road / Not Maintained","text":"OR"},
-                "PLR":{"title":"Parking Lot Road","text":"PLR"},
-                "PR":{"title":"Private Road","text":"PR"},
-                "Fer":{"title":"Ferry","text":"Fer"},
-                "WT":{"title":"Walking Trail (non-drivable)","text":"WT"},
-                "PB":{"title":"Pedestrian Boardwalk (non-drivable)","text":"PB"},
-                "Sw":{"title":"Stairway (non-drivable)","text":"Sw"},
-                "RR":{"title":"Railroad (non-drivable)","text":"RR"},
-                "RT":{"title":"Runway/Taxiway (non-drivable)","text":"RT"},
-                "Pw":{"title":"Passageway","text":"Pw"}
+            'roadTypeButtons':{
+                'St':{'title':'Street','text':'St'},
+                'PS':{'title':'Primary Street','text':'PS'},
+                'mH':{'title':'Minor Highway','text':'mH'},
+                'MH':{'title':'Major Highway','text':'MH'},
+                'Fw':{'title':'Freeway','text':'Fw'},
+                'Rmp':{'title':'Ramp','text':'Rmp'},
+                'OR':{'title':'Off-road / Not Maintained','text':'OR'},
+                'PLR':{'title':'Parking Lot Road','text':'PLR'},
+                'PR':{'title':'Private Road','text':'PR'},
+                'Fer':{'title':'Ferry','text':'Fer'},
+                'WT':{'title':'Walking Trail','text':'WT'},
+                'PB':{'title':'Pedestrian Boardwalk','text':'PB'},
+                'Sw':{'title':'Stairway','text':'Sw'},
+                'RR':{'title':'Railroad (non-drivable)','text':'RR'},
+                'RT':{'title':'Runway/Taxiway (non-drivable)','text':'RT'},
+                'Pw':{'title':'Passageway','text':'Pw'}
             },
-            "directionButtons":{
-                "twoWay":{"title":"Two way","text":"Two way"},
-                "oneWayAB":{"title":"One way (A → B)","text":"A → B"},
-                "oneWayBA":{"title":"One way (B → A)","text":"B → A"},
-                "unknown":{"title":"Unknown","text":"?"}
+            'directionButtons':{
+                'twoWay':{'title':'Two way','text':'Two way'},
+                'oneWayAB':{'title':'One way (A → B)','text':'A → B'},
+                'oneWayBA':{'title':'One way (B → A)','text':'B → A'},
+                'unknown':{'title':'Unknown','text':'?'}
             },
-            "groundButtonText":"Ground",
-            "autoLockButtonText":"Auto",
-            "multiLockLevelWarning":"Multiple lock levels selected!",
-            "prefs":{
-                "dropdownHelperGroup":"DROPDOWN HELPERS",
-                "roadTypeButtons":"Add road type buttons",
-                "useOldRoadColors":"Use old road colors (requires refresh)",
-                "setStreetCityToNone":"Set Street/City to None (new PLR only)",
-                "setStreetCityToNone_Title":"NOTE: Only works if connected directly or indirectly to a segment with State/Country already set.",
-                "setCityToConnectedSegCity":"Set City to connected segment's City",
-                "routingTypeButtons":"Add routing type buttons",
-                "elevationButtons":"Add elevation buttons",
-                "parkingCostButtons":"Add PLA cost buttons",
-                "parkingSpacesButtons":"Add PLA estimated spaces buttons",
-                "spaceSaversGroup":"SPACE SAVERS",
-                "inlineRoadType":"Inline road type checkboxes",
-                "avgSpeedCameras":"Hide Avg Speed Cameras",
-                "inlineParkingStuff":"Inline parking/payment type checkboxes",
-                "discussionForumLinkText":"Discussion Forum"
+            'groundButtonText':'Ground',
+            'autoLockButtonText':'Auto',
+            'multiLockLevelWarning':'Multiple lock levels selected!',
+            'prefs':{
+                'dropdownHelperGroup':'DROPDOWN HELPERS',
+                'roadTypeButtons':'Add road type buttons',
+                'useOldRoadColors':'Use old road colors (requires refresh)',
+                'setStreetCityToNone':'Set Street/City to None (new PLR only)',
+                'setStreetCityToNone_Title':'NOTE: Only works if connected directly or indirectly to a segment with State/Country already set.',
+                'setCityToConnectedSegCity':'Set City to connected segment\'s City',
+                'routingTypeButtons':'Add routing type buttons',
+                'elevationButtons':'Add elevation buttons',
+                'parkingCostButtons':'Add PLA cost buttons',
+                'parkingSpacesButtons':'Add PLA estimated spaces buttons',
+                'spaceSaversGroup':'SPACE SAVERS',
+                'inlineRoadType':'Inline road type checkboxes',
+                'avgSpeedCameras':'Hide Avg Speed Cameras',
+                'inlineParkingStuff':'Inline parking/payment type checkboxes',
+                'discussionForumLinkText':'Discussion Forum'
             }
         };
 
@@ -903,14 +972,14 @@
             }
 
             function init_WMEQuickAltDel() {
-                W.selectionManager.events.register("selectionchanged", null, () => errorHandler(updateAltStreetCtrls));
-                W.model.actionManager.events.register("afterundoaction",null, () => errorHandler(updateAltStreetCtrls));
-                W.model.actionManager.events.register("hasActions",null, () => errorHandler(()=>setTimeout(updateAltStreetCtrls, 250)));
-                W.model.actionManager.events.register("noActions",null, () => errorHandler(()=>setTimeout(updateAltStreetCtrls, 250)));
-                W.model.actionManager.events.register("afteraction",null, () => errorHandler(updateAltStreetCtrls));
+                W.selectionManager.events.register('selectionchanged', null, () => errorHandler(updateAltStreetCtrls));
+                W.model.actionManager.events.register('afterundoaction',null, () => errorHandler(updateAltStreetCtrls));
+                W.model.actionManager.events.register('hasActions',null, () => errorHandler(()=>setTimeout(updateAltStreetCtrls, 250)));
+                W.model.actionManager.events.register('noActions',null, () => errorHandler(()=>setTimeout(updateAltStreetCtrls, 250)));
+                W.model.actionManager.events.register('afteraction',null, () => errorHandler(updateAltStreetCtrls));
 
-                if (typeof(require) !== "undefined") {
-                    UpdateObject = require("Waze/Action/UpdateObject");
+                if (typeof(require) !== 'undefined') {
+                    UpdateObject = require('Waze/Action/UpdateObject');
                 }
 
                 let observer = new MutationObserver(function(mutations) {
@@ -945,9 +1014,9 @@
     }
 
     function injectMain(argsObject) {
-        let scriptElem = document.createElement("script");
-        scriptElem.textContent = '(function(){' + main.toString() + "\n main(" + JSON.stringify(argsObject).replace("'","\\'") + ")})();";
-        scriptElem.setAttribute("type", "application/javascript");
+        let scriptElem = document.createElement('script');
+        scriptElem.textContent = '(function(){' + main.toString() + '\n main(' + JSON.stringify(argsObject).replace('\'','\\\'') + ')})();';
+        scriptElem.setAttribute('type', 'application/javascript');
         document.body.appendChild(scriptElem);
     }
 
@@ -983,7 +1052,7 @@
     }
 
     GM_xmlhttpRequest({
-        url: 'https://docs.google.com/spreadsheets/d/1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/pub?gid=0&single=true&output=tsv',
+        url: TRANSLATIONS_URL,
         method: 'GET',
         overrideMimeType: 'text/csv',
         onload: function(res) {
