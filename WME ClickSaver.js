@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver (beta)
 // @namespace       https://greasyfork.org/users/45389
-// @version         2018.08.01.001
+// @version         2018.08.02.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -15,6 +15,7 @@
 /* global W */
 /* global Node */
 /* global I18n */
+/* global OL */
 
 (function() {
     const TRANSLATIONS_URL = 'https://docs.google.com/spreadsheets/d/1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/pub?gid=0&single=true&output=tsv';
@@ -517,7 +518,6 @@
                         var multiaction = new MultiAction();
                         multiaction.setModel(W.model);
 
-                        debugger;
                         //delete the selected segment
                         let segment = W.selectionManager.getSelectedFeatures()[0];
                         let oldGeom = segment.geometry.clone();
