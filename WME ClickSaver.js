@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2018.08.02.002
+// @version         2018.08.17.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -1063,10 +1063,10 @@
             } else {
                 args = { scriptName: GM_info.script.name, scriptVersion: GM_info.script.version, useDefaultTranslation: true };
             }
-            injectMain(args);
+            window.onload = function() { injectMain(args); }
         },
         onerror: function() {
-            injectMain({ scriptName: GM_info.script.name, scriptVersion: GM_info.script.version, useDefaultTranslation: true });
+            window.onload = function() { injectMain({ scriptName: GM_info.script.name, scriptVersion: GM_info.script.version, useDefaultTranslation: true }); }
         }
     });
 
