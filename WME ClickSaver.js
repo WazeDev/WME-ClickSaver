@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2018.08.18.001
+// @version         2018.08.18.002
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -259,8 +259,6 @@
                 return;
             }
 
-
-
             segments.forEach(function(segment) {
                 let segModel = segment.model;
                 if (segModel.attributes.primaryStreetID === null) {
@@ -286,18 +284,7 @@
                             m_action.doSubAction(addStreetAction);
                             emptyStreet = W.model.streets.getByAttributes(newStreet)[0];
                         }
-
-                        var newAttributes, UpdateFeatureAddress = require('Waze/Action/UpdateFeatureAddress');
-                        newAttributes = {
-                            countryID: country.id,
-                            stateID: state.id,
-                            cityName: '',
-                            emptyCity: true,
-                            emptyStreet: true
-                        };
-
-                        let action3 = new UpdateFeatureAddress(segModel, newAttributes);
-                        //let action3 = new UpdateObject(segModel, {primaryStreetID: emptyStreet.id});
+                        let action3 = new UpdateObject(segModel, {primaryStreetID: emptyStreet.id});
                         m_action.doSubAction(action3);
                         W.model.actionManager.add(m_action);
                     }
