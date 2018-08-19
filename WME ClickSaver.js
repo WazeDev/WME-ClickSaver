@@ -963,7 +963,7 @@
             function bootstrap_WMEQuickAltDel() {
                 if (window.require && W && W.loginManager &&
                     W.loginManager.events.register &&
-                    W.map && W.loginManager.isLoggedIn()) {
+                    W.map && W.loginManager.user) {
                     init_WMEQuickAltDel();
                 } else {
                     setTimeout(function () {
