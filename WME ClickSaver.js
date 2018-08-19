@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2018.08.17.001
+// @version         2018.08.18.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -16,6 +16,7 @@
 /* global Node */
 /* global I18n */
 /* global OL */
+/* global $ */
 
 (function() {
     const TRANSLATIONS_URL = 'https://docs.google.com/spreadsheets/d/1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/pub?gid=0&single=true&output=tsv';
@@ -258,6 +259,8 @@
                 return;
             }
 
+
+
             segments.forEach(function(segment) {
                 let segModel = segment.model;
                 if (segModel.attributes.primaryStreetID === null) {
@@ -283,7 +286,18 @@
                             m_action.doSubAction(addStreetAction);
                             emptyStreet = W.model.streets.getByAttributes(newStreet)[0];
                         }
-                        let action3 = new UpdateObject(segModel, {primaryStreetID: emptyStreet.id});
+
+                        var newAttributes, UpdateFeatureAddress = require('Waze/Action/UpdateFeatureAddress');
+                        newAttributes = {
+                            countryID: country.id,
+                            stateID: state.id,
+                            cityName: '',
+                            emptyCity: true,
+                            emptyStreet: true
+                        };
+
+                        let action3 = new UpdateFeatureAddress(segModel, newAttributes);
+                        //let action3 = new UpdateObject(segModel, {primaryStreetID: emptyStreet.id});
                         m_action.doSubAction(action3);
                         W.model.actionManager.add(m_action);
                     }
@@ -861,7 +875,7 @@
         function bootstrap() {
             if (window.require && W && W.loginManager &&
                 W.loginManager.events.register &&
-                W.map && W.loginManager.isLoggedIn()) {
+                W.map && W.loginManager.user) {
                 log('Initializing...', 1);
                 init();
             } else {
@@ -1063,10 +1077,10 @@
             } else {
                 args = { scriptName: GM_info.script.name, scriptVersion: GM_info.script.version, useDefaultTranslation: true };
             }
-            window.onload = function() { injectMain(args); }
+            injectMain(args);
         },
         onerror: function() {
-            window.onload = function() { injectMain({ scriptName: GM_info.script.name, scriptVersion: GM_info.script.version, useDefaultTranslation: true }); }
+            injectMain({ scriptName: GM_info.script.name, scriptVersion: GM_info.script.version, useDefaultTranslation: true });
         }
     });
 
