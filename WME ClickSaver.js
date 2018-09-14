@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver (beta)
 // @namespace       https://greasyfork.org/users/45389
-// @version         2018.08.18.003
+// @version         2018.09.14.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -26,7 +26,7 @@
         //'use strict';
         let _debugLevel = 0;
         let _roadTypeDropDownSelector = 'select[name="roadType"]';
-        let _elevationDropDownSelector = 'select[name="level"]';
+        let _elevationDropDownSelector = '.side-panel-section select[name="level"]';
         let _routingTypeDropDownSelector = 'select[name="routingRoadType"]';
         let _parkingSpacesDropDownSelector = 'select[name="estimatedNumberOfSpots"]';
         let _parkingCostDropDownSelector = 'select[name="costType"]';
