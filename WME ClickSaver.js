@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2018.09.14.001
+// @version         2018.12.14.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -66,6 +66,7 @@
         let UpdateObject,
             AddOrGetCity,
             AddOrGetStreet,
+            UpdateFeatureAddress,
             MultiAction,
             AddSeg,
             reqSegment,
@@ -238,20 +239,6 @@
             return null;
         }
 
-        function getEmptyCity(stateID) {
-            let emptyCity = null;
-            W.model.cities.getObjectArray().forEach(function(city) {
-                if (city.attributes.stateID === stateID && city.attributes.isEmpty) {
-                    emptyCity = city;
-                }
-            });
-            return emptyCity;
-        }
-        function getCity(cityID) {
-            let cities = W.model.cities.getByIds([cityID]);
-            return cities.length ? cities[0] : null;
-        }
-
         function setStreetAndCity () {
             let segments = W.selectionManager.getSelectedFeatures();
             let setCity = isChecked('csSetNewPLRCityCheckBox');
@@ -259,37 +246,27 @@
                 return;
             }
 
+            let mAction = new MultiAction();
+            mAction.setModel(W.model);
             segments.forEach(function(segment) {
                 let segModel = segment.model;
                 if (segModel.attributes.primaryStreetID === null) {
                     let stateID = getFirstConnectedStateID(segment.model);
                     if (stateID) {
-                        let state = W.model.states.getObjectById(stateID);
-                        let country = W.model.countries.getObjectById(state.countryID);
-
-                        let m_action = new MultiAction();
                         let cityToSet;
-                        m_action.setModel(W.model);
-                        if (setCity) cityToSet = getCity(getFirstConnectedCityID(segment.model));
-                        if (!cityToSet) cityToSet = getEmptyCity(state.id);
-                        if (!cityToSet) {
-                            let addCityAction = new AddOrGetCity(state, country, '', true);
-                            m_action.doSubAction(addCityAction);
-                            cityToSet = getEmptyCity(state.id);
-                        }
-                        let newStreet = {isEmpty:true, cityID:cityToSet.attributes.id};
-                        let emptyStreet = W.model.streets.getByAttributes(newStreet)[0];
-                        if (!emptyStreet) {
-                            let addStreetAction = new AddOrGetStreet('', cityToSet, true);
-                            m_action.doSubAction(addStreetAction);
-                            emptyStreet = W.model.streets.getByAttributes(newStreet)[0];
-                        }
-                        let action3 = new UpdateObject(segModel, {primaryStreetID: emptyStreet.id});
-                        m_action.doSubAction(action3);
-                        W.model.actionManager.add(m_action);
+                        if (setCity) cityToSet = W.model.cities.getObjectById(getFirstConnectedCityID(segment.model));
+                        let cityName = cityToSet ? cityToSet.attributes.name : '';
+                        var countryID = W.model.states.getObjectById(stateID).countryID;
+                        var action = new UpdateFeatureAddress (segModel, {countryID: countryID, stateID: stateID, cityName: cityName, emptyStreet: true}, {streetIDField: "primaryStreetID"})
+                        mAction.doSubAction(action);
                     }
                 }
             });
+            let count = mAction.subActions.length;
+            if (count) {
+                mAction._description = `Updated address on ${count} segment${count>1?'s':''}`;
+                W.model.actionManager.add(mAction);
+            }
         }
 
         function onAddAltCityButtonClick() {
@@ -394,7 +371,7 @@
             let dropdownDisabled = $dropDown.attr('disabled') === 'disabled';
             let optionNodes = $(_parkingSpacesDropDownSelector + ' option');
 
-            for (i=0; i<optionNodes.length; i++) {
+            for (let i=0; i<optionNodes.length; i++) {
                 let $option = $(optionNodes[i]);
                 let text = $option.text();
                 let selected = $option.val() === $dropDown.val();
@@ -431,7 +408,7 @@
             let $div = $('<div>',{id:'csParkingCostContainer'});
             let dropdownDisabled = $dropDown.attr('disabled') === 'disabled';
             let optionNodes = $(_parkingCostDropDownSelector + ' option');
-            for (i=0; i<optionNodes.length; i++) {
+            for (let i=0; i<optionNodes.length; i++) {
                 let $option = $(optionNodes[i]);
                 let text = $option.text();
                 let selected = $option.val() === $dropDown.val();
@@ -851,6 +828,7 @@
                 UpdateObject = require('Waze/Action/UpdateObject');
                 AddOrGetCity = require('Waze/Action/AddOrGetCity');
                 AddOrGetStreet = require('Waze/Action/AddOrGetStreet');
+                UpdateFeatureAddress = require('Waze/Action/UpdateFeatureAddress');
                 MultiAction = require('Waze/Action/MultiAction');
                 AddSeg = require('Waze/Action/AddSegment');
                 reqSegment = require('Waze/Feature/Vector/Segment');
