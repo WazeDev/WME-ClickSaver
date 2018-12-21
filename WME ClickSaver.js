@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver (beta)
 // @namespace       https://greasyfork.org/users/45389
-// @version         2018.12.17.001
+// @version         2018.12.21.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -479,7 +479,7 @@
                 if(W.selectionManager.getSelectedFeatures()[0].model.type === 'segment'){
                     var $container = $('<div>',{id:id, style:'white-space: nowrap;float: right;display: inline;'});
                     var $button = $('<div>',{id:'csBtnSwapPedestrianRoadType', title:'', style:'display:inline-block;cursor:pointer;'});
-                    $button.append('<span class="fa fa-arrows-alt-h" style="font-size:20px; color:#e84545;"></span>').attr({title: 'Swap between driving-type and walking-type segments.\nWARNING! This will DELETE and recreate the segment.  Nodes may need to be reconnected.'});
+                    $button.append('<span class="fa fa-arrows-h" style="font-size:20px; color:#e84545;"></span>').attr({title: 'Swap between driving-type and walking-type segments.\nWARNING! This will DELETE and recreate the segment.  Nodes may need to be reconnected.'});
                     $container.append($button);
                     let $label = $('select[name="roadType"]').closest('.form-group').children('label').first();
                     $label.css({display: 'inline'}).after($container);
