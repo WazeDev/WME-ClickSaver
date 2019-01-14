@@ -6,7 +6,7 @@
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
 // @license         GNU GPLv3
-// @connect         google.com
+// @connect         sheets.googleapis.com
 // @contributionURL https://github.com/WazeDev/Thank-The-Authors
 // @grant           GM_xmlhttpRequest
 // ==/UserScript==
@@ -22,12 +22,12 @@
 /* global localStorage */
 /* global confirm */
 /* global alert */
-/* global GM_xmlhttpRequest */
+/* global atob */
 
 /* eslint-disable global-require */
-
-const TRANSLATIONS_URL = 'https://docs.google.com/spreadsheets/d/1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/pub?gid=0&single=true&output=tsv';
-
+const TRANSLATIONS_URL = 'https://sheets.googleapis.com/v4/spreadsheets/1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/values/ClickSaver';
+const API_KEY = 'YTJWNVBVRkplbUZUZVVGeVVVZFRUa1JaZFZwQlpXOVJlbmRhWWtOSVptaGFaMjl6VVhScGRXSnBidz09';
+const DEC = s => atob(atob(s));
 // This function is injected into the page.
 function main(argsObject) {
     /* eslint-disable object-curly-newline */
@@ -1101,33 +1101,21 @@ function convertTranslationsArrayToObject(arrayIn) {
     return translations;
 }
 
-GM_xmlhttpRequest({
-    url: TRANSLATIONS_URL,
-    method: 'GET',
-    overrideMimeType: 'text/csv',
-    onload(res) {
-        let args;
-        if (res.status === 200) {
-            const translationsArray = res.responseText.split(/\r?\n/).map(t => t.split(/\t/));
-            args = {
-                scriptName: GM_info.script.name,
-                scriptVersion: GM_info.script.version,
-                translations: convertTranslationsArrayToObject(translationsArray)
-            };
-        } else {
-            args = {
-                scriptName: GM_info.script.name,
-                scriptVersion: GM_info.script.version,
-                useDefaultTranslation: true
-            };
-        }
-        injectMain(args);
-    },
-    onerror() {
-        injectMain({
-            scriptName: GM_info.script.name,
-            scriptVersion: GM_info.script.version,
-            useDefaultTranslation: true
-        });
-    }
+// This call retrieves the data from the translations spreadsheet and then injects
+// the main code into the page.  If the spreadsheet call fails, the default English
+// translation is used.
+$.getJSON(`${TRANSLATIONS_URL}?${DEC(API_KEY)}`).then(res => {
+    const args = {
+        scriptName: GM_info.script.name,
+        scriptVersion: GM_info.script.version,
+        translations: convertTranslationsArrayToObject(res.values)
+    };
+    injectMain(args);
+}).fail(() => {
+    console.error('ClickSaver: Error loading translations spreadsheet. Using default translation (English).');
+    injectMain({
+        scriptName: GM_info.script.name,
+        scriptVersion: GM_info.script.version,
+        useDefaultTranslation: true
+    });
 });
