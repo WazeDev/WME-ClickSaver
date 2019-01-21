@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver (beta)
 // @namespace       https://greasyfork.org/users/45389
-// @version         2019.01.13.001
+// @version         2019.01.20.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -26,7 +26,7 @@
 
 /* eslint-disable global-require */
 const TRANSLATIONS_URL = 'https://sheets.googleapis.com/v4/spreadsheets/1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/values/ClickSaver';
-const API_KEY = 'YTJWNVBVRkplbUZUZVVGeVVVZFRUa1JaZFZwQlpXOVJlbmRhWWtOSVptaGFaMjl6VVhScGRXSnBidz09';
+const API_KEY = 'YTJWNVBVRkplbUZUZVVGMFl6aFVjMjVOTW0wNU5GaG5kVE40TUZoNWJVZEhWbU5rUjNacVdtdFlWUT09';
 const DEC = s => atob(atob(s));
 // This function is injected into the page.
 function main(argsObject) {
