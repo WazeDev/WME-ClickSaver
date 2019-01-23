@@ -79,7 +79,7 @@ function main(argsObject) {
             dropdownHelperGroup: 'DROPDOWN HELPERS',
             roadTypeButtons: 'Add road type buttons',
             useOldRoadColors: 'Use old road colors (requires refresh)',
-            setStreetCityToNone: 'Set Street/City to None (new PLR only)',
+            setStreetCityToNone: 'Set Street/City to None (new seg\'s only)',
             setStreetCityToNone_Title: 'NOTE: Only works if connected directly or indirectly'
                 + ' to a segment with State / Country already set.',
             setCityToConnectedSegCity: 'Set City to connected segment\'s City',
@@ -152,6 +152,8 @@ function main(argsObject) {
             parkingSpacesButtons: true,
             setNewPLRStreetToNone: true,
             setNewPLRCity: true,
+            setNewPRStreetToNone: false,
+            setNewPRCity: false,
             addAltCityButton: true,
             addSwapPedestrianButton: false,
             useOldRoadColors: false,
@@ -183,8 +185,10 @@ function main(argsObject) {
         setChecked('csParkingCostButtonsCheckBox', _settings.parkingCostButtons);
         setChecked('csRoutingTypeCheckBox', _settings.routingTypeButtons);
         setChecked('csClearNewPLRCheckBox', _settings.setNewPLRStreetToNone);
+        setChecked('csClearNewPRCheckBox', _settings.setNewPRStreetToNone);
         setChecked('csUseOldRoadColorsCheckBox', _settings.useOldRoadColors);
         setChecked('csSetNewPLRCityCheckBox', _settings.setNewPLRCity);
+        setChecked('csSetNewPRCityCheckBox', _settings.setNewPRCity);
         setChecked('csAddAltCityButtonCheckBox', _settings.addAltCityButton);
         setChecked('csAddSwapPedestrianButtonCheckBox', _settings.addSwapPedestrianButton);
     }
@@ -200,8 +204,10 @@ function main(argsObject) {
                 parkingCostButtons: _settings.parkingCostButtons,
                 parkingSpacesButtons: _settings.parkingSpacesButtons,
                 setNewPLRStreetToNone: _settings.setNewPLRStreetToNone,
+                setNewPRStreetToNone: _settings.setNewPRStreetToNone,
                 useOldRoadColors: _settings.useOldRoadColors,
                 setNewPLRCity: _settings.setNewPLRCity,
+                setNewPRCity: _settings.setNewPRCity,
                 addAltCityButton: _settings.addAltCityButton,
                 addSwapPedestrianButton: _settings.addSwapPedestrianButton,
                 warnOnPedestrianTypeSwap: _settings.warnOnPedestrianTypeSwap
@@ -298,9 +304,8 @@ function main(argsObject) {
         return null;
     }
 
-    function setStreetAndCity() {
+    function setStreetAndCity(setCity) {
         const segments = W.selectionManager.getSelectedFeatures();
-        const setCity = isChecked('csSetNewPLRCityCheckBox');
         if (segments.length === 0 || segments[0].model.type !== 'segment') {
             return;
         }
@@ -341,7 +346,9 @@ function main(argsObject) {
     function onRoadTypeButtonClick(roadTypeAbbr) {
         $(ROAD_TYPE_DROPDOWN_SELECTOR).val(ROAD_TYPES[roadTypeAbbr].val).change();
         if (roadTypeAbbr === 'PLR' && isChecked('csClearNewPLRCheckBox') && require) {
-            setStreetAndCity();
+            setStreetAndCity(isChecked('csSetNewPLRCityCheckBox'));
+        } else if (roadTypeAbbr === 'PR' && isChecked('csClearNewPRCheckBox') && require) {
+            setStreetAndCity(isChecked('csSetNewPRCityCheckBox'));
         }
     }
 
@@ -727,13 +734,13 @@ function main(argsObject) {
                     'data-road-type': roadTypeAbbr
                 })
             );
-            if (roadTypeAbbr === 'PLR') {
+            if (roadTypeAbbr === 'PLR' || roadTypeAbbr === 'PR') {
                 $roadTypesDiv.append(
                     // TODO css
-                    createSettingsCheckbox('csClearNewPLRCheckBox', 'setNewPLRStreetToNone',
+                    createSettingsCheckbox(`csClearNew${roadTypeAbbr}CheckBox`, `setNew${roadTypeAbbr}StreetToNone`,
                         _trans.prefs.setStreetCityToNone, _trans.prefs.setStreetCityToNone_Title,
                         { paddingLeft: '20px', display: 'inline', marginRight: '4px' }, { fontStyle: 'italic' }),
-                    createSettingsCheckbox('csSetNewPLRCityCheckBox', 'setNewPLRCity',
+                    createSettingsCheckbox(`csSetNew${roadTypeAbbr}CityCheckBox`, `setNew${roadTypeAbbr}City`,
                         _trans.prefs.setCityToConnectedSegCity, '',
                         { paddingLeft: '30px', marginRight: '4px' }, { fontStyle: 'italic' })
                 );
