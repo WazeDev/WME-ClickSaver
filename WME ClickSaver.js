@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2019.01.23.001
+// @version         2019.01.23.002
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -243,65 +243,28 @@ function main(argsObject) {
         return IDs;
     }
 
-    function getFirstConnectedStateID(startSegment) {
-        let stateID = null;
+    function getFirstConnectedSegmentAddress(startSegment) {
         const nonMatches = [];
-        const segmentIDsToSearch = [startSegment.attributes.id];
-        while (stateID === null && segmentIDsToSearch.length > 0) {
+        const segmentIDsToSearch = [startSegment.getID()];
+        while (segmentIDsToSearch.length > 0) {
             const startSegmentID = segmentIDsToSearch.pop();
             startSegment = W.model.segments.getObjectById(startSegmentID);
             const connectedSegmentIDs = getConnectedSegmentIDs(startSegmentID);
             for (let i = 0; i < connectedSegmentIDs.length; i++) {
-                const streetID = W.model.segments.getObjectById(connectedSegmentIDs[i]).attributes.primaryStreetID;
-                if (streetID !== null && typeof (streetID) !== 'undefined') {
-                    const { cityID } = W.model.streets.getObjectById(streetID);
-                    ({ stateID } = W.model.cities.getObjectById(cityID).attributes);
-                    break;
+                const addr = W.model.segments.getObjectById(connectedSegmentIDs[i]).getAddress();
+                if (!addr.isEmpty()) {
+                    return addr;
                 }
             }
 
-            if (stateID === null) {
-                nonMatches.push(startSegmentID);
-                connectedSegmentIDs.forEach(segmentID => {
-                    if (nonMatches.indexOf(segmentID) === -1 && segmentIDsToSearch.indexOf(segmentID) === -1) {
-                        segmentIDsToSearch.push(segmentID);
-                    }
-                });
-            } else {
-                return stateID;
-            }
-        }
-        return null;
-    }
-
-    function getFirstConnectedCityID(startSegment) {
-        let cityID = null;
-        const nonMatches = [];
-        const segmentIDsToSearch = [startSegment.attributes.id];
-        while (cityID === null && segmentIDsToSearch.length > 0) {
-            const startSegmentID = segmentIDsToSearch.pop();
-            startSegment = W.model.segments.getObjectById(startSegmentID);
-            const connectedSegmentIDs = getConnectedSegmentIDs(startSegmentID);
-            for (let i = 0; i < connectedSegmentIDs.length; i++) {
-                const { primaryStreetID } = W.model.segments.getObjectById(connectedSegmentIDs[i]).attributes;
-                if (primaryStreetID !== null && typeof (primaryStreetID) !== 'undefined') {
-                    ({ cityID } = W.model.streets.getObjectById(primaryStreetID));
-                    break;
+            nonMatches.push(startSegmentID);
+            connectedSegmentIDs.forEach(segmentID => {
+                if (nonMatches.indexOf(segmentID) === -1 && segmentIDsToSearch.indexOf(segmentID) === -1) {
+                    segmentIDsToSearch.push(segmentID);
                 }
-            }
-
-            if (cityID === null) {
-                nonMatches.push(startSegmentID);
-                connectedSegmentIDs.forEach(segmentID => {
-                    if (nonMatches.indexOf(segmentID) === -1 && segmentIDsToSearch.indexOf(segmentID) === -1) {
-                        segmentIDsToSearch.push(segmentID);
-                    }
-                });
-            } else {
-                return cityID;
-            }
+            });
         }
-        return null;
+        return undefined;
     }
 
     function setStreetAndCity(setCity) {
@@ -315,14 +278,16 @@ function main(argsObject) {
         segments.forEach(segment => {
             const segModel = segment.model;
             if (segModel.attributes.primaryStreetID === null) {
-                const stateID = getFirstConnectedStateID(segment.model);
-                if (stateID) {
+                const addr = getFirstConnectedSegmentAddress(segModel);
+                if (addr && !addr.isEmpty()) {
                     let cityToSet;
-                    if (setCity) cityToSet = W.model.cities.getObjectById(getFirstConnectedCityID(segment.model));
-                    const cityName = cityToSet ? cityToSet.attributes.name : '';
-                    const { countryID } = W.model.states.getObjectById(stateID);
+                    if (setCity) cityToSet = addr.getCity();
                     const action = new UpdateFeatureAddress(segModel, {
-                        countryID, stateID, cityName, emptyStreet: true
+                        countryID: addr.getCountry().id,
+                        stateID: addr.getState().id,
+                        cityName: cityToSet ? addr.getCityName() : '',
+                        emptyStreet: true,
+                        emptyCity: !setCity
                     }, { streetIDField: 'primaryStreetID' });
                     mAction.doSubAction(action);
                 }
