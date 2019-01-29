@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver (beta)
 // @namespace       https://greasyfork.org/users/45389
-// @version         2019.01.25.002
+// @version         2019.01.29.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -580,25 +580,32 @@ function main(argsObject) {
                         }
                     }
 
-                    const multiaction = new MultiAction();
-                    multiaction.setModel(W.model);
+                    //  const multiaction = new MultiAction();
+                    //  multiaction.setModel(W.model);
 
                     // delete the selected segment
                     let segment = W.selectionManager.getSelectedFeatures()[0];
                     const oldGeom = segment.geometry.clone();
-                    multiaction.doSubAction(new DelSeg(segment.model));
+                    W.model.actionManager.add(new DelSeg(segment.model));
+                    //  multiaction.doSubAction(new DelSeg(segment.model));
 
                     // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
                     const newRoadType = isPedestrianTypeSegment(segment.model) ? 1 : 5;
                     segment = new Segment({ geometry: oldGeom, roadType: newRoadType });
                     segment.state = OL.State.INSERT;
-                    multiaction.doSubAction(new AddSeg(segment, {
+                    W.model.actionManager.add(new AddSeg(segment, {
                         createNodes: !0,
                         openAllTurns: W.prefs.get('enableTurnsByDefault'),
                         createTwoWay: W.prefs.get('twoWaySegmentsByDefault'),
                         snappedFeatures: [null, null]
                     }));
-                    W.model.actionManager.add(multiaction);
+                    // multiaction.doSubAction(new AddSeg(segment, {
+                    //     createNodes: !0,
+                    //     openAllTurns: W.prefs.get('enableTurnsByDefault'),
+                    //     createTwoWay: W.prefs.get('twoWaySegmentsByDefault'),
+                    //     snappedFeatures: [null, null]
+                    // }));
+                    // W.model.actionManager.add(multiaction);
                     const newId = W.model.repos.segments.idGenerator.lastValue;
                     const newSegment = W.model.segments.getObjectById(newId);
                     W.selectionManager.setSelectedModels([newSegment]);
