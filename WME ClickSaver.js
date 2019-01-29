@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2019.01.24.001
+// @version         2019.01.29.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -79,7 +79,7 @@ function main(argsObject) {
             dropdownHelperGroup: 'DROPDOWN HELPERS',
             roadTypeButtons: 'Add road type buttons',
             useOldRoadColors: 'Use old road colors (requires refresh)',
-            setStreetCityToNone: 'Set Street/City to None (new PLR only)',
+            setStreetCityToNone: 'Set Street/City to None (new seg\'s only)',
             setStreetCityToNone_Title: 'NOTE: Only works if connected directly or indirectly'
                 + ' to a segment with State / Country already set.',
             setCityToConnectedSegCity: 'Set City to connected segment\'s City',
@@ -152,6 +152,8 @@ function main(argsObject) {
             parkingSpacesButtons: true,
             setNewPLRStreetToNone: true,
             setNewPLRCity: true,
+            setNewPRStreetToNone: false,
+            setNewPRCity: false,
             addAltCityButton: true,
             addSwapPedestrianButton: false,
             useOldRoadColors: false,
@@ -183,8 +185,10 @@ function main(argsObject) {
         setChecked('csParkingCostButtonsCheckBox', _settings.parkingCostButtons);
         setChecked('csRoutingTypeCheckBox', _settings.routingTypeButtons);
         setChecked('csClearNewPLRCheckBox', _settings.setNewPLRStreetToNone);
+        setChecked('csClearNewPRCheckBox', _settings.setNewPRStreetToNone);
         setChecked('csUseOldRoadColorsCheckBox', _settings.useOldRoadColors);
         setChecked('csSetNewPLRCityCheckBox', _settings.setNewPLRCity);
+        setChecked('csSetNewPRCityCheckBox', _settings.setNewPRCity);
         setChecked('csAddAltCityButtonCheckBox', _settings.addAltCityButton);
         setChecked('csAddSwapPedestrianButtonCheckBox', _settings.addSwapPedestrianButton);
     }
@@ -200,8 +204,10 @@ function main(argsObject) {
                 parkingCostButtons: _settings.parkingCostButtons,
                 parkingSpacesButtons: _settings.parkingSpacesButtons,
                 setNewPLRStreetToNone: _settings.setNewPLRStreetToNone,
+                setNewPRStreetToNone: _settings.setNewPRStreetToNone,
                 useOldRoadColors: _settings.useOldRoadColors,
                 setNewPLRCity: _settings.setNewPLRCity,
+                setNewPRCity: _settings.setNewPRCity,
                 addAltCityButton: _settings.addAltCityButton,
                 addSwapPedestrianButton: _settings.addSwapPedestrianButton,
                 warnOnPedestrianTypeSwap: _settings.warnOnPedestrianTypeSwap
@@ -237,70 +243,32 @@ function main(argsObject) {
         return IDs;
     }
 
-    function getFirstConnectedStateID(startSegment) {
-        let stateID = null;
+    function getFirstConnectedSegmentAddress(startSegment) {
         const nonMatches = [];
-        const segmentIDsToSearch = [startSegment.attributes.id];
-        while (stateID === null && segmentIDsToSearch.length > 0) {
+        const segmentIDsToSearch = [startSegment.getID()];
+        while (segmentIDsToSearch.length > 0) {
             const startSegmentID = segmentIDsToSearch.pop();
             startSegment = W.model.segments.getObjectById(startSegmentID);
             const connectedSegmentIDs = getConnectedSegmentIDs(startSegmentID);
             for (let i = 0; i < connectedSegmentIDs.length; i++) {
-                const streetID = W.model.segments.getObjectById(connectedSegmentIDs[i]).attributes.primaryStreetID;
-                if (streetID !== null && typeof (streetID) !== 'undefined') {
-                    const { cityID } = W.model.streets.getObjectById(streetID);
-                    ({ stateID } = W.model.cities.getObjectById(cityID).attributes);
-                    break;
+                const addr = W.model.segments.getObjectById(connectedSegmentIDs[i]).getAddress();
+                if (!addr.isEmpty()) {
+                    return addr;
                 }
             }
 
-            if (stateID === null) {
-                nonMatches.push(startSegmentID);
-                connectedSegmentIDs.forEach(segmentID => {
-                    if (nonMatches.indexOf(segmentID) === -1 && segmentIDsToSearch.indexOf(segmentID) === -1) {
-                        segmentIDsToSearch.push(segmentID);
-                    }
-                });
-            } else {
-                return stateID;
-            }
-        }
-        return null;
-    }
-
-    function getFirstConnectedCityID(startSegment) {
-        let cityID = null;
-        const nonMatches = [];
-        const segmentIDsToSearch = [startSegment.attributes.id];
-        while (cityID === null && segmentIDsToSearch.length > 0) {
-            const startSegmentID = segmentIDsToSearch.pop();
-            startSegment = W.model.segments.getObjectById(startSegmentID);
-            const connectedSegmentIDs = getConnectedSegmentIDs(startSegmentID);
-            for (let i = 0; i < connectedSegmentIDs.length; i++) {
-                const { primaryStreetID } = W.model.segments.getObjectById(connectedSegmentIDs[i]).attributes;
-                if (primaryStreetID !== null && typeof (primaryStreetID) !== 'undefined') {
-                    ({ cityID } = W.model.streets.getObjectById(primaryStreetID));
-                    break;
+            nonMatches.push(startSegmentID);
+            connectedSegmentIDs.forEach(segmentID => {
+                if (nonMatches.indexOf(segmentID) === -1 && segmentIDsToSearch.indexOf(segmentID) === -1) {
+                    segmentIDsToSearch.push(segmentID);
                 }
-            }
-
-            if (cityID === null) {
-                nonMatches.push(startSegmentID);
-                connectedSegmentIDs.forEach(segmentID => {
-                    if (nonMatches.indexOf(segmentID) === -1 && segmentIDsToSearch.indexOf(segmentID) === -1) {
-                        segmentIDsToSearch.push(segmentID);
-                    }
-                });
-            } else {
-                return cityID;
-            }
+            });
         }
-        return null;
+        return undefined;
     }
 
-    function setStreetAndCity() {
+    function setStreetAndCity(setCity) {
         const segments = W.selectionManager.getSelectedFeatures();
-        const setCity = isChecked('csSetNewPLRCityCheckBox');
         if (segments.length === 0 || segments[0].model.type !== 'segment') {
             return;
         }
@@ -310,14 +278,15 @@ function main(argsObject) {
         segments.forEach(segment => {
             const segModel = segment.model;
             if (segModel.attributes.primaryStreetID === null) {
-                const stateID = getFirstConnectedStateID(segment.model);
-                if (stateID) {
-                    let cityToSet;
-                    if (setCity) cityToSet = W.model.cities.getObjectById(getFirstConnectedCityID(segment.model));
-                    const cityName = cityToSet ? cityToSet.attributes.name : '';
-                    const { countryID } = W.model.states.getObjectById(stateID);
+                const addr = getFirstConnectedSegmentAddress(segModel);
+                if (addr && !addr.isEmpty()) {
+                    const cityNameToSet = setCity && !addr.getCity().isEmpty() ? addr.getCityName() : '';
                     const action = new UpdateFeatureAddress(segModel, {
-                        countryID, stateID, cityName, emptyStreet: true
+                        countryID: addr.getCountry().id,
+                        stateID: addr.getState().id,
+                        cityName: cityNameToSet,
+                        emptyStreet: true,
+                        emptyCity: !setCity
                     }, { streetIDField: 'primaryStreetID' });
                     mAction.doSubAction(action);
                 }
@@ -333,15 +302,21 @@ function main(argsObject) {
     function onAddAltCityButtonClick() {
         $('.full-address').click();
         $('.add-alt-street-btn').click();
-        $('.alt-street-block input.street-name').val($('input.street-name').first().val()).blur().change();
-        if ($('input.alt-address.empty-city').is(':checked')) $('input.alt-address.empty-city').click();
-        $('.alt-street-block input.city-name').last().val('').focus();
+        const streetName = $('form.address-form input.street-name').first().val();
+        const $altStreetInput = $('form.address-form div.add-alt-street-form input.alt-street-name').last();
+        const $altCityInput = $('form.address-form div.add-alt-street-form input.alt-city-name').last();
+        const $altEmptyCityCheckbox = $('form.address-form div.add-alt-street-form input.alt-address.empty-city').last();
+        $altStreetInput.val(streetName).blur().change();
+        if ($altEmptyCityCheckbox.is(':checked')) $altEmptyCityCheckbox.click();
+        $altCityInput.val('').focus();
     }
 
     function onRoadTypeButtonClick(roadTypeAbbr) {
         $(ROAD_TYPE_DROPDOWN_SELECTOR).val(ROAD_TYPES[roadTypeAbbr].val).change();
         if (roadTypeAbbr === 'PLR' && isChecked('csClearNewPLRCheckBox') && require) {
-            setStreetAndCity();
+            setStreetAndCity(isChecked('csSetNewPLRCityCheckBox'));
+        } else if (roadTypeAbbr === 'PR' && isChecked('csClearNewPRCheckBox') && require) {
+            setStreetAndCity(isChecked('csSetNewPRCityCheckBox'));
         }
     }
 
@@ -605,25 +580,32 @@ function main(argsObject) {
                         }
                     }
 
-                    const multiaction = new MultiAction();
-                    multiaction.setModel(W.model);
+                    //  const multiaction = new MultiAction();
+                    //  multiaction.setModel(W.model);
 
                     // delete the selected segment
                     let segment = W.selectionManager.getSelectedFeatures()[0];
                     const oldGeom = segment.geometry.clone();
-                    multiaction.doSubAction(new DelSeg(segment.model));
+                    W.model.actionManager.add(new DelSeg(segment.model));
+                    //  multiaction.doSubAction(new DelSeg(segment.model));
 
                     // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
                     const newRoadType = isPedestrianTypeSegment(segment.model) ? 1 : 5;
                     segment = new Segment({ geometry: oldGeom, roadType: newRoadType });
                     segment.state = OL.State.INSERT;
-                    multiaction.doSubAction(new AddSeg(segment, {
+                    W.model.actionManager.add(new AddSeg(segment, {
                         createNodes: !0,
                         openAllTurns: W.prefs.get('enableTurnsByDefault'),
                         createTwoWay: W.prefs.get('twoWaySegmentsByDefault'),
                         snappedFeatures: [null, null]
                     }));
-                    W.model.actionManager.add(multiaction);
+                    // multiaction.doSubAction(new AddSeg(segment, {
+                    //     createNodes: !0,
+                    //     openAllTurns: W.prefs.get('enableTurnsByDefault'),
+                    //     createTwoWay: W.prefs.get('twoWaySegmentsByDefault'),
+                    //     snappedFeatures: [null, null]
+                    // }));
+                    // W.model.actionManager.add(multiaction);
                     const newId = W.model.repos.segments.idGenerator.lastValue;
                     const newSegment = W.model.segments.getObjectById(newId);
                     W.selectionManager.setSelectedModels([newSegment]);
@@ -692,13 +674,6 @@ function main(argsObject) {
         $(`<style type="text/css">${css}</style>`).appendTo('head');
     }
 
-    function onModeChanged(model, modeId) {
-        if (!modeId || modeId === 1) {
-            initUserPanel();
-            loadSettingsFromStorage();
-        }
-    }
-
     function createSettingsCheckbox(id, settingName, labelText, titleText, divCss, labelCss, optionalAttributes) {
         const $container = $('<div>', { class: 'controls-container' });
         const $input = $('<input>', {
@@ -727,13 +702,13 @@ function main(argsObject) {
                     'data-road-type': roadTypeAbbr
                 })
             );
-            if (roadTypeAbbr === 'PLR') {
+            if (roadTypeAbbr === 'PLR' || roadTypeAbbr === 'PR') {
                 $roadTypesDiv.append(
                     // TODO css
-                    createSettingsCheckbox('csClearNewPLRCheckBox', 'setNewPLRStreetToNone',
+                    createSettingsCheckbox(`csClearNew${roadTypeAbbr}CheckBox`, `setNew${roadTypeAbbr}StreetToNone`,
                         _trans.prefs.setStreetCityToNone, _trans.prefs.setStreetCityToNone_Title,
                         { paddingLeft: '20px', display: 'inline', marginRight: '4px' }, { fontStyle: 'italic' }),
-                    createSettingsCheckbox('csSetNewPLRCityCheckBox', 'setNewPLRCity',
+                    createSettingsCheckbox(`csSetNew${roadTypeAbbr}CityCheckBox`, `setNew${roadTypeAbbr}City`,
                         _trans.prefs.setCityToConnectedSegCity, '',
                         { paddingLeft: '30px', marginRight: '4px' }, { fontStyle: 'italic' })
                 );
@@ -815,6 +790,13 @@ function main(argsObject) {
             }
             saveSettingsToStorage();
         });
+    }
+
+    function onModeChanged(model, modeId) {
+        if (!modeId || modeId === 1) {
+            initUserPanel();
+            loadSettingsFromStorage();
+        }
     }
 
     function updateControls() {
@@ -984,6 +966,31 @@ function main(argsObject) {
     // Huge thanks to him for the help!
     //---------------------------------------------------------------------------------------------
 
+
+    function updateAltStreetCtrls() {
+        if (W.selectionManager.getSelectedFeatures().length > 0) {
+            const selItems = W.selectionManager.getSelectedFeatures();
+            if (selItems.length > 0 && selItems[0].model.type === 'segment') {
+                const $idElements = $('.add-alt-street-form .alt-street');
+                const $liElements = $('li.alt-street');
+                for (let i = 0; i < $idElements.length; i++) {
+                    const $idElem = $idElements.eq(i);
+                    const $liElem = $liElements.eq(i);
+                    if ($liElem.find('i').length === 0) { // prevent duplicate entries
+                        $liElem.append(
+                            $('<i>', { class: 'fa fa-times-circle' })
+                                // TODO css
+                                .css({ cursor: 'pointer' })
+                                .data('id', $idElem.data('id'))
+                                // eslint-disable-next-line no-use-before-define
+                                .click(wmeAltStreetRemove)
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     function wmeAltStreetRemove(elemClicked) {
         const altID = parseInt($(elemClicked.currentTarget).data('id'), 10);
         const selectedObjs = W.selectionManager.getSelectedFeatures();
@@ -1021,29 +1028,6 @@ function main(argsObject) {
             });
         }));
         observer.observe(document.getElementById('edit-panel'), { childList: true, subtree: true });
-    }
-
-    function updateAltStreetCtrls() {
-        if (W.selectionManager.getSelectedFeatures().length > 0) {
-            const selItems = W.selectionManager.getSelectedFeatures();
-            if (selItems.length > 0 && selItems[0].model.type === 'segment') {
-                const $idElements = $('.add-alt-street-form .alt-street');
-                const $liElements = $('li.alt-street');
-                for (let i = 0; i < $idElements.length; i++) {
-                    const $idElem = $idElements.eq(i);
-                    const $liElem = $liElements.eq(i);
-                    if ($liElem.find('i').length === 0) { // prevent duplicate entries
-                        $liElem.append(
-                            $('<i>', { class: 'fa fa-times-circle' })
-                                // TODO css
-                                .css({ cursor: 'pointer' })
-                                .data('id', $idElem.data('id'))
-                                .click(wmeAltStreetRemove)
-                        );
-                    }
-                }
-            }
-        }
     }
 
     function bootstrap() {
