@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2019.01.29.001
+// @version         2019.02.14.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -133,6 +133,11 @@ function main(argsObject) {
 
     function isChecked(checkboxId) {
         return $(`#${checkboxId}`).is(':checked');
+    }
+
+    function isSwapPedestrianPermitted() {
+        const { user } = W.loginManager;
+        return user.normalizedLevel >= 4 || (user.normalizedLevel === 3 && user.isAreaManager);
     }
 
     function setChecked(checkboxId, checked) {
@@ -742,7 +747,7 @@ function main(argsObject) {
                     $('<div>', { style: 'margin-bottom:8px;' }).append(
                         createSettingsCheckbox('csAddAltCityButtonCheckBox', 'addAltCityButton',
                             'Show "Add alt city" button'),
-                        W.loginManager.user.rank >= 3 ? createSettingsCheckbox('csAddSwapPedestrianButtonCheckBox',
+                        isSwapPedestrianPermitted() ? createSettingsCheckbox('csAddSwapPedestrianButtonCheckBox',
                             'addSwapPedestrianButton', 'Show "Swap driving<->walking segment type" button') : ''
                     )
                 )
@@ -920,7 +925,7 @@ function main(argsObject) {
                     if (addedNode.nodeType === Node.ELEMENT_NODE) {
                         if (addedNode.querySelector(ROAD_TYPE_DROPDOWN_SELECTOR)) {
                             if (isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
-                            if (W.loginManager.user.rank >= 3 && isChecked('csAddSwapPedestrianButtonCheckBox')) {
+                            if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
                                 addSwapPedestrianButton();
                             }
                         }
