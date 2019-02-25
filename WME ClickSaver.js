@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver (beta)
 // @namespace       https://greasyfork.org/users/45389
-// @version         2019.02.14.001
+// @version         2019.02.25.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -9,6 +9,7 @@
 // @connect         sheets.googleapis.com
 // @contributionURL https://github.com/WazeDev/Thank-The-Authors
 // @grant           GM_xmlhttpRequest
+// @require         https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // ==/UserScript==
 
 /* global GM_info */
@@ -23,8 +24,8 @@
 /* global confirm */
 /* global alert */
 /* global atob */
+/* global WazeWrap */
 
-/* eslint-disable global-require */
 const TRANSLATIONS_URL = 'https://sheets.googleapis.com/v4/spreadsheets/1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/values/ClickSaver';
 const API_KEY = 'YTJWNVBVRkplbUZUZVVGMFl6aFVjMjVOTW0wNU5GaG5kVE40TUZoNWJVZEhWbU5rUjNacVdtdFlWUT09';
 const DEC = s => atob(atob(s));
@@ -1108,3 +1109,20 @@ $.getJSON(`${TRANSLATIONS_URL}?${DEC(API_KEY)}`).then(res => {
         useDefaultTranslation: true
     });
 });
+
+// This function requires WazeWrap so it must be called outside of the injected code, as
+// WazeWrap is not guaranteed to be available in the page's scope.
+function addToggleDrawNewRoadsAsTwoWayShortcut() {
+    new WazeWrap.Interface.Shortcut('ToggleTwoWayNewSeg', 'Toggle new segment two-way drawing',
+        'editing', 'editToggleNewSegTwoWayDrawing', '',
+        () => { $('#twoWayRoad-on-0').click(); }, null).add();
+}
+
+function sandboxBootstrap() {
+    if (WazeWrap && WazeWrap.Ready) {
+        addToggleDrawNewRoadsAsTwoWayShortcut();
+    } else {
+        setTimeout(sandboxBootstrap, 250);
+    }
+}
+sandboxBootstrap();
