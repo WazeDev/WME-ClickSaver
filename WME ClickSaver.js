@@ -22,13 +22,23 @@
 /* global MutationObserver */
 /* global localStorage */
 /* global confirm */
-/* global alert */
 /* global atob */
 /* global WazeWrap */
+/* global window */
 
+const UPDATE_MESSAGE = 'Fixed issue with shortcut key not saving properly for "Toggle new segment two-way drawing".';
+
+const SCRIPT_NAME = GM_info.script.name;
+const SCRIPT_VERSION = GM_info.script.version;
+const FORUM_URL = 'https://www.waze.com/forum/viewtopic.php?f=819&t=199894';
 const TRANSLATIONS_URL = 'https://sheets.googleapis.com/v4/spreadsheets/1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/values/ClickSaver';
 const API_KEY = 'YTJWNVBVRkplbUZUZVVGMFl6aFVjMjVOTW0wNU5GaG5kVE40TUZoNWJVZEhWbU5rUjNacVdtdFlWUT09';
 const DEC = s => atob(atob(s));
+const EXTERNAL_SETTINGS = {
+    toggleTwoWaySegDrawingShortcut: null
+};
+const EXTERNAL_SETTINGS_NAME = 'clicksaver_settings_ext';
+
 // This function is injected into the page.
 function main(argsObject) {
     /* eslint-disable object-curly-newline */
@@ -38,16 +48,7 @@ function main(argsObject) {
     const ROUTING_TYPE_DROPDOWN_SELECTOR = 'select[name="routingRoadType"]';
     const PARKING_SPACES_DROPDOWN_SELECTOR = 'select[name="estimatedNumberOfSpots"]';
     const PARKING_COST_DROPDOWN_SELECTOR = 'select[name="costType"]';
-    const ALERT_UPDATE = false;
     const SETTINGS_STORE_NAME = 'clicksaver_settings';
-    const SCRIPT_VERSION_CHANGES = [
-        argsObject.scriptName,
-        `v${argsObject.scriptVersion}`,
-        '',
-        'What\'s New',
-        '------------------------------',
-        '' // Add important changes here and set ALERT_UPDATE=true
-    ].join('\n');
     const DEFAULT_TRANSLATION = {
         roadTypeButtons: {
             St: { title: 'Street', text: 'St' },
@@ -116,7 +117,6 @@ function main(argsObject) {
     const DIRECTIONS = { twoWay: { val: 3 }, oneWayAB: { val: 1 }, oneWayBA: { val: 2 }, unknown: { val: 0 } };
     /* eslint-enable object-curly-newline */
     let _settings = {};
-    let _lastScriptVersion;
     let _trans; // Translation object
 
     const UpdateObject = require('Waze/Action/UpdateObject');
@@ -443,8 +443,7 @@ function main(argsObject) {
             $div.append(
                 // TODO css
                 $('<div>', {
-                    class: `btn waze-btn waze-btn-white${selected ? ' waze-btn-blue' : ''}${
-                        dropdownDisabled ? ' disabled' : ''}`,
+                    class: `btn waze-btn waze-btn-white${selected ? ' waze-btn-blue' : ''}${dropdownDisabled ? ' disabled' : ''}`,
                     style: 'margin-bottom: 5px; height: 22px; padding: 2px 8px 0px 8px; margin-right: 3px;'
                 })
                     .text(text)
@@ -482,8 +481,7 @@ function main(argsObject) {
             const selected = $option.val() === $dropDown.val();
             $div.append(
                 $('<div>', {
-                    class: `btn waze-btn waze-btn-white${selected ? ' waze-btn-blue' : ''}${
-                        dropdownDisabled ? ' disabled' : ''}`,
+                    class: `btn waze-btn waze-btn-white${selected ? ' waze-btn-blue' : ''}${dropdownDisabled ? ' disabled' : ''}`,
                     // TODO css
                     style: 'margin-bottom: 5px; height: 22px; padding: 2px 8px 0px 8px; margin-right: 4px;'
                 })
@@ -586,16 +584,13 @@ function main(argsObject) {
                         }
                     }
 
-                    //  const multiaction = new MultiAction();
-                    //  multiaction.setModel(W.model);
-
                     // delete the selected segment
                     let segment = W.selectionManager.getSelectedFeatures()[0];
                     const oldGeom = segment.geometry.clone();
                     W.model.actionManager.add(new DelSeg(segment.model));
-                    //  multiaction.doSubAction(new DelSeg(segment.model));
 
                     // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
+                    // Note: this doesn't work in a MultiAction for some reason.
                     const newRoadType = isPedestrianTypeSegment(segment.model) ? 1 : 5;
                     segment = new Segment({ geometry: oldGeom, roadType: newRoadType });
                     segment.state = OL.State.INSERT;
@@ -605,25 +600,11 @@ function main(argsObject) {
                         createTwoWay: W.prefs.get('twoWaySegmentsByDefault'),
                         snappedFeatures: [null, null]
                     }));
-                    // multiaction.doSubAction(new AddSeg(segment, {
-                    //     createNodes: !0,
-                    //     openAllTurns: W.prefs.get('enableTurnsByDefault'),
-                    //     createTwoWay: W.prefs.get('twoWaySegmentsByDefault'),
-                    //     snappedFeatures: [null, null]
-                    // }));
-                    // W.model.actionManager.add(multiaction);
                     const newId = W.model.repos.segments.idGenerator.lastValue;
                     const newSegment = W.model.segments.getObjectById(newId);
                     W.selectionManager.setSelectedModels([newSegment]);
                 });
             }
-        }
-    }
-
-    function showScriptInfoAlert() {
-        /* Check version and alert on update */
-        if (ALERT_UPDATE && argsObject.scriptVersion !== _lastScriptVersion) {
-            alert(SCRIPT_VERSION_CHANGES);
         }
     }
 
@@ -758,11 +739,9 @@ function main(argsObject) {
         $panel.append(
             // TODO css
             $('<div>', { style: 'margin-top:20px;font-size:10px;color:#999999;' }).append(
-                $('<div>').text(`version ${argsObject.scriptVersion}${
-                    argsObject.scriptName.toLowerCase().indexOf('beta') > -1 ? ' beta' : ''}`),
+                $('<div>').text(`version ${argsObject.scriptVersion}${argsObject.scriptName.toLowerCase().indexOf('beta') > -1 ? ' beta' : ''}`),
                 $('<div>').append(
-                    $('<a>', { href: 'https://www.waze.com/forum/viewtopic.php?f=819&t=199894', target: '__blank' })
-                        .text(_trans.prefs.discussionForumLinkText)
+                    $('<a>', { href: argsObject.forumUrl, target: '__blank' }).text(_trans.prefs.discussionForumLinkText)
                 )
             )
         );
@@ -914,9 +893,7 @@ function main(argsObject) {
         });
 
         document.addEventListener('paste', onPaste);
-        _lastScriptVersion = localStorage.getItem('wmeClickSaver_lastVersion');
-        localStorage.setItem('wmeClickSaver_lastVersion', argsObject.scriptVersion);
-        showScriptInfoAlert();
+
         // check for changes in the edit-panel
         const observer = new MutationObserver(mutations => {
             mutations.forEach(mutation => {
@@ -930,24 +907,20 @@ function main(argsObject) {
                                 addSwapPedestrianButton();
                             }
                         }
-                        if (addedNode.querySelector(ROUTING_TYPE_DROPDOWN_SELECTOR)
-                            && isChecked('csRoutingTypeCheckBox')) {
+                        if (addedNode.querySelector(ROUTING_TYPE_DROPDOWN_SELECTOR) && isChecked('csRoutingTypeCheckBox')) {
                             addRoutingTypeButtons();
                         }
-                        if (addedNode.querySelector(ELEVATION_DROPDOWN_SELECTOR)
-                            && isChecked('csElevationButtonsCheckBox')) {
+                        if (addedNode.querySelector(ELEVATION_DROPDOWN_SELECTOR) && isChecked('csElevationButtonsCheckBox')) {
                             addElevationButtons();
                         }
-                        if (addedNode.querySelector(PARKING_SPACES_DROPDOWN_SELECTOR)
-                            && isChecked('csParkingSpacesButtonsCheckBox')) {
+                        if (addedNode.querySelector(PARKING_SPACES_DROPDOWN_SELECTOR) && isChecked('csParkingSpacesButtonsCheckBox')) {
                             addParkingSpacesButtons(); // TODO - add option setting
                         }
                         if (addedNode.querySelector(PARKING_COST_DROPDOWN_SELECTOR)
                             && isChecked('csParkingCostButtonsCheckBox')) {
                             addParkingCostButtons(); // TODO - add option setting
                         }
-                        if ($(addedNode).find('label').filter(filterAddressElem).length
-                            && isChecked('csAddAltCityButtonCheckBox')) {
+                        if ($(addedNode).find('label').filter(filterAddressElem).length && isChecked('csAddAltCityButtonCheckBox')) {
                             addAddAltCityButton();
                         }
                     }
@@ -1017,16 +990,11 @@ function main(argsObject) {
     }
 
     function initWmeQuickAltDel() {
-        W.selectionManager.events.register('selectionchanged', null,
-            () => errorHandler(updateAltStreetCtrls));
-        W.model.actionManager.events.register('afterundoaction', null,
-            () => errorHandler(updateAltStreetCtrls));
-        W.model.actionManager.events.register('hasActions', null,
-            () => errorHandler(() => setTimeout(updateAltStreetCtrls, 250)));
-        W.model.actionManager.events.register('noActions', null,
-            () => errorHandler(() => setTimeout(updateAltStreetCtrls, 250)));
-        W.model.actionManager.events.register('afteraction', null,
-            () => errorHandler(updateAltStreetCtrls));
+        W.selectionManager.events.register('selectionchanged', null, () => errorHandler(updateAltStreetCtrls));
+        W.model.actionManager.events.register('afterundoaction', null, () => errorHandler(updateAltStreetCtrls));
+        W.model.actionManager.events.register('hasActions', null, () => errorHandler(() => setTimeout(updateAltStreetCtrls, 250)));
+        W.model.actionManager.events.register('noActions', null, () => errorHandler(() => setTimeout(updateAltStreetCtrls, 250)));
+        W.model.actionManager.events.register('afteraction', null, () => errorHandler(updateAltStreetCtrls));
 
         const observer = new MutationObserver((mutations => {
             mutations.forEach(mutation => {
@@ -1053,8 +1021,7 @@ function main(argsObject) {
 
 function injectMain(argsObject) {
     const scriptElem = document.createElement('script');
-    scriptElem.textContent = `(function(){${main.toString()}\n main(${
-        JSON.stringify(argsObject).replace('\'', '\\\'')})})();`;
+    scriptElem.textContent = `(function(){${main.toString()}\n main(${JSON.stringify(argsObject).replace('\'', '\\\'')})})();`;
     scriptElem.setAttribute('type', 'application/javascript');
     document.body.appendChild(scriptElem);
 }
@@ -1091,38 +1058,65 @@ function convertTranslationsArrayToObject(arrayIn) {
     return translations;
 }
 
-// This call retrieves the data from the translations spreadsheet and then injects
-// the main code into the page.  If the spreadsheet call fails, the default English
-// translation is used.
-$.getJSON(`${TRANSLATIONS_URL}?${DEC(API_KEY)}`).then(res => {
+function loadTranslations() {
+    // This call retrieves the data from the translations spreadsheet and then injects
+    // the main code into the page.  If the spreadsheet call fails, the default English
+    // translation is used.
     const args = {
-        scriptName: GM_info.script.name,
-        scriptVersion: GM_info.script.version,
-        translations: convertTranslationsArrayToObject(res.values)
+        scriptName: SCRIPT_NAME,
+        scriptVersion: SCRIPT_VERSION,
+        forumUrl: FORUM_URL
     };
-    injectMain(args);
-}).fail(() => {
-    console.error('ClickSaver: Error loading translations spreadsheet. Using default translation (English).');
-    injectMain({
-        scriptName: GM_info.script.name,
-        scriptVersion: GM_info.script.version,
-        useDefaultTranslation: true
+    $.getJSON(`${TRANSLATIONS_URL}?${DEC(API_KEY)}`).then(res => {
+        args.translations = convertTranslationsArrayToObject(res.values);
+    }).fail(() => {
+        console.error('ClickSaver: Error loading translations spreadsheet. Using default translation (English).');
+        args.useDefaultTranslation = true;
+    }).always(() => {
+        injectMain(args);
     });
-});
+}
 
 // This function requires WazeWrap so it must be called outside of the injected code, as
 // WazeWrap is not guaranteed to be available in the page's scope.
 function addToggleDrawNewRoadsAsTwoWayShortcut() {
     new WazeWrap.Interface.Shortcut('ToggleTwoWayNewSeg', 'Toggle new segment two-way drawing',
-        'editing', 'editToggleNewSegTwoWayDrawing', '',
+        'editing', 'editToggleNewSegTwoWayDrawing', EXTERNAL_SETTINGS.toggleTwoWaySegDrawingShortcut,
         () => { $('#twoWayRoad-on-0').click(); }, null).add();
+}
+
+function sandboxLoadSettings() {
+    const loadedSettings = JSON.parse(localStorage.getItem(EXTERNAL_SETTINGS_NAME)) || {};
+    EXTERNAL_SETTINGS.toggleTwoWaySegDrawingShortcut = loadedSettings.toggleTwoWaySegDrawingShortcut || '';
+    addToggleDrawNewRoadsAsTwoWayShortcut();
+    $(window).on('beforeunload', () => sandboxSaveSettings());
+}
+
+function sandboxSaveSettings() {
+    let keys = '';
+    const { shortcut } = W.accelerators.Actions.ToggleTwoWayNewSeg;
+    if (shortcut) {
+        if (shortcut.altKey) keys += 'A';
+        if (shortcut.shiftKey) keys += 'S';
+        if (shortcut.ctrlKey) keys += 'C';
+        if (keys.length) keys += '+';
+        if (shortcut.keyCode) keys += shortcut.keyCode;
+    }
+    EXTERNAL_SETTINGS.toggleTwoWaySegDrawingShortcut = keys;
+    localStorage.setItem(EXTERNAL_SETTINGS_NAME, JSON.stringify(EXTERNAL_SETTINGS));
 }
 
 function sandboxBootstrap() {
     if (WazeWrap && WazeWrap.Ready) {
-        addToggleDrawNewRoadsAsTwoWayShortcut();
+        WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, UPDATE_MESSAGE, FORUM_URL);
+        sandboxLoadSettings();
     } else {
         setTimeout(sandboxBootstrap, 250);
     }
 }
+
+// Go ahead and start loading translations, and inject the main code into the page.
+loadTranslations();
+
+// Start the "sandboxed" code.
 sandboxBootstrap();
