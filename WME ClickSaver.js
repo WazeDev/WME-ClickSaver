@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver (beta)
 // @namespace       https://greasyfork.org/users/45389
-// @version         2019.02.28.001
+// @version         2019.03.23.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -211,6 +211,7 @@ function main(argsObject) {
                 parkingSpacesButtons: _settings.parkingSpacesButtons,
                 setNewPLRStreetToNone: _settings.setNewPLRStreetToNone,
                 setNewPRStreetToNone: _settings.setNewPRStreetToNone,
+                routingTypeButtons: _settings.routingTypeButtons,
                 useOldRoadColors: _settings.useOldRoadColors,
                 setNewPLRCity: _settings.setNewPLRCity,
                 setNewPRCity: _settings.setNewPRCity,
@@ -384,9 +385,9 @@ function main(argsObject) {
             const options = $dropDown.children();
             if (options.length === 3) {
                 const buttonInfos = [
-                    ['-1', options[0].value, options[0].text],
-                    [options[1].text, options[1].value, ''],
-                    ['+1', options[2].value, options[2].text]
+                    ['-1', options[0].value, options[0].text, options[0].disabled],
+                    [options[1].text, options[1].value, '', options[1].disabled],
+                    ['+1', options[2].value, options[2].text, options[2].disabled]
                 ];
                 $('#csRoutingTypeContainer').remove();
                 // TODO css
@@ -398,6 +399,7 @@ function main(argsObject) {
                     }).click(function onRouteTypeClick() {
                         $(ROUTING_TYPE_DROPDOWN_SELECTOR).val($(this).attr('value')).change();
                     });
+                    if (btnInfo[3]) $input.attr('disabled', 'true');
                     if (String(btnInfo[1]) === String($dropDown.val())) $input.prop('checked', 'true');
                     $form.append(
                         // TODO css
