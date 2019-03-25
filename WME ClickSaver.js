@@ -203,7 +203,8 @@ function main(argsObject) {
             addAltCityButton: true,
             addSwapPedestrianButton: false,
             useOldRoadColors: false,
-            warnOnPedestrianTypeSwap: true
+            warnOnPedestrianTypeSwap: true,
+            enableUTurnsButton: true
         };
         _settings = loadedSettings || defaultSettings;
         Object.keys(defaultSettings).forEach(prop => {
@@ -237,6 +238,7 @@ function main(argsObject) {
         setChecked('csSetNewPRCityCheckBox', _settings.setNewPRCity);
         setChecked('csAddAltCityButtonCheckBox', _settings.addAltCityButton);
         setChecked('csAddSwapPedestrianButtonCheckBox', _settings.addSwapPedestrianButton);
+        setChecked('csEnableUTurnsButtonCheckBox', _settings.enableUTurnsButton);
     }
 
     function saveSettingsToStorage() {
@@ -257,7 +259,8 @@ function main(argsObject) {
                 setNewPRCity: _settings.setNewPRCity,
                 addAltCityButton: _settings.addAltCityButton,
                 addSwapPedestrianButton: _settings.addSwapPedestrianButton,
-                warnOnPedestrianTypeSwap: _settings.warnOnPedestrianTypeSwap
+                warnOnPedestrianTypeSwap: _settings.warnOnPedestrianTypeSwap,
+                enableUTurnsButton: _settings.enableUTurnsButton
             };
             settings.roadTypeButtons = [];
             Object.keys(ROAD_TYPES).forEach(roadTypeAbbr => {
@@ -770,9 +773,11 @@ function main(argsObject) {
                     $('<label>', { class: 'cs-group-label' }).text('Time Savers'),
                     $('<div>', { style: 'margin-bottom:8px;' }).append(
                         createSettingsCheckbox('csAddAltCityButtonCheckBox', 'addAltCityButton',
-                            'Show "Add alt city" button'),
+                            '"Add alt city" button'),
+                        createSettingsCheckbox('csEnableUTurnsButtonCheckBox', 'enableUTurnsButton',
+                            '"Enable U-turns" button'),
                         isSwapPedestrianPermitted() ? createSettingsCheckbox('csAddSwapPedestrianButtonCheckBox',
-                            'addSwapPedestrianButton', 'Show "Swap driving<->walking segment type" button') : ''
+                            'addSwapPedestrianButton', '"Swap driving<->walking segment type" button') : ''
                     )
                 )
             )
@@ -965,6 +970,8 @@ function main(argsObject) {
                         if ($(addedNode).find('label').filter(filterAddressElem).length && isChecked('csAddAltCityButtonCheckBox')) {
                             addAddAltCityButton();
                         }
+                        // TODO: Finish this...
+                        // if ($(addedNode).find(''))
                     }
                 }
             });
