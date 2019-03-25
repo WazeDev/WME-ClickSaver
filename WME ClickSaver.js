@@ -30,8 +30,9 @@
 // *******************************************************
 const SetTurn = require('Waze/Model/Graph/Actions/SetTurn');
 
-function enableUTurn(seg, node, turnGraph, actions) {
+function addEnableUTurnAction(seg, node, actions) {
     if (node !== null && [null, 'Update', 'Insert'].indexOf(node.state) > -1 && node.connectionsExist()) {
+        const turnGraph = W.model.getTurnGraph();
         let turnToNode = turnGraph.getTurnThroughNode(node, seg, seg);
         let toTurnData = turnToNode.getTurnData();
         if (!toTurnData.isAllowed()) {
@@ -44,7 +45,6 @@ function enableUTurn(seg, node, turnGraph, actions) {
 
 function enableUTurnsOnSelectedSegments() {
     const segs = W.selectionManager.getSelectedFeatures().map(f => f.model);
-    const turnGraph = W.model.getTurnGraph();
     const actions = [];
 
     segs.forEach(seg => {
@@ -52,8 +52,8 @@ function enableUTurnsOnSelectedSegments() {
             const toNode = seg.attributes.toNodeID ? seg.getToNode() : null;
             const fromNode = seg.attributes.fromNodeID ? seg.getFromNode() : null;
 
-            enableUTurn(seg, toNode, turnGraph, actions);
-            enableUTurn(seg, fromNode, turnGraph, actions);
+            addEnableUTurnAction(seg, toNode, actions);
+            addEnableUTurnAction(seg, fromNode, actions);
         }
     });
     if (actions.length) {
