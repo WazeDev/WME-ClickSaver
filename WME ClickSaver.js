@@ -26,6 +26,52 @@
 /* global WazeWrap */
 /* global window */
 
+// INITIAL U-TURN TEST CODE TO BE IMPLEMENTED:
+// *******************************************************
+var SetTurn = require("Waze/Model/Graph/Actions/SetTurn");
+
+function enableUTurn(seg, node, turnGraph, actions) {
+    if (node !== null && [null, 'Update', 'Insert'].indexOf(node.state) > -1 && node.connectionsExist()) {
+        var turnToNode = turnGraph.getTurnThroughNode(node, seg, seg);
+        var toTurnData = turnToNode.getTurnData();
+        if (!toTurnData.isAllowed()) {
+            toTurnData = toTurnData.withToggledState(true);
+            turnToNode = turnToNode.withTurnData(toTurnData);
+            actions.push(new SetTurn(turnGraph, turnToNode));
+            //W.model.actionManager.add(new SetTurn(turnGraph, turnToNode));
+        }
+    }
+}
+
+function enableUTurnsOnSelectedSegments() {
+    var segs = W.selectionManager.getSelectedFeatures().map(f => f.model);
+    var turnGraph = W.model.getTurnGraph();
+    var actions = [];
+
+    segs.forEach(seg => {
+        if (seg.getLockRank() <= W.loginManager.user.rank && seg.arePropertiesEditable() && !seg.isDeleted() && !seg.isOneWay()) {
+            var toNode = null;
+            var fromNode = null;
+
+            if (seg.attributes.toNodeID)
+                toNode = seg.getToNode();
+            if (seg.attributes.fromNodeID)
+                fromNode = seg.getFromNode();
+
+            enableUTurn(seg, toNode, turnGraph, actions);
+            enableUTurn(seg, fromNode, turnGraph, actions);
+        }
+    });
+    if (actions.length) {
+        var ma = new MultiAction();
+        ma.setModel(W.model);
+        ma._description = `Enabled ${actions.length} U-turn${actions.length > 1 ? 's' : ''}`;
+        actions.forEach(action => ma.doSubAction(action));
+        W.model.actionManager.add(ma);
+    }
+}
+// ****************************************************
+
 const UPDATE_MESSAGE = 'Fixed issue with shortcut key not saving properly for "Toggle new segment two-way drawing".';
 
 const SCRIPT_NAME = GM_info.script.name;
