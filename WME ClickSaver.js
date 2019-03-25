@@ -72,7 +72,7 @@ function enableUTurnsOnSelectedSegments() {
 }
 // ****************************************************
 
-const UPDATE_MESSAGE = 'Fixed issue with shortcut key not saving properly for "Toggle new segment two-way drawing".';
+const UPDATE_MESSAGE = '';
 
 const SCRIPT_NAME = GM_info.script.name;
 const SCRIPT_VERSION = GM_info.script.version;
