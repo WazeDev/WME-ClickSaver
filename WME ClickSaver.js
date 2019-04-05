@@ -26,46 +26,6 @@
 /* global WazeWrap */
 /* global window */
 
-// INITIAL U-TURN TEST CODE TO BE IMPLEMENTED:
-// *******************************************************
-const SetTurn = require('Waze/Model/Graph/Actions/SetTurn');
-
-function addEnableUTurnAction(seg, node, actions) {
-    if (node !== null && [null, 'Update', 'Insert'].indexOf(node.state) > -1 && node.connectionsExist()) {
-        const turnGraph = W.model.getTurnGraph();
-        let turnToNode = turnGraph.getTurnThroughNode(node, seg, seg);
-        let toTurnData = turnToNode.getTurnData();
-        if (!toTurnData.isAllowed()) {
-            toTurnData = toTurnData.withToggledState(true);
-            turnToNode = turnToNode.withTurnData(toTurnData);
-            actions.push(new SetTurn(turnGraph, turnToNode));
-        }
-    }
-}
-
-function enableUTurnsOnSelectedSegments() {
-    const segs = W.selectionManager.getSelectedFeatures().map(f => f.model);
-    const actions = [];
-
-    segs.forEach(seg => {
-        if (seg.getLockRank() <= W.loginManager.user.rank && seg.arePropertiesEditable() && !seg.isDeleted() && !seg.isOneWay()) {
-            const toNode = seg.attributes.toNodeID ? seg.getToNode() : null;
-            const fromNode = seg.attributes.fromNodeID ? seg.getFromNode() : null;
-
-            addEnableUTurnAction(seg, toNode, actions);
-            addEnableUTurnAction(seg, fromNode, actions);
-        }
-    });
-    if (actions.length) {
-        const ma = new MultiAction();
-        ma.setModel(W.model);
-        ma._description = `Enabled ${actions.length} U-turn${actions.length > 1 ? 's' : ''}`;
-        actions.forEach(action => ma.doSubAction(action));
-        W.model.actionManager.add(ma);
-    }
-}
-// ****************************************************
-
 const UPDATE_MESSAGE = '';
 
 const SCRIPT_NAME = GM_info.script.name;
@@ -81,6 +41,55 @@ const EXTERNAL_SETTINGS_NAME = 'clicksaver_settings_ext';
 
 // This function is injected into the page.
 function main(argsObject) {
+    // INITIAL U-TURN TEST CODE TO BE IMPLEMENTED:
+    // *******************************************************
+    const SetTurn = require('Waze/Model/Graph/Actions/SetTurn');
+
+    function getTurnInfo(seg, node, turnGraph) {
+        if (node !== null && [null, 'Update', 'Insert'].indexOf(node.state) > -1 && node.connectionsExist()) {
+            const turnThruNode = turnGraph.getTurnThroughNode(node, seg, seg)
+            const turnData = turnThruNode.getTurnData();
+            return { turnThruNode, turnData };
+        }
+        return null;
+    }
+
+    function addEnableUTurnAction(seg, node, turnGraph, actions) {
+        const turnInfo = getTurnInfo(seg, node, turnGraph);
+        if (turnInfo) {
+            if (!turnInfo.turnData.isAllowed()) {
+                turnInfo.turnData = turnInfo.turnData.withToggledState(true);
+                turnInfo.turnThruNode = turnInfo.turnThruNode.withTurnData(turnInfo.turnData);
+                actions.push(new SetTurn(turnGraph, turnInfo.turnThruNode));
+            }
+        }
+    }
+
+    function enableUTurnsOnSelectedSegments() {
+        const segs = W.selectionManager.getSelectedFeatures().map(f => f.model);
+        const actions = [];
+        const turnGraph = W.model.getTurnGraph();
+
+        segs.forEach(seg => {
+            if (seg.getLockRank() <= W.loginManager.user.rank && seg.arePropertiesEditable() && !seg.isDeleted() && !seg.isOneWay()) {
+                const toNode = seg.attributes.toNodeID ? seg.getToNode() : null;
+                const fromNode = seg.attributes.fromNodeID ? seg.getFromNode() : null;
+
+                addEnableUTurnAction(seg, toNode, turnGraph, actions);
+                addEnableUTurnAction(seg, fromNode, turnGraph, actions);
+            }
+        });
+        if (actions.length) {
+            const ma = new MultiAction();
+            ma.setModel(W.model);
+            ma._description = `Enabled ${actions.length} U-turn${actions.length > 1 ? 's' : ''}`;
+            actions.forEach(action => ma.doSubAction(action));
+            W.model.actionManager.add(ma);
+        }
+    }
+    // ****************************************************
+
+
     /* eslint-disable object-curly-newline */
     const DEBUG_LEVEL = 0;
     const ROAD_TYPE_DROPDOWN_SELECTOR = 'select[name="roadType"]';
@@ -547,6 +556,12 @@ function main(argsObject) {
         $dropDown.hide();
     }
 
+    function addUturnButton() {
+        const btn = $('<div class="waze-btn waze-btn-white action-button">Enable all u-turns</button>');
+        $('div.form-group input[name="direction"]').closest('div.form-group').append(btn);
+        btn.click(enableUTurnsOnSelectedSegments);
+    }
+
     function addElevationButtons() {
         const id = 'csElevationButtonsContainer';
         if ($(`#${id}`).length === 0) {
@@ -847,6 +862,9 @@ function main(argsObject) {
         if ($(PARKING_COST_DROPDOWN_SELECTOR).length > 0 && isChecked('csParkingCostButtonsCheckBox')) {
             addParkingCostButtons(); // TODO - add option setting
         }
+        if ($('div.form-group input[name="direction"]').length > 0) {
+            addUturnButton();
+        }
     }
 
     function replaceWord(target, searchWord, replaceWithWord) {
@@ -969,6 +987,9 @@ function main(argsObject) {
                         }
                         if ($(addedNode).find('label').filter(filterAddressElem).length && isChecked('csAddAltCityButtonCheckBox')) {
                             addAddAltCityButton();
+                        }
+                        if (addedNode.querySelector('div.form-group input[name="direction"]')) {
+                            addUturnButton();
                         }
                         // TODO: Finish this...
                         // if ($(addedNode).find(''))
