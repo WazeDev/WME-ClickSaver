@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver (beta)
 // @namespace       https://greasyfork.org/users/45389
-// @version         2019.03.23.001
+// @version         2019.05.28.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -99,7 +99,7 @@ function main(argsObject) {
     const ROAD_TYPES = {
         St: { val: 1, wmeColor: '#ffffeb', svColor: '#ffffff', category: 'streets', visible: true },
         PS: { val: 2, wmeColor: '#f0ea58', svColor: '#cba12e', category: 'streets', visible: true },
-        Pw: { val: 22, wmeColor: '#beba6c', svColor: '#beba6c', category: 'streets', visible: false },
+        Pw: { val: 22, wmeColor: '#64799a', svColor: '#64799a', category: 'streets', visible: false },
         mH: { val: 7, wmeColor: '#69bf88', svColor: '#ece589', category: 'highways', visible: true },
         MH: { val: 6, wmeColor: '#45b8d1', svColor: '#c13040', category: 'highways', visible: true },
         Fw: { val: 3, wmeColor: '#c577d2', svColor: '#387fb8', category: 'highways', visible: false },
