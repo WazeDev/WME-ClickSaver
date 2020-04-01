@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2019.05.28.001
+// @version         2020.03.31.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -26,7 +26,7 @@
 /* global WazeWrap */
 /* global window */
 
-const UPDATE_MESSAGE = 'Fixed issue with shortcut key not saving properly for "Toggle new segment two-way drawing".';
+const UPDATE_MESSAGE = '';
 
 const SCRIPT_NAME = GM_info.script.name;
 const SCRIPT_VERSION = GM_info.script.version;
@@ -138,7 +138,8 @@ function main(argsObject) {
 
     function isSwapPedestrianPermitted() {
         const { user } = W.loginManager;
-        return user.normalizedLevel >= 4 || (user.normalizedLevel === 3 && user.isAreaManager);
+        const rank = user.rank + 1;
+        return rank >= 4 || (rank === 3 && user.isAreaManager);
     }
 
     function setChecked(checkboxId, checked) {
