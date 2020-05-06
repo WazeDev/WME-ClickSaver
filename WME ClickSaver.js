@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2020.03.31.001
+// @version         2020.05.05.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -1023,10 +1023,14 @@ function main(argsObject) {
 } // END Main function (code to be injected)
 
 function injectMain(argsObject) {
-    const scriptElem = document.createElement('script');
-    scriptElem.textContent = `(function(){${main.toString()}\n main(${JSON.stringify(argsObject).replace('\'', '\\\'')})})();`;
-    scriptElem.setAttribute('type', 'application/javascript');
-    document.body.appendChild(scriptElem);
+    if (require) {
+        const scriptElem = document.createElement('script');
+        scriptElem.textContent = `(function(){${main.toString()}\n main(${JSON.stringify(argsObject).replace('\'', '\\\'')})})();`;
+        scriptElem.setAttribute('type', 'application/javascript');
+        document.body.appendChild(scriptElem);
+    } else {
+        setTimeout(() => injectMain(argsObject), 250);
+    }
 }
 
 function setValue(object, path, value) {
