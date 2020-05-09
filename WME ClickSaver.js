@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2020.05.05.001
+// @version         2020.05.08.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -119,12 +119,13 @@ function main(argsObject) {
     let _settings = {};
     let _trans; // Translation object
 
-    const UpdateObject = require('Waze/Action/UpdateObject');
-    const UpdateFeatureAddress = require('Waze/Action/UpdateFeatureAddress');
-    const MultiAction = require('Waze/Action/MultiAction');
-    const AddSeg = require('Waze/Action/AddSegment');
-    const Segment = require('Waze/Feature/Vector/Segment');
-    const DelSeg = require('Waze/Action/DeleteSegment');
+    // Do not make these const values.  They may get assigned before require() is defined.  Trust me.  Don't do it.
+    let UpdateObject;
+    let UpdateFeatureAddress;
+    let MultiAction;
+    let AddSeg;
+    let Segment;
+    let DelSeg;
 
     function log(message, level) {
         if (message && level <= DEBUG_LEVEL) {
@@ -885,6 +886,13 @@ function main(argsObject) {
     }
 
     function init() {
+        UpdateObject = require('Waze/Action/UpdateObject');
+        UpdateFeatureAddress = require('Waze/Action/UpdateFeatureAddress');
+        MultiAction = require('Waze/Action/MultiAction');
+        AddSeg = require('Waze/Action/AddSegment');
+        Segment = require('Waze/Feature/Vector/Segment');
+        DelSeg = require('Waze/Action/DeleteSegment');
+
         _trans = getTranslationObject();
         Object.keys(ROAD_TYPES).forEach(rtName => {
             ROAD_TYPES[rtName].title = _trans.roadTypeButtons[rtName].title;
