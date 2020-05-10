@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2020.05.08.001
+// @version         2020.05.09.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -322,9 +322,9 @@ function main(argsObject) {
 
     function onRoadTypeButtonClick(roadTypeAbbr) {
         $(ROAD_TYPE_DROPDOWN_SELECTOR).val(ROAD_TYPES[roadTypeAbbr].val).change();
-        if (roadTypeAbbr === 'PLR' && isChecked('csClearNewPLRCheckBox') && require) {
+        if (roadTypeAbbr === 'PLR' && isChecked('csClearNewPLRCheckBox') && typeof require !== 'undefined') {
             setStreetAndCity(isChecked('csSetNewPLRCityCheckBox'));
-        } else if (roadTypeAbbr === 'PR' && isChecked('csClearNewPRCheckBox') && require) {
+        } else if (roadTypeAbbr === 'PR' && isChecked('csClearNewPRCheckBox') && typeof require !== 'undefined') {
             setStreetAndCity(isChecked('csSetNewPRCityCheckBox'));
         }
     }
@@ -1016,7 +1016,7 @@ function main(argsObject) {
     }
 
     function bootstrap() {
-        if (require && W && W.loginManager && W.loginManager.events.register && W.map && W.loginManager.user) {
+        if (typeof require !== 'undefined' && W && W.loginManager && W.loginManager.events.register && W.map && W.loginManager.user) {
             log('Initializing...', 1);
             init();
             initWmeQuickAltDel();
@@ -1031,7 +1031,7 @@ function main(argsObject) {
 } // END Main function (code to be injected)
 
 function injectMain(argsObject) {
-    if (require) {
+    if (typeof require !== 'undefined') {
         const scriptElem = document.createElement('script');
         scriptElem.textContent = `(function(){${main.toString()}\n main(${JSON.stringify(argsObject).replace('\'', '\\\'')})})();`;
         scriptElem.setAttribute('type', 'application/javascript');
