@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2020.05.09.001
+// @version         2020.05.10.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -42,7 +42,6 @@ const EXTERNAL_SETTINGS_NAME = 'clicksaver_settings_ext';
 // This function is injected into the page.
 function main(argsObject) {
     /* eslint-disable object-curly-newline */
-    const DEBUG_LEVEL = 0;
     const ROAD_TYPE_DROPDOWN_SELECTOR = 'select[name="roadType"]';
     const ELEVATION_DROPDOWN_SELECTOR = '.side-panel-section select[name="level"]';
     const ROUTING_TYPE_DROPDOWN_SELECTOR = 'select[name="routingRoadType"]';
@@ -127,11 +126,21 @@ function main(argsObject) {
     let Segment;
     let DelSeg;
 
-    function log(message, level) {
-        if (message && level <= DEBUG_LEVEL) {
-            console.log('ClickSaver:', message);
-        }
+    // function log(message) {
+    //     console.log('ClickSaver:', message);
+    // }
+
+    function logDebug(message) {
+        console.debug('ClickSaver:', message);
     }
+
+    // function logWarning(message) {
+    //     console.warn('ClickSaver:', message);
+    // }
+
+    // function logError(message) {
+    //     console.error('ClickSaver:', message);
+    // }
 
     function isChecked(checkboxId) {
         return $(`#${checkboxId}`).is(':checked');
@@ -228,7 +237,7 @@ function main(argsObject) {
                 }
             });
             localStorage.setItem(SETTINGS_STORE_NAME, JSON.stringify(settings));
-            log('Settings saved', 1);
+            logDebug('Settings saved');
         }
     }
 
@@ -948,7 +957,7 @@ function main(argsObject) {
         updateControls(); // In case of PL w/ segments selected.
         W.selectionManager.events.register('selectionchanged', null, () => errorHandler(updateControls));
 
-        log('Initialized', 1);
+        logDebug('Initialized');
     }
 
     //---------------------------------------------------------------------------------------------
@@ -1017,21 +1026,26 @@ function main(argsObject) {
 
     function bootstrap() {
         if (typeof require !== 'undefined' && W && W.loginManager && W.loginManager.events.register && W.map && W.loginManager.user) {
-            log('Initializing...', 1);
+            logDebug('Initializing...');
             init();
             initWmeQuickAltDel();
         } else {
-            log('Bootstrap failed. Trying again...', 1);
+            logDebug('Bootstrap failed. Trying again...');
             setTimeout(bootstrap, 250);
         }
     }
 
-    log('Bootstrap...', 1);
-    bootstrap();
+    // Not sure if the document.ready is necessary but I'm leaving it because of some random errors
+    // that people were having with "require is not defined".  I tried several things to fix it and
+    // I'm leaving those things, though all may not be needed.
+    $(document).ready(() => {
+        logDebug('Bootstrap...');
+        bootstrap();
+    });
 } // END Main function (code to be injected)
 
 function injectMain(argsObject) {
-    if (typeof require !== 'undefined') {
+    if (typeof require !== 'undefined' && typeof $ !== 'undefined') {
         const scriptElem = document.createElement('script');
         scriptElem.textContent = `(function(){${main.toString()}\n main(${JSON.stringify(argsObject).replace('\'', '\\\'')})})();`;
         scriptElem.setAttribute('type', 'application/javascript');
@@ -1088,7 +1102,11 @@ function loadTranslations() {
         console.error('ClickSaver: Error loading translations spreadsheet. Using default translation (English).');
         args.useDefaultTranslation = true;
     }).always(() => {
-        injectMain(args);
+        // Leave this document.ready function. Some people randomly get a "require is not defined" error unless the injectMain function
+        // is called late enough.  Even with a "typeof require !== 'undefined'" check.
+        $(document).ready(() => {
+            injectMain(args);
+        });
     });
 }
 
