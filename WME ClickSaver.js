@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2020.05.10.001
+// @version         2021.02.19.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -790,13 +790,6 @@ function main(argsObject) {
         });
     }
 
-    function onModeChanged(model, modeId) {
-        if (!modeId || modeId === 1) {
-            initUserPanel();
-            loadSettingsFromStorage();
-        }
-    }
-
     function updateControls() {
         if ($(ROAD_TYPE_DROPDOWN_SELECTOR).length > 0) {
             if (isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
@@ -952,7 +945,6 @@ function main(argsObject) {
         initUserPanel();
         loadSettingsFromStorage();
         injectCss();
-        W.app.modeController.model.bind('change:mode', () => errorHandler(onModeChanged));
         W.prefs.on('change:isImperial', () => errorHandler(() => { initUserPanel(); loadSettingsFromStorage(); }));
         updateControls(); // In case of PL w/ segments selected.
         W.selectionManager.events.register('selectionchanged', null, () => errorHandler(updateControls));
