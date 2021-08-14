@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2021.02.19.001
+// @version         2021.08.14.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -1080,26 +1080,32 @@ function convertTranslationsArrayToObject(arrayIn) {
 }
 
 function loadTranslations() {
-    // This call retrieves the data from the translations spreadsheet and then injects
-    // the main code into the page.  If the spreadsheet call fails, the default English
-    // translation is used.
-    const args = {
-        scriptName: SCRIPT_NAME,
-        scriptVersion: SCRIPT_VERSION,
-        forumUrl: FORUM_URL
-    };
-    $.getJSON(`${TRANSLATIONS_URL}?${DEC(API_KEY)}`).then(res => {
-        args.translations = convertTranslationsArrayToObject(res.values);
-    }).fail(() => {
-        console.error('ClickSaver: Error loading translations spreadsheet. Using default translation (English).');
-        args.useDefaultTranslation = true;
-    }).always(() => {
-        // Leave this document.ready function. Some people randomly get a "require is not defined" error unless the injectMain function
-        // is called late enough.  Even with a "typeof require !== 'undefined'" check.
-        $(document).ready(() => {
-            injectMain(args);
+    if (typeof $ === 'undefined') {
+        setTimeout(loadTranslations, 250);
+        console.debug('ClickSaver:', 'jQuery not ready. Retry loading translations...');
+    } else {
+        // This call retrieves the data from the translations spreadsheet and then injects
+        // the main code into the page.  If the spreadsheet call fails, the default English
+        // translation is used.
+        const args = {
+            scriptName: SCRIPT_NAME,
+            scriptVersion: SCRIPT_VERSION,
+            forumUrl: FORUM_URL
+        };
+        $.getJSON(`${TRANSLATIONS_URL}?${DEC(API_KEY)}`).then(res => {
+            args.translations = convertTranslationsArrayToObject(res.values);
+            console.debug('ClickSaver:', 'Translations loaded.');
+        }).fail(() => {
+            console.error('ClickSaver: Error loading translations spreadsheet. Using default translation (English).');
+            args.useDefaultTranslation = true;
+        }).always(() => {
+            // Leave this document.ready function. Some people randomly get a "require is not defined" error unless the injectMain function
+            // is called late enough.  Even with a "typeof require !== 'undefined'" check.
+            $(document).ready(() => {
+                injectMain(args);
+            });
         });
-    });
+    }
 }
 
 // This function requires WazeWrap so it must be called outside of the injected code, as
