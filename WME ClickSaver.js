@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2021.08.14.001
+// @version         2021.11.06.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -320,9 +320,12 @@ function main(argsObject) {
     function onAddAltCityButtonClick() {
         $('.full-address').click();
         $('.add-alt-street-btn').click();
+        $('.alt-street-add').click(); //added by jm6087
         const streetName = $('form.address-form input.street-name').first().val();
-        const $altStreetInput = $('form.address-form div.add-alt-street-form input.alt-street-name').last();
-        const $altCityInput = $('form.address-form div.add-alt-street-form input.alt-city-name').last();
+        const $altStreetInput = $('div.add-alt-street-form input.alt-street-name').last(); //added by jm6087
+//        const $altStreetInput = $('form.address-form div.add-alt-street-form input.alt-street-name').last();  // commented out by jm6087
+        const $altCityInput = $('div.add-alt-street-form input.alt-city-name').last(); // added by jm6087
+//        const $altCityInput = $('form.address-form div.add-alt-street-form input.alt-city-name').last(); // commented out by jm6087
         const $altEmptyCityCheckbox = $('form.address-form div.add-alt-street-form input.alt-address.empty-city').last();
         $altStreetInput.val(streetName).blur().change();
         if ($altEmptyCityCheckbox.is(':checked')) $altEmptyCityCheckbox.click();
@@ -558,7 +561,7 @@ function main(argsObject) {
                     style: 'float: right;text-transform: none;'
                         + 'font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif;color: #26bae8;'
                         + 'font-weight: normal;'
-                }).text('Add alt city').click(onAddAltCityButtonClick)
+                }).text('Add Alt City').click(onAddAltCityButtonClick)
             );
         }
     }
