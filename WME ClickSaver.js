@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2021.08.14.001
+// @version         2021.11.07.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -160,7 +160,7 @@ function main(argsObject) {
         const defaultSettings = {
             lastVersion: null,
             roadButtons: true,
-            roadTypeButtons: ['St', 'PS', 'mH', 'MH', 'Fw', 'Rmp', 'PLR', 'PR'],
+            roadTypeButtons: ['St', 'PS', 'mH', 'MH', 'Fw', 'Rmp', 'PLR', 'PR', 'PB'],
             lockButtons: true,
             elevationButtons: true,
             directionButtons: true,
@@ -171,6 +171,10 @@ function main(argsObject) {
             setNewPLRCity: true,
             setNewPRStreetToNone: false,
             setNewPRCity: false,
+            setNewRRStreetToNone: true, //added by jm6087
+            setNewRRCity: false, //added by jm6087
+            setNewPBStreetToNone: true, //added by jm6087
+            setNewPBCity: true, //added by jm6087
             addAltCityButton: true,
             addSwapPedestrianButton: false,
             useOldRoadColors: false,
@@ -203,6 +207,8 @@ function main(argsObject) {
         setChecked('csRoutingTypeCheckBox', _settings.routingTypeButtons);
         setChecked('csClearNewPLRCheckBox', _settings.setNewPLRStreetToNone);
         setChecked('csClearNewPRCheckBox', _settings.setNewPRStreetToNone);
+        setChecked('csClearNewRRCheckBox', _settings.setNewRRStreetToNone); //added by jm6087
+        setChecked('csClearNewPBCheckBox', _settings.setNewPBStreetToNone); //added by jm6087
         setChecked('csUseOldRoadColorsCheckBox', _settings.useOldRoadColors);
         setChecked('csSetNewPLRCityCheckBox', _settings.setNewPLRCity);
         setChecked('csSetNewPRCityCheckBox', _settings.setNewPRCity);
@@ -222,6 +228,8 @@ function main(argsObject) {
                 parkingSpacesButtons: _settings.parkingSpacesButtons,
                 setNewPLRStreetToNone: _settings.setNewPLRStreetToNone,
                 setNewPRStreetToNone: _settings.setNewPRStreetToNone,
+                setNewRRStreetToNone: _settings.setNewRRStreetToNone, //added by jm6087
+                setNewPBStreetToNone: _settings.setNewPBStreetToNone, //added by jm6087
                 routingTypeButtons: _settings.routingTypeButtons,
                 useOldRoadColors: _settings.useOldRoadColors,
                 setNewPLRCity: _settings.setNewPLRCity,
@@ -320,9 +328,12 @@ function main(argsObject) {
     function onAddAltCityButtonClick() {
         $('.full-address').click();
         $('.add-alt-street-btn').click();
+        $('.alt-street-add').click(); //added by jm6087
         const streetName = $('form.address-form input.street-name').first().val();
-        const $altStreetInput = $('form.address-form div.add-alt-street-form input.alt-street-name').last();
-        const $altCityInput = $('form.address-form div.add-alt-street-form input.alt-city-name').last();
+        const $altStreetInput = $('div.add-alt-street-form input.alt-street-name').last(); //added by jm6087
+//        const $altStreetInput = $('form.address-form div.add-alt-street-form input.alt-street-name').last();  // commented out by jm6087
+        const $altCityInput = $('div.add-alt-street-form input.alt-city-name').last(); // added by jm6087
+//        const $altCityInput = $('form.address-form div.add-alt-street-form input.alt-city-name').last(); // commented out by jm6087
         const $altEmptyCityCheckbox = $('form.address-form div.add-alt-street-form input.alt-address.empty-city').last();
         $altStreetInput.val(streetName).blur().change();
         if ($altEmptyCityCheckbox.is(':checked')) $altEmptyCityCheckbox.click();
@@ -335,6 +346,10 @@ function main(argsObject) {
             setStreetAndCity(isChecked('csSetNewPLRCityCheckBox'));
         } else if (roadTypeAbbr === 'PR' && isChecked('csClearNewPRCheckBox') && typeof require !== 'undefined') {
             setStreetAndCity(isChecked('csSetNewPRCityCheckBox'));
+        } else if (roadTypeAbbr === 'RR' && isChecked('csClearNewRRCheckBox') && typeof require !== 'undefined') { //added by jm6087
+            setStreetAndCity(isChecked('csSetNewRRCityCheckbox')); //added by jm6087
+        } else if (roadTypeAbbr === 'PB' && isChecked('csClearNewPBCheckBox') && typeof require !== 'undefined') { //added by jm6087
+            setStreetAndCity(isChecked('csSetNewPBCityCheckBox')); //added by jm6087
         }
     }
 
@@ -558,7 +573,7 @@ function main(argsObject) {
                     style: 'float: right;text-transform: none;'
                         + 'font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif;color: #26bae8;'
                         + 'font-weight: normal;'
-                }).text('Add alt city').click(onAddAltCityButtonClick)
+                }).text('Add Alt City').click(onAddAltCityButtonClick)
             );
         }
     }
@@ -702,7 +717,7 @@ function main(argsObject) {
                     'data-road-type': roadTypeAbbr
                 })
             );
-            if (roadTypeAbbr === 'PLR' || roadTypeAbbr === 'PR') {
+            if (roadTypeAbbr === 'PLR' || roadTypeAbbr === 'PR' || roadTypeAbbr === 'RR' || roadTypeAbbr === 'PB') { //added RR & PB by jm6087
                 $roadTypesDiv.append(
                     // TODO css
                     createSettingsCheckbox(`csClearNew${roadTypeAbbr}CheckBox`, `setNew${roadTypeAbbr}StreetToNone`,
