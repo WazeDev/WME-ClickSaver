@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.04.05.001
+// @version         2022.04.05.002
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -42,9 +42,9 @@ const EXTERNAL_SETTINGS_NAME = 'clicksaver_settings_ext';
 // This function is injected into the page.
 function main(argsObject) {
     /* eslint-disable object-curly-newline */
-    const ROAD_TYPE_DROPDOWN_SELECTOR = 'select[name="roadType"]';
-    const ELEVATION_DROPDOWN_SELECTOR = '.side-panel-section select[name="level"]';
-    const ROUTING_TYPE_DROPDOWN_SELECTOR = 'select[name="routingRoadType"]';
+    const ROAD_TYPE_DROPDOWN_SELECTOR = 'wz-select[name="roadType"]';
+    const ELEVATION_DROPDOWN_SELECTOR = '.side-panel-section wz-select[name="level"]';
+    const ROUTING_TYPE_DROPDOWN_SELECTOR = 'wz-select[name="routingRoadType"]';
     const PARKING_SPACES_DROPDOWN_SELECTOR = 'select[name="estimatedNumberOfSpots"]';
     const PARKING_COST_DROPDOWN_SELECTOR = 'select[name="costType"]';
     const SETTINGS_STORE_NAME = 'clicksaver_settings';
@@ -325,19 +325,31 @@ function main(argsObject) {
         }
     }
 
+    // eslint-disable-next-line no-unused-vars
     function onAddAltCityButtonClick() {
-        $('.full-address').click();
-        $('.add-alt-street-btn').click();
-        $('.alt-street-add').click(); // added by jm6087
-        const streetName = $('form.address-form input.street-name').first().val();
-        const $altStreetInput = $('div.add-alt-street-form input.alt-street-name').last(); // added by jm6087
-        // const $altStreetInput = $('form.address-form div.add-alt-street-form input.alt-street-name').last();  // commented out by jm6087
-        const $altCityInput = $('div.add-alt-street-form input.alt-city-name').last(); // added by jm6087
-        // const $altCityInput = $('form.address-form div.add-alt-street-form input.alt-city-name').last(); // commented out by jm6087
-        const $altEmptyCityCheckbox = $('form.address-form div.add-alt-street-form input.alt-address.empty-city').last();
-        $altStreetInput.val(streetName).blur().change();
-        if ($altEmptyCityCheckbox.is(':checked')) $altEmptyCityCheckbox.click();
-        $altCityInput.val('').focus();
+        // As of v2.96 of WME, focusing and updating the alt address fields appears to be more difficult,
+        // perhaps due to shadow DOM containers. More research is needed.  Until then, this feature is disabled.
+
+        // PLAYING AROUND WITH ATTEMPTS TO UPDATE THE ALT CITY INPUT.
+        // $('wz-button[class="add-alt-street-btn"]').click();
+        // $($('wz-text-input.alt-street-name')[0].shadowRoot).find('.wz-text-input-inner-container').click();
+        // $($('wz-text-input.alt-street-name')[0].shadowRoot).find('input').val('whatever').blur().change();
+
+
+        // PRE-WME v2.96 CODE. DELETE LATER.
+
+        // $('.full-address').click();
+        // $('.add-alt-street-btn').click();
+        // $('.alt-street-add').click(); // added by jm6087
+        // const streetName = $('form.address-form input.street-name').first().val();
+        // const $altStreetInput = $('div.add-alt-street-form input.alt-street-name').last(); // added by jm6087
+        // // const $altStreetInput = $('form.address-form div.add-alt-street-form input.alt-street-name').last();  // commented out by jm6087
+        // const $altCityInput = $('div.add-alt-street-form input.alt-city-name').last(); // added by jm6087
+        // // const $altCityInput = $('form.address-form div.add-alt-street-form input.alt-city-name').last(); // commented out by jm6087
+        // const $altEmptyCityCheckbox = $('form.address-form div.add-alt-street-form input.alt-address.empty-city').last();
+        // $altStreetInput.val(streetName).blur().change();
+        // if ($altEmptyCityCheckbox.is(':checked')) $altEmptyCityCheckbox.click();
+        // $altCityInput.val('').focus();
     }
 
     function onRoadTypeButtonClick(roadTypeAbbr) {
@@ -351,10 +363,6 @@ function main(argsObject) {
         } else if (roadTypeAbbr === 'PB' && isChecked('csClearNewPBCheckBox') && typeof require !== 'undefined') { // added by jm6087
             setStreetAndCity(isChecked('csSetNewPBCityCheckBox')); // added by jm6087
         }
-    }
-
-    function filterAddressElem() {
-        return $(this).text() === 'Address';
     }
 
     function addRoadTypeButtons() {
@@ -379,19 +387,18 @@ function main(argsObject) {
         Object.keys(ROAD_TYPES).forEach(roadTypeKey => {
             if (_settings.roadTypeButtons.indexOf(roadTypeKey) !== -1) {
                 const roadType = ROAD_TYPES[roadTypeKey];
-                if ((roadType.category === 'pedestrian' && isPed) || (roadType.category !== 'pedestrian' && !isPed)) {
+                const isDisabled = $dropDown[0].hasAttribute('disabled') && $dropDown[0].getAttribute('disabled') === 'true';
+                if (!isDisabled && ((roadType.category === 'pedestrian' && isPed) || (roadType.category !== 'pedestrian' && !isPed))) {
                     const $div = divs[roadType.category];
                     $div.append(
                         $('<div>', {
-                            class: `btn btn-rth btn-rth-${roadTypeKey}${$dropDown.attr('disabled')
-                                ? ' disabled'
-                                : ''} btn-positive`,
+                            class: `btn btn-rth btn-rth-${roadTypeKey} btn-positive`,
                             title: _trans.roadTypeButtons[roadTypeKey].title
                         })
                             .text(_trans.roadTypeButtons[roadTypeKey].text)
                             .prop('checked', roadType.visible)
                             .data('key', roadTypeKey)
-                            // TODO: change onRoadTypeButtonClick hander to work with element rather than data
+                            // TODO: change onRoadTypeButtonClick handler to work with element rather than data
                             .click(function rtbClick() { onRoadTypeButtonClick($(this).data('key')); })
                     );
                 }
@@ -408,12 +415,18 @@ function main(argsObject) {
     function addRoutingTypeButtons() {
         const $dropDown = $(ROUTING_TYPE_DROPDOWN_SELECTOR);
         if ($dropDown.length > 0) {
-            const options = $dropDown.children();
+            const options = $dropDown.find('wz-option');
             if (options.length === 3) {
                 const buttonInfos = [
-                    ['-1', options[0].value, options[0].text, options[0].disabled],
-                    [options[1].text, options[1].value, '', options[1].disabled],
-                    ['+1', options[2].value, options[2].text, options[2].disabled]
+                    {
+                        text: '-1', value: options[0].value, toolTip: options[0].innerText, disabled: options[0].disabled
+                    },
+                    {
+                        text: options[1].innerText, value: options[1].value, toolTip: '', disabled: options[1].disabled
+                    },
+                    {
+                        text: '+1', value: options[2].value, toolTip: options[2].innerText, disabled: options[2].disabled
+                    }
                 ];
                 $('#csRoutingTypeContainer').remove();
                 // TODO css
@@ -421,12 +434,12 @@ function main(argsObject) {
                 for (let i = 0; i < buttonInfos.length; i++) {
                     const btnInfo = buttonInfos[i];
                     const $input = $('<input>', {
-                        type: 'radio', name: 'routingRoadType', id: `routingRoadType${i}`, value: btnInfo[1]
+                        type: 'radio', name: 'routingRoadType', id: `routingRoadType${i}`, value: btnInfo.value
                     }).click(function onRouteTypeClick() {
                         $(ROUTING_TYPE_DROPDOWN_SELECTOR).val($(this).attr('value')).change();
                     });
-                    if (btnInfo[3]) $input.attr('disabled', 'true');
-                    if (String(btnInfo[1]) === String($dropDown.val())) $input.prop('checked', 'true');
+                    if (btnInfo.disabled) $input.attr('disabled', 'true');
+                    if (String(btnInfo.value) === String($dropDown.val())) $input.prop('checked', 'true');
                     $form.append(
                         // TODO css
                         $('<div>', {
@@ -436,8 +449,8 @@ function main(argsObject) {
                             $input,
                             $('<label>', {
                                 // TODO css
-                                for: `routingRoadType${i}`, style: 'padding-left: 20px;', title: btnInfo[2]
-                            }).text(btnInfo[0])
+                                for: `routingRoadType${i}`, style: 'padding-left: 20px;', title: btnInfo.toolTip
+                            }).text(btnInfo.text)
                         )
                     );
                 }
@@ -534,105 +547,107 @@ function main(argsObject) {
         const id = 'csElevationButtonsContainer';
         if ($(`#${id}`).length === 0) {
             const $dropDown = $(ELEVATION_DROPDOWN_SELECTOR);
-            const baseClass = `btn waze-btn waze-btn-white${$dropDown.attr('disabled') ? ' disabled' : ''}`;
-            // TODO css
-            const style = 'height: 20px;padding-left: 8px;padding-right: 8px;margin-right: 4px;padding-top: 1px;';
-            // TODO css
-            const $div = $('<div>', { id, style: 'margin-bottom: 5px;' }).append(
-                $('<div>', { class: baseClass, style }).text('-').click(() => {
-                    const level = parseInt($(ELEVATION_DROPDOWN_SELECTOR).val(), 10);
-                    if (level > -5) { $(ELEVATION_DROPDOWN_SELECTOR).val(level - 1).change(); }
-                })
-            ).append(
-                $('<div>', { class: baseClass, style }).text(_trans.groundButtonText)
-                    .click(() => {
+            if ($dropDown[0].getAttribute('disabled') === 'false') {
+                const baseClass = 'btn';
+                // TODO css
+                const style = 'height: 20px;padding-left: 8px;padding-right: 8px;margin-right: 4px;padding-top: 1px;';
+                // TODO css
+                const $div = $('<div>', { id, style: 'margin-bottom: 5px;' }).append(
+                    $('<button>', { class: baseClass, style }).text('-').click(() => {
                         const level = parseInt($(ELEVATION_DROPDOWN_SELECTOR).val(), 10);
-                        if (level !== 0) { $(ELEVATION_DROPDOWN_SELECTOR).val(0).change(); }
+                        if (level > -8) { $(ELEVATION_DROPDOWN_SELECTOR).val(level - 1).change(); }
+                    }),
+                    $('<button>', { class: baseClass, style }).text(_trans.groundButtonText)
+                        .click(() => {
+                            const level = parseInt($(ELEVATION_DROPDOWN_SELECTOR).val(), 10);
+                            if (level !== 0) { $(ELEVATION_DROPDOWN_SELECTOR).val(0).change(); }
+                        }),
+                    $('<button>', { class: baseClass, style }).text('+').click(() => {
+                        const level = parseInt($(ELEVATION_DROPDOWN_SELECTOR).val(), 10);
+                        if (level < 9) { $(ELEVATION_DROPDOWN_SELECTOR).val(level + 1).change(); }
                     })
-            ).append(
-                $('<div>', { class: baseClass, style }).text('+').click(() => {
-                    const level = parseInt($(ELEVATION_DROPDOWN_SELECTOR).val(), 10);
-                    if (level < 9) { $(ELEVATION_DROPDOWN_SELECTOR).val(level + 1).change(); }
-                })
-            );
-            // TODO css
-            $dropDown.css({ display: 'inline-block', width: '120px', marginRight: '10px' });
-            $dropDown.before($div);
-            $dropDown.detach();
-            $div.prepend($dropDown);
+                );
+                // TODO css
+                $dropDown.css({ display: 'inline-block', width: '120px', marginRight: '10px' });
+                $dropDown.before($div);
+                $dropDown.detach();
+                $div.prepend($dropDown);
+            }
         }
     }
 
     function addAddAltCityButton() {
-        const id = 'csAddAltCityButton';
-        if (W.selectionManager.getSelectedFeatures()[0].model.type === 'segment' && $(`#${id}`).length === 0) {
-            $('label.control-label').filter(filterAddressElem).append(
-                $('<a>', {
-                    href: '#',
-                    // TODO css
-                    style: 'float: right;text-transform: none;'
-                        + 'font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif;color: #26bae8;'
-                        + 'font-weight: normal;'
-                }).text('Add Alt City').click(onAddAltCityButtonClick)
-            );
-        }
+        // As of Beta WME 2.96, I can't figure out how to get the onAddAltCityButtonClick function to work properly so
+        // I'm removing this feature for now.
+
+        // const id = 'csAddAltCityButton';
+        // if (W.selectionManager.getSelectedFeatures()[0].model.type === 'segment' && $(`#${id}`).length === 0) {
+        //     $('div.address-edit').prev('wz-label').append(
+        //         $('<a>', {
+        //             href: '#',
+        //             // TODO css
+        //             style: 'float: right;text-transform: none;'
+        //                 + 'font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif;color: #26bae8;'
+        //                 + 'font-weight: normal;'
+        //         }).text('Add Alt City').click(onAddAltCityButtonClick)
+        //     );
+        // }
     }
 
     function addSwapPedestrianButton() {
         const id = 'csSwapPedestrianContainer';
         $(`#${id}`).remove();
-        if (W.selectionManager.getSelectedFeatures().length === 1) {
-            if (W.selectionManager.getSelectedFeatures()[0].model.type === 'segment') {
+        const selectedFeatures = W.selectionManager.getSelectedFeatures();
+        if (selectedFeatures.length === 1 && selectedFeatures[0].model.type === 'segment') {
+            // TODO css
+            const $container = $('<div>', { id, style: 'white-space: nowrap;float: right;display: inline;' });
+            const $button = $('<div>', {
+                id: 'csBtnSwapPedestrianRoadType',
+                title: '',
                 // TODO css
-                const $container = $('<div>', { id, style: 'white-space: nowrap;float: right;display: inline;' });
-                const $button = $('<div>', {
-                    id: 'csBtnSwapPedestrianRoadType',
-                    title: '',
-                    // TODO css
-                    style: 'display:inline-block;cursor:pointer;'
+                style: 'display:inline-block;cursor:pointer;'
+            });
+            $button.append('<span class="fa fa-arrows-h" style="font-size:20px; color:#e84545;"></span>')
+                .attr({
+                    title: 'Swap between driving-type and walking-type segments.\nWARNING!'
+                        + ' This will DELETE and recreate the segment.  Nodes may need to be reconnected.'
                 });
-                $button.append('<span class="fa fa-arrows-h" style="font-size:20px; color:#e84545;"></span>')
-                    .attr({
-                        title: 'Swap between driving-type and walking-type segments.\nWARNING!'
-                            + ' This will DELETE and recreate the segment.  Nodes may need to be reconnected.'
-                    });
-                $container.append($button);
-                const $label = $('select[name="roadType"]').closest('.form-group').children('label').first();
-                // TODO css
-                $label.css({ display: 'inline' }).after($container);
+            $container.append($button);
+            const $label = $('wz-select[name="roadType"]').closest('form').find('wz-label').first();
+            // TODO css
+            $label.css({ display: 'inline' }).after($container);
 
-                $('#csBtnSwapPedestrianRoadType').click(() => {
-                    if (_settings.warnOnPedestrianTypeSwap) {
-                        _settings.warnOnPedestrianTypeSwap = false;
-                        saveSettingsToStorage();
-                        if (!confirm('This will DELETE the segment and recreate it. Any speed data will be lost,'
-                            + ' and nodes will need to be reconnected (if applicable).'
-                            + ' This message will only be displayed once. Continue?')) {
-                            return;
-                        }
+            $('#csBtnSwapPedestrianRoadType').click(() => {
+                if (_settings.warnOnPedestrianTypeSwap) {
+                    _settings.warnOnPedestrianTypeSwap = false;
+                    saveSettingsToStorage();
+                    if (!confirm('This will DELETE the segment and recreate it. Any speed data will be lost,'
+                        + ' and nodes will need to be reconnected (if applicable).'
+                        + ' This message will only be displayed once. Continue?')) {
+                        return;
                     }
+                }
 
-                    // delete the selected segment
-                    let segment = W.selectionManager.getSelectedFeatures()[0];
-                    const oldGeom = segment.geometry.clone();
-                    W.model.actionManager.add(new DelSeg(segment.model));
+                // delete the selected segment
+                let segment = W.selectionManager.getSelectedFeatures()[0];
+                const oldGeom = segment.geometry.clone();
+                W.model.actionManager.add(new DelSeg(segment.model));
 
-                    // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
-                    // Note: this doesn't work in a MultiAction for some reason.
-                    const newRoadType = isPedestrianTypeSegment(segment.model) ? 1 : 5;
-                    segment = new Segment({ geometry: oldGeom, roadType: newRoadType });
-                    segment.state = OL.State.INSERT;
-                    W.model.actionManager.add(new AddSeg(segment, {
-                        createNodes: !0,
-                        openAllTurns: W.prefs.get('enableTurnsByDefault'),
-                        createTwoWay: W.prefs.get('twoWaySegmentsByDefault'),
-                        snappedFeatures: [null, null]
-                    }));
-                    const newId = W.model.repos.segments.idGenerator.lastValue;
-                    const newSegment = W.model.segments.getObjectById(newId);
-                    W.selectionManager.setSelectedModels([newSegment]);
-                });
-            }
+                // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
+                // Note: this doesn't work in a MultiAction for some reason.
+                const newRoadType = isPedestrianTypeSegment(segment.model) ? 1 : 5;
+                segment = new Segment({ geometry: oldGeom, roadType: newRoadType });
+                segment.state = OL.State.INSERT;
+                W.model.actionManager.add(new AddSeg(segment, {
+                    createNodes: !0,
+                    openAllTurns: W.prefs.get('enableTurnsByDefault'),
+                    createTwoWay: W.prefs.get('twoWaySegmentsByDefault'),
+                    snappedFeatures: [null, null]
+                }));
+                const newId = W.model.repos.segments.idGenerator.lastValue;
+                const newSegment = W.model.segments.getObjectById(newId);
+                W.selectionManager.setSelectedModels([newSegment]);
+            });
         }
     }
 
@@ -755,8 +770,9 @@ function main(argsObject) {
                     ),
                     $('<label>', { class: 'cs-group-label' }).text('Time Savers'),
                     $('<div>', { style: 'margin-bottom:8px;' }).append(
-                        createSettingsCheckbox('csAddAltCityButtonCheckBox', 'addAltCityButton',
-                            'Show "Add alt city" button'),
+                        // THIS IS CURRENTLY DISABLED
+                        // createSettingsCheckbox('csAddAltCityButtonCheckBox', 'addAltCityButton',
+                        //    'Show "Add alt city" button'),
                         isSwapPedestrianPermitted() ? createSettingsCheckbox('csAddSwapPedestrianButtonCheckBox',
                             'addSwapPedestrianButton', 'Show "Swap driving<->walking segment type" button') : ''
                     )
@@ -948,7 +964,7 @@ function main(argsObject) {
                             && isChecked('csParkingCostButtonsCheckBox')) {
                             addParkingCostButtons(); // TODO - add option setting
                         }
-                        if ($(addedNode).find('label').filter(filterAddressElem).length && isChecked('csAddAltCityButtonCheckBox')) {
+                        if ($(addedNode).find('div.address-edit').prev('wz-label').length && isChecked('csAddAltCityButtonCheckBox')) {
                             addAddAltCityButton();
                         }
                     }
