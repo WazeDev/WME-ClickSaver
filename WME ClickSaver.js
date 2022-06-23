@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.04.05.002
+// @version         2022.06.23.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -1144,7 +1144,7 @@ function loadTranslations() {
 function addToggleDrawNewRoadsAsTwoWayShortcut() {
     new WazeWrap.Interface.Shortcut('ToggleTwoWayNewSeg', 'Toggle new segment two-way drawing',
         'editing', 'editToggleNewSegTwoWayDrawing', EXTERNAL_SETTINGS.toggleTwoWaySegDrawingShortcut,
-        () => { $('#twoWayRoad-on-0').click(); }, null).add();
+        () => { $('wz-checkbox[name="twoWaySegmentsByDefault"]').click(); }, null).add();
 }
 
 function sandboxLoadSettings() {
