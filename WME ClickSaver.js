@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.06.23.001
+// @version         2022.08.17.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -683,7 +683,7 @@ function main(argsObject) {
         const css = [
             // Road type button formatting
             '.csRoadTypeButtonsCheckBoxContainer {margin-left:15px;}',
-            '.rth-btn-container {margin-bottom:5px;}',
+            '.rth-btn-container {margin-bottom:5px;height:21px;}',
             '.rth-btn-container .btn-rth {font-size:11px;line-height:20px;color:black;padding:0px 4px;height:20px;'
             + 'margin-right:2px;border-style:solid;border-width:1px;}',
             buildRoadTypeButtonCss(),
