@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.08.17.002
+// @version         2022.08.17.003
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -363,8 +363,14 @@ function main(argsObject) {
                 const subAction = new UpdateObject(segment.model, { roadType: roadTypeVal });
                 action.doSubAction(subAction);
             });
-            const roadTypeName = _trans.roadTypeButtons[roadTypeAbbr].title;
-            action._description = `Changed Road type on ${segments.length} segments to: ${roadTypeName}`;
+            action._description = I18n.t(
+                'save.changes_log.actions.UpdateObject.changed',
+                {
+                    propertyName: I18n.t('objects.segment.fields.roadType'),
+                    objectsString: I18n.t('objects.segment.multi', { count: segments.length }),
+                    value: I18n.t('segment.road_types')[roadTypeVal]
+                }
+            );
         } else {
             action = new UpdateObject(segments[0].model, { roadType: roadTypeVal });
         }
