@@ -50,22 +50,22 @@ function main(argsObject) {
     const SETTINGS_STORE_NAME = 'clicksaver_settings';
     const DEFAULT_TRANSLATION = {
         roadTypeButtons: {
-            St: { title: 'Street', text: 'St' },
-            PS: { title: 'Primary Street', text: 'PS' },
-            mH: { title: 'Minor Highway', text: 'mH' },
-            MH: { title: 'Major Highway', text: 'MH' },
-            Fw: { title: 'Freeway', text: 'Fw' },
-            Rmp: { title: 'Ramp', text: 'Rmp' },
-            OR: { title: 'Off-road / Not Maintained', text: 'OR' },
-            PLR: { title: 'Parking Lot Road', text: 'PLR' },
-            PR: { title: 'Private Road', text: 'PR' },
-            Fer: { title: 'Ferry', text: 'Fer' },
-            WT: { title: 'Walking Trail', text: 'WT' },
-            PB: { title: 'Pedestrian Boardwalk', text: 'PB' },
-            Sw: { title: 'Stairway', text: 'Sw' },
-            RR: { title: 'Railroad (non-drivable)', text: 'RR' },
-            RT: { title: 'Runway/Taxiway (non-drivable)', text: 'RT' },
-            Pw: { title: 'Passageway', text: 'Pw' }
+            St: { text: 'St' },
+            PS: { text: 'PS' },
+            mH: { text: 'mH' },
+            MH: { text: 'MH' },
+            Fw: { text: 'Fw' },
+            Rmp: { text: 'Rmp' },
+            OR: { text: 'OR' },
+            PLR: { text: 'PLR' },
+            PR: { text: 'PR' },
+            Fer: { text: 'Fer' },
+            WT: { text: 'WT' },
+            PB: { text: 'PB' },
+            Sw: { text: 'Sw' },
+            RR: { text: 'RR' },
+            RT: { text: 'RT' },
+            Pw: { text: 'Pw' }
         },
         directionButtons: {
             twoWay: { title: 'Two way', text: 'Two way' },
@@ -951,7 +951,6 @@ function main(argsObject) {
 
         _trans = getTranslationObject();
         Object.keys(ROAD_TYPES).forEach(rtName => {
-            ROAD_TYPES[rtName].title = _trans.roadTypeButtons[rtName].title;
             ROAD_TYPES[rtName].text = _trans.roadTypeButtons[rtName].text;
         });
         Object.keys(DIRECTIONS).forEach(d => {
