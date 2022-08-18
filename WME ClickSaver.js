@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.08.17.003
+// @version         2022.08.17.004
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -415,7 +415,7 @@ function main(argsObject) {
                     $div.append(
                         $('<div>', {
                             class: `btn btn-rth btn-rth-${roadTypeKey} btn-positive`,
-                            title: _trans.roadTypeButtons[roadTypeKey].title
+                            title: I18n.t('segment.road_types')[roadType.val]
                         })
                             .text(_trans.roadTypeButtons[roadTypeKey].text)
                             .prop('checked', roadType.visible)
