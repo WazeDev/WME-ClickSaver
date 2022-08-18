@@ -749,8 +749,9 @@ function main(argsObject) {
         Object.keys(ROAD_TYPES).forEach(roadTypeAbbr => {
             const roadType = ROAD_TYPES[roadTypeAbbr];
             const id = `cs${roadTypeAbbr}CheckBox`;
+            const title = I18n.t('segment.road_types')[roadType.val];
             $roadTypesDiv.append(
-                createSettingsCheckbox(id, 'roadType', roadType.title, null, null, null, {
+                createSettingsCheckbox(id, 'roadType', title, null, null, null, {
                     'data-road-type': roadTypeAbbr
                 })
             );
