@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.08.26.002
+// @version         2022.08.26.003
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -44,7 +44,6 @@ function main(argsObject) {
     /* eslint-disable object-curly-newline */
     const ROAD_TYPE_DROPDOWN_SELECTOR = 'wz-select[name="roadType"]';
     const ELEVATION_DROPDOWN_SELECTOR = '.side-panel-section wz-select[name="level"]';
-    const ROUTING_TYPE_DROPDOWN_SELECTOR = 'wz-select[name="routingRoadType"]';
     const PARKING_SPACES_DROPDOWN_SELECTOR = 'select[name="estimatedNumberOfSpots"]';
     const PARKING_COST_DROPDOWN_SELECTOR = 'select[name="costType"]';
     const SETTINGS_STORE_NAME = 'clicksaver_settings';
@@ -84,7 +83,6 @@ function main(argsObject) {
             setStreetCityToNone_Title: 'NOTE: Only works if connected directly or indirectly'
                 + ' to a segment with State / Country already set.',
             setCityToConnectedSegCity: 'Set City to connected segment\'s City',
-            routingTypeButtons: 'Add routing type buttons',
             elevationButtons: 'Add elevation buttons',
             parkingCostButtons: 'Add PLA cost buttons',
             parkingSpacesButtons: 'Add PLA estimated spaces buttons',
@@ -164,7 +162,6 @@ function main(argsObject) {
             lockButtons: true,
             elevationButtons: true,
             directionButtons: true,
-            routingTypeButtons: true,
             parkingCostButtons: true,
             parkingSpacesButtons: true,
             setNewPLRStreetToNone: true,
@@ -204,7 +201,6 @@ function main(argsObject) {
         setChecked('csDirectionButtonsCheckBox', _settings.directionButtons);
         setChecked('csParkingSpacesButtonsCheckBox', _settings.parkingSpacesButtons);
         setChecked('csParkingCostButtonsCheckBox', _settings.parkingCostButtons);
-        setChecked('csRoutingTypeCheckBox', _settings.routingTypeButtons);
         setChecked('csClearNewPLRCheckBox', _settings.setNewPLRStreetToNone);
         setChecked('csClearNewPRCheckBox', _settings.setNewPRStreetToNone);
         setChecked('csClearNewRRCheckBox', _settings.setNewRRStreetToNone); // added by jm6087
@@ -230,7 +226,6 @@ function main(argsObject) {
                 setNewPRStreetToNone: _settings.setNewPRStreetToNone,
                 setNewRRStreetToNone: _settings.setNewRRStreetToNone, // added by jm6087
                 setNewPBStreetToNone: _settings.setNewPBStreetToNone, // added by jm6087
-                routingTypeButtons: _settings.routingTypeButtons,
                 useOldRoadColors: _settings.useOldRoadColors,
                 setNewPLRCity: _settings.setNewPLRCity,
                 setNewPRCity: _settings.setNewPRCity,
@@ -432,54 +427,6 @@ function main(argsObject) {
             $container.append($street).append($highway).append($otherDrivable).append($nonDrivable);
         }
         $dropDown.before($container);
-    }
-
-    function addRoutingTypeButtons() {
-        const $dropDown = $(ROUTING_TYPE_DROPDOWN_SELECTOR);
-        if ($dropDown.length > 0) {
-            const options = $dropDown.find('wz-option');
-            if (options.length === 3) {
-                const buttonInfos = [
-                    {
-                        text: '-1', value: options[0].value, toolTip: options[0].innerText, disabled: options[0].disabled
-                    },
-                    {
-                        text: options[1].innerText, value: options[1].value, toolTip: '', disabled: options[1].disabled
-                    },
-                    {
-                        text: '+1', value: options[2].value, toolTip: options[2].innerText, disabled: options[2].disabled
-                    }
-                ];
-                $('#csRoutingTypeContainer').remove();
-                // TODO css
-                const $form = $('<div>', { id: 'csRoutingTypeContainer', style: 'height:16px;padding-top:0px' });
-                for (let i = 0; i < buttonInfos.length; i++) {
-                    const btnInfo = buttonInfos[i];
-                    const $input = $('<input>', {
-                        type: 'radio', name: 'routingRoadType', id: `routingRoadType${i}`, value: btnInfo.value
-                    }).click(function onRouteTypeClick() {
-                        $(ROUTING_TYPE_DROPDOWN_SELECTOR).val($(this).attr('value')).change();
-                    });
-                    if (btnInfo.disabled) $input.attr('disabled', 'true');
-                    if (String(btnInfo.value) === String($dropDown.val())) $input.prop('checked', 'true');
-                    $form.append(
-                        // TODO css
-                        $('<div>', {
-                            class: 'controls-container',
-                            style: 'float: left; margin-right: 10px;margin-left: 0px;padding-top: 0px;'
-                        }).append(
-                            $input,
-                            $('<label>', {
-                                // TODO css
-                                for: `routingRoadType${i}`, style: 'padding-left: 20px;', title: btnInfo.toolTip
-                            }).text(btnInfo.text)
-                        )
-                    );
-                }
-                $dropDown.before($form);
-                $dropDown.hide();
-            }
-        }
     }
 
     function isPLA(item) {
@@ -782,8 +729,6 @@ function main(argsObject) {
                             createSettingsCheckbox('csRoadTypeButtonsCheckBox', 'roadButtons',
                                 _trans.prefs.roadTypeButtons)
                         ).append($roadTypesDiv),
-                        createSettingsCheckbox('csRoutingTypeCheckBox', 'routingTypeButtons',
-                            _trans.prefs.routingTypeButtons),
                         createSettingsCheckbox('csElevationButtonsCheckBox', 'elevationButtons',
                             _trans.prefs.elevationButtons),
                         createSettingsCheckbox('csParkingCostButtonsCheckBox', 'parkingCostButtons',
@@ -847,9 +792,6 @@ function main(argsObject) {
     function updateControls() {
         if ($(ROAD_TYPE_DROPDOWN_SELECTOR).length > 0) {
             if (isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
-        }
-        if ($(ROUTING_TYPE_DROPDOWN_SELECTOR && isChecked('csRoutingTypeCheckBox')).length > 0) {
-            addRoutingTypeButtons();
         }
         if ($(ELEVATION_DROPDOWN_SELECTOR).length > 0 && isChecked('csElevationButtonsCheckBox')) {
             addElevationButtons();
@@ -972,9 +914,6 @@ function main(argsObject) {
                             if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
                                 addSwapPedestrianButton();
                             }
-                        }
-                        if (addedNode.querySelector(ROUTING_TYPE_DROPDOWN_SELECTOR) && isChecked('csRoutingTypeCheckBox')) {
-                            addRoutingTypeButtons();
                         }
                         if (addedNode.querySelector(ELEVATION_DROPDOWN_SELECTOR) && isChecked('csElevationButtonsCheckBox')) {
                             addElevationButtons();
