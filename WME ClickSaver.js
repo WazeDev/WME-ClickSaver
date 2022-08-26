@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.08.26.001
+// @version         2022.08.26.002
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -26,7 +26,7 @@
 /* global WazeWrap */
 /* global window */
 
-const UPDATE_MESSAGE = 'Fix elevation buttons.';
+const UPDATE_MESSAGE = '';
 
 const SCRIPT_NAME = GM_info.script.name;
 const SCRIPT_VERSION = GM_info.script.version;
@@ -568,32 +568,32 @@ function main(argsObject) {
     function addElevationButtons() {
         const id = 'csElevationButtonsContainer';
         if ($(`#${id}`).length === 0) {
-            const $dropDown = $(ELEVATION_DROPDOWN_SELECTOR);
-            if ($dropDown[0].getAttribute('disabled') === 'false') {
+            const dropDown = document.querySelector(ELEVATION_DROPDOWN_SELECTOR);
+            if (!dropDown.disabled) {
                 const baseClass = 'btn';
                 // TODO css
                 const style = 'height: 20px;padding-left: 8px;padding-right: 8px;margin-right: 4px;padding-top: 1px;';
                 // TODO css
                 const $div = $('<div>', { id, style: 'margin-bottom: 5px;' }).append(
                     $('<button>', { class: baseClass, style }).text('-').click(() => {
-                        const level = parseInt($(ELEVATION_DROPDOWN_SELECTOR).val(), 10);
-                        if (level > -8) { $(`${ELEVATION_DROPDOWN_SELECTOR} wz-option[value="${(level - 1)}"]`).click(); }
+                        const level = dropDown.value;
+                        if (level !== 'MIXED' && level > -8) { dropDown.value = level - 1; }
                     }),
                     $('<button>', { class: baseClass, style }).text(_trans.groundButtonText)
                         .click(() => {
-                            const level = parseInt($(ELEVATION_DROPDOWN_SELECTOR).val(), 10);
-                            if (level !== 0) { $(`${ELEVATION_DROPDOWN_SELECTOR} wz-option[value="0"]`).click(); }
+                            const level = dropDown.value;
+                            if (level !== 0) { dropDown.value = 0; }
                         }),
                     $('<button>', { class: baseClass, style }).text('+').click(() => {
-                        const level = parseInt($(ELEVATION_DROPDOWN_SELECTOR).val(), 10);
-                        if (level < 9) { $(`${ELEVATION_DROPDOWN_SELECTOR} wz-option[value="${(level + 1)}"]`).click(); }
+                        const level = dropDown.value;
+                        if (level !== 'MIXED' && level < 9) { dropDown.value = level + 1; }
                     })
                 );
                 // TODO css
-                $dropDown.css({ display: 'inline-block', width: '120px', marginRight: '10px' });
-                $dropDown.before($div);
-                $dropDown.detach();
-                $div.prepend($dropDown);
+                $(dropDown).css({ display: 'inline-block', width: '120px', marginRight: '10px' });
+                $(dropDown).before($div);
+                $(dropDown).detach();
+                $div.prepend($(dropDown));
             }
         }
     }
