@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.08.18.001
+// @version         2022.08.26.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -26,7 +26,7 @@
 /* global WazeWrap */
 /* global window */
 
-const UPDATE_MESSAGE = '';
+const UPDATE_MESSAGE = 'Fix elevation buttons.';
 
 const SCRIPT_NAME = GM_info.script.name;
 const SCRIPT_VERSION = GM_info.script.version;
@@ -577,16 +577,16 @@ function main(argsObject) {
                 const $div = $('<div>', { id, style: 'margin-bottom: 5px;' }).append(
                     $('<button>', { class: baseClass, style }).text('-').click(() => {
                         const level = parseInt($(ELEVATION_DROPDOWN_SELECTOR).val(), 10);
-                        if (level > -8) { $(ELEVATION_DROPDOWN_SELECTOR).val(level - 1).change(); }
+                        if (level > -8) { $(`${ELEVATION_DROPDOWN_SELECTOR} wz-option[value="${(level - 1)}"]`).click(); }
                     }),
                     $('<button>', { class: baseClass, style }).text(_trans.groundButtonText)
                         .click(() => {
                             const level = parseInt($(ELEVATION_DROPDOWN_SELECTOR).val(), 10);
-                            if (level !== 0) { $(ELEVATION_DROPDOWN_SELECTOR).val(0).change(); }
+                            if (level !== 0) { $(`${ELEVATION_DROPDOWN_SELECTOR} wz-option[value="0"]`).click(); }
                         }),
                     $('<button>', { class: baseClass, style }).text('+').click(() => {
                         const level = parseInt($(ELEVATION_DROPDOWN_SELECTOR).val(), 10);
-                        if (level < 9) { $(ELEVATION_DROPDOWN_SELECTOR).val(level + 1).change(); }
+                        if (level < 9) { $(`${ELEVATION_DROPDOWN_SELECTOR} wz-option[value="${(level + 1)}"]`).click(); }
                     })
                 );
                 // TODO css
