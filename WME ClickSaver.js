@@ -245,7 +245,7 @@ function main(argsObject) {
     }
 
     function isPedestrianTypeSegment(segment) {
-        return [5, 10, 16].indexOf(segment.attributes.roadType) > -1;
+        return [5, 10, 16].includes(segment.attributes.roadType);
     }
 
     function getConnectedSegmentIDs(segmentID) {
@@ -320,31 +320,46 @@ function main(argsObject) {
         }
     }
 
+    function waitForElem(selector, callback) {
+        const elem = document.querySelector(selector);
+        setTimeout(() => {
+            if (!elem) {
+                waitForElem(selector, callback);
+            } else {
+                callback(elem);
+            }
+        }, 10);
+    }
+
+    function waitForShadowElem(parentElemSelector, shadowElemSelector, callback) {
+        setTimeout(() => {
+            const parentElem = document.querySelector(parentElemSelector);
+            const sRoot = parentElem ? parentElem.shadowRoot : null;
+            const shadowElem = sRoot ? sRoot.querySelector(shadowElemSelector) : null;
+            if (!shadowElem) {
+                waitForShadowElem(parentElemSelector, shadowElemSelector, callback);
+            } else {
+                callback(shadowElem, parentElem);
+            }
+        }, 10);
+    }
+
     // eslint-disable-next-line no-unused-vars
     function onAddAltCityButtonClick() {
-        // As of v2.96 of WME, focusing and updating the alt address fields appears to be more difficult,
-        // perhaps due to shadow DOM containers. More research is needed.  Until then, this feature is disabled.
-
-        // PLAYING AROUND WITH ATTEMPTS TO UPDATE THE ALT CITY INPUT.
-        // $('wz-button[class="add-alt-street-btn"]').click();
-        // $($('wz-text-input.alt-street-name')[0].shadowRoot).find('.wz-text-input-inner-container').click();
-        // $($('wz-text-input.alt-street-name')[0].shadowRoot).find('input').val('whatever').blur().change();
-
-
-        // PRE-WME v2.96 CODE. DELETE LATER.
-
-        // $('.full-address').click();
-        // $('.add-alt-street-btn').click();
-        // $('.alt-street-add').click(); // added by jm6087
-        // const streetName = $('form.address-form input.street-name').first().val();
-        // const $altStreetInput = $('div.add-alt-street-form input.alt-street-name').last(); // added by jm6087
-        // // const $altStreetInput = $('form.address-form div.add-alt-street-form input.alt-street-name').last();  // commented out by jm6087
-        // const $altCityInput = $('div.add-alt-street-form input.alt-city-name').last(); // added by jm6087
-        // // const $altCityInput = $('form.address-form div.add-alt-street-form input.alt-city-name').last(); // commented out by jm6087
-        // const $altEmptyCityCheckbox = $('form.address-form div.add-alt-street-form input.alt-address.empty-city').last();
-        // $altStreetInput.val(streetName).blur().change();
-        // if ($altEmptyCityCheckbox.is(':checked')) $altEmptyCityCheckbox.click();
-        // $altCityInput.val('').focus();
+        const streetID = W.selectionManager.getSelectedFeatures()[0].model.attributes.primaryStreetID;
+        $('wz-button[class="add-alt-street-btn"]').click();
+        waitForElem('wz-autocomplete.alt-street-name', elem => {
+            elem.focus();
+            waitForShadowElem('wz-autocomplete.alt-street-name', `wz-menu-item[item-id="${streetID}"]`, shadowElem => {
+                shadowElem.click();
+                const emptyCityCheckbox = $('wz-checkbox.empty-city');
+                if (emptyCityCheckbox[0].checked) { emptyCityCheckbox.click(); }
+                waitForShadowElem('wz-autocomplete.alt-city-name', 'wz-text-input', (cityTextElem, cityAutocompleteElem) => {
+                    cityTextElem.value = null;
+                    cityAutocompleteElem.focus();
+                });
+            });
+        });
     }
 
     function onRoadTypeButtonClick(roadTypeAbbr) {
@@ -430,7 +445,7 @@ function main(argsObject) {
     }
 
     function isPLA(item) {
-        return (item.model.type === 'venue') && item.model.attributes.categories.indexOf('PARKING_LOT') > -1;
+        return (item.model.type === 'venue') && item.model.attributes.categories.includes('PARKING_LOT');
     }
 
     function addParkingSpacesButtons() {
@@ -546,21 +561,23 @@ function main(argsObject) {
     }
 
     function addAddAltCityButton() {
-        // As of Beta WME 2.96, I can't figure out how to get the onAddAltCityButtonClick function to work properly so
-        // I'm removing this feature for now.
+        const selFeatures = W.selectionManager.getSelectedFeatures();
+        const streetID = selFeatures[0].model.attributes.primaryStreetID;
+        // Only show the button if every segment has the same primary city and street.
+        if (selFeatures.length > 1 && !selFeatures.every(f => f.model.attributes.primaryStreetID === streetID)) return;
 
-        // const id = 'csAddAltCityButton';
-        // if (W.selectionManager.getSelectedFeatures()[0].model.type === 'segment' && $(`#${id}`).length === 0) {
-        //     $('div.address-edit').prev('wz-label').append(
-        //         $('<a>', {
-        //             href: '#',
-        //             // TODO css
-        //             style: 'float: right;text-transform: none;'
-        //                 + 'font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif;color: #26bae8;'
-        //                 + 'font-weight: normal;'
-        //         }).text('Add Alt City').click(onAddAltCityButtonClick)
-        //     );
-        // }
+        const id = 'csAddAltCityButton';
+        if (selFeatures[0].model.type === 'segment' && $(`#${id}`).length === 0) {
+            $('div.address-edit').prev('wz-label').append(
+                $('<a>', {
+                    href: '#',
+                    // TODO css
+                    style: 'float: right;text-transform: none;'
+                        + 'font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif;color: #26bae8;'
+                        + 'font-weight: normal;'
+                }).text('Add Alt City').click(onAddAltCityButtonClick)
+            );
+        }
     }
 
     function addSwapPedestrianButton() {
@@ -739,8 +756,8 @@ function main(argsObject) {
                     $('<label>', { class: 'cs-group-label' }).text('Time Savers'),
                     $('<div>', { style: 'margin-bottom:8px;' }).append(
                         // THIS IS CURRENTLY DISABLED
-                        // createSettingsCheckbox('csAddAltCityButtonCheckBox', 'addAltCityButton',
-                        //    'Show "Add alt city" button'),
+                        createSettingsCheckbox('csAddAltCityButtonCheckBox', 'addAltCityButton',
+                            'Show "Add alt city" button'),
                         isSwapPedestrianPermitted() ? createSettingsCheckbox('csAddSwapPedestrianButtonCheckBox',
                             'addSwapPedestrianButton', 'Show "Swap driving<->walking segment type" button') : ''
                     )
@@ -751,7 +768,7 @@ function main(argsObject) {
         $panel.append(
             // TODO css
             $('<div>', { style: 'margin-top:20px;font-size:10px;color:#999999;' }).append(
-                $('<div>').text(`version ${argsObject.scriptVersion}${argsObject.scriptName.toLowerCase().indexOf('beta') > -1 ? ' beta' : ''}`),
+                $('<div>').text(`version ${argsObject.scriptVersion}${argsObject.scriptName.toLowerCase().includes('beta') ? ' beta' : ''}`),
                 $('<div>').append(
                     $('<a>', { href: argsObject.forumUrl, target: '__blank' }).text(_trans.prefs.discussionForumLinkText)
                 )
@@ -833,7 +850,7 @@ function main(argsObject) {
 
     function onPaste(e) {
         const targetNode = e.target;
-        if (targetNode.name === 'streetName' || targetNode.className.indexOf('street-name') > -1) {
+        if (targetNode.name === 'streetName' || targetNode.className.includes('street-name')) {
             // Get the text that's being pasted.
             let pastedText = e.clipboardData.getData('text/plain');
 
@@ -919,13 +936,13 @@ function main(argsObject) {
                             addElevationButtons();
                         }
                         if (addedNode.querySelector(PARKING_SPACES_DROPDOWN_SELECTOR) && isChecked('csParkingSpacesButtonsCheckBox')) {
-                            addParkingSpacesButtons(); // TODO - add option setting
+                            addParkingSpacesButtons();
                         }
                         if (addedNode.querySelector(PARKING_COST_DROPDOWN_SELECTOR)
                             && isChecked('csParkingCostButtonsCheckBox')) {
-                            addParkingCostButtons(); // TODO - add option setting
+                            addParkingCostButtons();
                         }
-                        if ($(addedNode).find('div.address-edit').prev('wz-label').length && isChecked('csAddAltCityButtonCheckBox')) {
+                        if (addedNode.querySelector('.side-panel-section') && isChecked('csAddAltCityButtonCheckBox')) {
                             addAddAltCityButton();
                         }
                     }
