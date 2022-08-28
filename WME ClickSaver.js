@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.08.27.002
+// @version         2022.08.27.003
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -568,11 +568,11 @@ function main(argsObject) {
 
         const id = 'csAddAltCityButton';
         if (selFeatures[0].model.type === 'segment' && $(`#${id}`).length === 0) {
-            $('div.alt-streets-control').append(
+            $('div.address-edit').prev('wz-label').append(
                 $('<a>', {
                     href: '#',
                     // TODO css
-                    style: 'position: absolute;right: 38px;text-transform: none;'
+                    style: 'float: right;text-transform: none;'
                         + 'font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif;color: #26bae8;'
                         + 'font-weight: normal;'
                 }).text('Add alt city').click(onAddAltCityButtonClick)
