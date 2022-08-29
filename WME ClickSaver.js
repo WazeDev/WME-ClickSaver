@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.08.28.001
+// @version         2022.08.29.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -973,75 +973,10 @@ function main(argsObject) {
         logDebug('Initialized');
     }
 
-    //---------------------------------------------------------------------------------------------
-    // The following code (Quick Alt Delete) was originally written by jangliss.
-    // Huge thanks to him for the help!
-    //---------------------------------------------------------------------------------------------
-
-
-    function updateAltStreetCtrls() {
-        if (W.selectionManager.getSelectedFeatures().length > 0) {
-            const selItems = W.selectionManager.getSelectedFeatures();
-            if (selItems.length > 0 && selItems[0].model.type === 'segment') {
-                const $idElements = $('.add-alt-street-form .alt-street');
-                const $liElements = $('li.alt-street');
-                for (let i = 0; i < $idElements.length; i++) {
-                    const $idElem = $idElements.eq(i);
-                    const $liElem = $liElements.eq(i);
-                    if ($liElem.find('i').length === 0) { // prevent duplicate entries
-                        $liElem.append(
-                            $('<i>', { class: 'fa fa-times-circle' })
-                                // TODO css
-                                .css({ cursor: 'pointer' })
-                                .data('id', $idElem.data('id'))
-                                // eslint-disable-next-line no-use-before-define
-                                .click(wmeAltStreetRemove)
-                        );
-                    }
-                }
-            }
-        }
-    }
-
-    function wmeAltStreetRemove(elemClicked) {
-        const altID = parseInt($(elemClicked.currentTarget).data('id'), 10);
-        const selectedObjs = W.selectionManager.getSelectedFeatures();
-        selectedObjs.forEach(element => {
-            if (element.model.type === 'segment') {
-                const segment = element.model;
-                if (segment.attributes.streetIDs.indexOf(altID) !== -1) {
-                    const newStreets = [];
-                    segment.attributes.streetIDs.forEach(sID => {
-                        if (altID !== sID) newStreets.push(sID);
-                    });
-                    const sUpdate = new UpdateObject(segment, { streetIDs: newStreets });
-                    W.model.actionManager.add(sUpdate);
-                    updateAltStreetCtrls();
-                }
-            }
-        });
-    }
-
-    function initWmeQuickAltDel() {
-        W.selectionManager.events.register('selectionchanged', null, () => errorHandler(updateAltStreetCtrls));
-        W.model.actionManager.events.register('afterundoaction', null, () => errorHandler(updateAltStreetCtrls));
-        W.model.actionManager.events.register('hasActions', null, () => errorHandler(() => setTimeout(updateAltStreetCtrls, 250)));
-        W.model.actionManager.events.register('noActions', null, () => errorHandler(() => setTimeout(updateAltStreetCtrls, 250)));
-        W.model.actionManager.events.register('afteraction', null, () => errorHandler(updateAltStreetCtrls));
-
-        const observer = new MutationObserver((mutations => {
-            mutations.forEach(mutation => {
-                if ($(mutation.target).hasClass('preview')) updateAltStreetCtrls();
-            });
-        }));
-        observer.observe(document.getElementById('edit-panel'), { childList: true, subtree: true });
-    }
-
     function bootstrap() {
         if (typeof require !== 'undefined' && W && W.loginManager && W.loginManager.events.register && W.map && W.loginManager.user) {
             logDebug('Initializing...');
             init();
-            initWmeQuickAltDel();
         } else {
             logDebug('Bootstrap failed. Trying again...');
             setTimeout(bootstrap, 250);
