@@ -101,7 +101,14 @@ function main(argsObject) {
         PB: { val: 10, wmeColor: '#9a9a9a', svColor: '#0000ff', category: 'pedestrian', visible: false },
         Sw: { val: 16, wmeColor: '#999999', svColor: '#b700ff', category: 'pedestrian', visible: false }
     };
-    const DEFAULT_SL_COUNTRIES = ['PO']; // Countries that allow default speed limits
+
+    // Countries/states that allow default speed limits. Must be requested by a Champ to reduce risk of accidental misuse.
+    // Key is the two-letter country code.
+    // Value is the array of states. Empty array = all states within the country are allowed.
+    const DEFAULT_SL_COUNTRIES = {
+        PO: [] // Portugal
+    };
+
     /* eslint-enable object-curly-newline */
     let _settings = {};
     let _trans; // Translation object
@@ -701,6 +708,25 @@ function main(argsObject) {
         return $container;
     }
 
+    function onSettingsCheckboxChanged(evt) {
+        const elem = evt.target;
+        const { checked } = elem;
+        const settingName = $(elem).data('setting-name');
+        if (settingName === 'roadType') {
+            const roadType = $(elem).data('road-type');
+            const array = _settings.roadTypeButtons;
+            const index = array.indexOf(roadType);
+            if (checked && index === -1) {
+                array.push(roadType);
+            } else if (!checked && index !== -1) {
+                array.splice(index, 1);
+            }
+        } else {
+            _settings[settingName] = checked;
+        }
+        saveSettingsToStorage();
+    }
+
     function initUserPanel() {
         const $roadTypesDiv = $('<div>', { class: 'csRoadTypeButtonsCheckBoxContainer' });
         $roadTypesDiv.append(
@@ -783,23 +809,7 @@ function main(argsObject) {
             }
             saveSettingsToStorage();
         });
-        $('.csSettingsCheckBox').change(function onSettingsCheckChanged() {
-            const { checked } = this;
-            const settingName = $(this).data('setting-name');
-            if (settingName === 'roadType') {
-                const roadType = $(this).data('road-type');
-                const array = _settings.roadTypeButtons;
-                const index = array.indexOf(roadType);
-                if (checked && index === -1) {
-                    array.push(roadType);
-                } else if (!checked && index !== -1) {
-                    array.splice(index, 1);
-                }
-            } else {
-                _settings[settingName] = checked;
-            }
-            saveSettingsToStorage();
-        });
+        $('.csSettingsCheckBox').change(onSettingsCheckboxChanged);
     }
 
     function updateControls() {
