@@ -105,6 +105,7 @@ function main(argsObject) {
         PB: { val: 10, wmeColor: '#9a9a9a', svColor: '#0000ff', category: 'pedestrian', visible: false },
         Sw: { val: 16, wmeColor: '#999999', svColor: '#b700ff', category: 'pedestrian', visible: false }
     };
+    const DEFAULT_SL_COUNTRIES = ['PO']; // Countries that allow default speed limits
     /* eslint-enable object-curly-newline */
     let _settings = {};
     let _trans; // Translation object
