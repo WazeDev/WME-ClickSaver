@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.08.29.001
+// @version         2022.08.29.002
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -66,12 +66,6 @@ function main(argsObject) {
             RT: { text: 'RT' },
             Pw: { text: 'Pw' }
         },
-        directionButtons: {
-            twoWay: { title: 'Two way', text: 'Two way' },
-            oneWayAB: { title: 'One way (A → B)', text: 'A → B' },
-            oneWayBA: { title: 'One way (B → A)', text: 'B → A' },
-            unknown: { title: 'Unknown', text: '?' }
-        },
         groundButtonText: 'Ground',
         autoLockButtonText: 'Auto',
         multiLockLevelWarning: 'Multiple lock levels selected!',
@@ -111,7 +105,6 @@ function main(argsObject) {
         PB: { val: 10, wmeColor: '#9a9a9a', svColor: '#0000ff', category: 'pedestrian', visible: false },
         Sw: { val: 16, wmeColor: '#999999', svColor: '#b700ff', category: 'pedestrian', visible: false }
     };
-    const DIRECTIONS = { twoWay: { val: 3 }, oneWayAB: { val: 1 }, oneWayBA: { val: 2 }, unknown: { val: 0 } };
     /* eslint-enable object-curly-newline */
     let _settings = {};
     let _trans; // Translation object
@@ -159,9 +152,7 @@ function main(argsObject) {
             lastVersion: null,
             roadButtons: true,
             roadTypeButtons: ['St', 'PS', 'mH', 'MH', 'Fw', 'Rmp', 'PLR', 'PR', 'PB'],
-            lockButtons: true,
             elevationButtons: true,
-            directionButtons: true,
             parkingCostButtons: true,
             parkingSpacesButtons: true,
             setNewPLRStreetToNone: true,
@@ -198,9 +189,7 @@ function main(argsObject) {
         } else {
             $('.csRoadTypeButtonsCheckBoxContainer').hide();
         }
-        setChecked('csLockButtonsCheckBox', _settings.lockButtons);
         setChecked('csElevationButtonsCheckBox', _settings.elevationButtons);
-        setChecked('csDirectionButtonsCheckBox', _settings.directionButtons);
         setChecked('csParkingSpacesButtonsCheckBox', _settings.parkingSpacesButtons);
         setChecked('csParkingCostButtonsCheckBox', _settings.parkingCostButtons);
         setChecked('csSetNewPLRCityCheckBox', _settings.setNewPLRCity);
@@ -223,9 +212,7 @@ function main(argsObject) {
             const settings = {
                 lastVersion: argsObject.scriptVersion,
                 roadButtons: _settings.roadButtons,
-                lockButtons: _settings.lockButtons,
                 elevationButtons: _settings.elevationButtons,
-                directionButtons: _settings.directionButtons,
                 parkingCostButtons: _settings.parkingCostButtons,
                 parkingSpacesButtons: _settings.parkingSpacesButtons,
                 setNewPLRCity: _settings.setNewPLRCity,
@@ -923,10 +910,6 @@ function main(argsObject) {
         _trans = getTranslationObject();
         Object.keys(ROAD_TYPES).forEach(rtName => {
             ROAD_TYPES[rtName].text = _trans.roadTypeButtons[rtName].text;
-        });
-        Object.keys(DIRECTIONS).forEach(d => {
-            DIRECTIONS[d].text = _trans.directionButtons[d].text;
-            DIRECTIONS[d].title = _trans.directionButtons[d].title;
         });
 
         document.addEventListener('paste', onPaste);
