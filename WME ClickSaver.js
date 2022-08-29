@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.08.29.002
+// @version         2022.08.29.003
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -67,7 +67,6 @@ function main(argsObject) {
             Pw: { text: 'Pw' }
         },
         groundButtonText: 'Ground',
-        autoLockButtonText: 'Auto',
         multiLockLevelWarning: 'Multiple lock levels selected!',
         prefs: {
             dropdownHelperGroup: 'DROPDOWN HELPERS',
@@ -81,9 +80,6 @@ function main(argsObject) {
             parkingCostButtons: 'Add PLA cost buttons',
             parkingSpacesButtons: 'Add PLA estimated spaces buttons',
             spaceSaversGroup: 'SPACE SAVERS',
-            inlineRoadType: 'Inline road type checkboxes',
-            avgSpeedCameras: 'Hide Avg Speed Cameras',
-            inlineParkingStuff: 'Inline parking/payment type checkboxes',
             discussionForumLinkText: 'Discussion Forum'
         }
     };
@@ -950,7 +946,7 @@ function main(argsObject) {
         initUserPanel();
         loadSettingsFromStorage();
         injectCss();
-        W.prefs.on('change:isImperial', () => errorHandler(() => { initUserPanel(); loadSettingsFromStorage(); }));
+        // W.prefs.on('change:isImperial', () => errorHandler(() => { initUserPanel(); loadSettingsFromStorage(); }));
         updateControls(); // In case of PL w/ segments selected.
         W.selectionManager.events.register('selectionchanged', null, () => errorHandler(updateControls));
 
