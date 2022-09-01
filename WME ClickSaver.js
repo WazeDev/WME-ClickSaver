@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.08.29.003
+// @version         2022.08.31.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -405,13 +405,13 @@ function main(argsObject) {
         if (seg.type !== 'segment') return;
         const isPed = isPedestrianTypeSegment(seg);
         const $dropDown = $(ROAD_TYPE_DROPDOWN_SELECTOR);
-        $('#cs-road-type-buttons-container').remove();
-        const $container = $('<div>', { id: 'cs-road-type-buttons-container', class: 'rth-btn-container' });
-        const $street = $('<div>', { id: 'csStreetButtonContainer', class: 'cs-rt-btn-container' });
-        const $highway = $('<div>', { id: 'csHighwayButtonContainer', class: 'cs-rt-btn-container' });
-        const $otherDrivable = $('<div>', { id: 'csOtherDrivableButtonContainer', class: 'cs-rt-btn-container' });
-        const $nonDrivable = $('<div>', { id: 'csNonDrivableButtonContainer', class: 'cs-rt-btn-container' });
-        const $pedestrian = $('<div>', { id: 'csPedestrianButtonContainer', class: 'cs-rt-btn-container' });
+        $('#csRoadTypeButtonsContainer').remove();
+        const $container = $('<div>', { id: 'cs-road-type-buttons-container', class: 'cs-rt-buttons-container' });
+        const $street = $('<div>', { id: 'csStreetButtonContainer', class: 'cs-rt-buttons-group' });
+        const $highway = $('<div>', { id: 'csHighwayButtonContainer', class: 'cs-rt-buttons-group' });
+        const $otherDrivable = $('<div>', { id: 'csOtherDrivableButtonContainer', class: 'cs-rt-buttons-group' });
+        const $nonDrivable = $('<div>', { id: 'csNonDrivableButtonContainer', class: 'cs-rt-buttons-group' });
+        const $pedestrian = $('<div>', { id: 'csPedestrianButtonContainer', class: 'cs-rt-buttons-group' });
         const divs = {
             streets: $street,
             highways: $highway,
@@ -427,7 +427,7 @@ function main(argsObject) {
                     const $div = divs[roadType.category];
                     $div.append(
                         $('<div>', {
-                            class: `btn btn-rth btn-rth-${roadTypeKey} btn-positive`,
+                            class: `btn cs-rt-button cs-rt-button-${roadTypeKey} btn-positive`,
                             title: I18n.t('segment.road_types')[roadType.val]
                         })
                             .text(_trans.roadTypeButtons[roadTypeKey].text)
@@ -658,9 +658,9 @@ function main(argsObject) {
         Object.keys(ROAD_TYPES).forEach(roadTypeAbbr => {
             const roadType = ROAD_TYPES[roadTypeAbbr];
             const bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
-            let output = `.rth-btn-container .btn-rth-${roadTypeAbbr} {background-color:${
+            let output = `.cs-rt-buttons-container .cs-rt-button-${roadTypeAbbr} {background-color:${
                 bgColor};box-shadow:0 2px ${shadeColor2(bgColor, -0.5)};border-color:${shadeColor2(bgColor, -0.15)};}`;
-            output += ` .rth-btn-container .btn-rth-${roadTypeAbbr}:hover {background-color:${
+            output += ` .cs-rt-buttons-container .cs-rt-button-${roadTypeAbbr}:hover {background-color:${
                 shadeColor2(bgColor, 0.2)}}`;
             lines.push(output);
         });
@@ -671,21 +671,16 @@ function main(argsObject) {
         const css = [
             // Road type button formatting
             '.cs-settings-road-types-container {margin-left:15px;}',
-            '.rth-btn-container {margin-bottom:5px;height:21px;}',
-            '.rth-btn-container .btn-rth {font-size:11px;line-height:20px;color:black;padding:0px 4px;height:20px;'
+            '.cs-rt-buttons-container {margin-bottom:5px;height:21px;}',
+            '.cs-rt-buttons-container .cs-rt-button {font-size:11px;line-height:20px;color:black;padding:0px 4px;height:20px;'
             + 'margin-right:2px;border-style:solid;border-width:1px;}',
             buildRoadTypeButtonCss(),
-            '.btn.btn-rth:active {box-shadow:none;transform:translateY(2px)}',
-            'div .cs-rt-btn-container {float:left; margin: 0px 5px 5px 0px;}',
+            '.btn.cs-rt-button:active {box-shadow:none;transform:translateY(2px)}',
+            'div .cs-rt-buttons-group {float:left; margin: 0px 5px 5px 0px;}',
             '#sidepanel-clicksaver .controls-container {padding:0px;}',
             '#sidepanel-clicksaver .controls-container label {white-space: normal;}',
 
             // Lock button formatting
-            '.btn-lh {cursor:pointer;padding:1px 6px;height:22px;border:solid 1px #c1c1c1;margin-right:3px;}',
-            '.btn.btn-lh.btn-lh-selected {background-color:#6999ae;color:white}',
-            '.btn.btn-lh.btn-lh-selected:hover {color:white}',
-            '.btn.btn-lh.disabled {color:#909090;background-color:#f7f7f7;}',
-            '.btn.btn-lh.btn-lh-selected.disabled {color:white;background-color:#6999ae;}',
             '.cs-group-label {font-size: 11px; width: 100%; font-family: Poppins, sans-serif;'
             + ' text-transform: uppercase; font-weight: 700; color: #354148; margin-bottom: 6px;}'
         ].join(' ');
