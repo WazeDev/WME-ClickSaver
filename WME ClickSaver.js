@@ -103,11 +103,12 @@ function main(argsObject) {
     };
 
     // Countries/states that allow default speed limits. Must be requested by a Champ to reduce risk of accidental misuse.
-    // Key is the two-letter country code.
-    // Value is the array of states. Empty array = all states within the country are allowed.
-    const DEFAULT_SL_COUNTRIES = {
-        PO: [] // Portugal
-    };
+    // country: The two-letter country code
+    // states: States within the country allowed to use default speed limits.  Empty array = all states.
+    // roadTypes: The road types that will be allowed to have a default speed limit applied.
+    const DEFAULT_SPEED_LIMITS = [
+        { country: 'PO', states: [], roadTypes: ['St', 'PLR', 'PR', 'OR'] } // Portugal
+    ];
 
     /* eslint-enable object-curly-newline */
     let _settings = {};
@@ -189,9 +190,9 @@ function main(argsObject) {
         }
 
         if (_settings.roadButtons) {
-            $('.csRoadTypeButtonsCheckBoxContainer').show();
+            $('.cs-settings-road-types-container').show();
         } else {
-            $('.csRoadTypeButtonsCheckBoxContainer').hide();
+            $('.cs-settings-road-types-container').hide();
         }
         setChecked('csElevationButtonsCheckBox', _settings.elevationButtons);
         setChecked('csParkingSpacesButtonsCheckBox', _settings.parkingSpacesButtons);
@@ -289,21 +290,19 @@ function main(argsObject) {
         return undefined;
     }
 
-    function setStreetAndCity(setCity) {
-        const segments = W.selectionManager.getSelectedFeatures();
-        if (segments.length === 0 || segments[0].model.type !== 'segment') {
+    function setStreetAndCity(setCity, segments) {
+        if (segments.length === 0 || segments[0].type !== 'segment') {
             return;
         }
 
         const mAction = new MultiAction();
         mAction.setModel(W.model);
         segments.forEach(segment => {
-            const segModel = segment.model;
-            if (segModel.attributes.primaryStreetID === null) {
-                const addr = getFirstConnectedSegmentAddress(segModel);
+            if (segment.attributes.primaryStreetID === null) {
+                const addr = getFirstConnectedSegmentAddress(segment);
                 if (addr && !addr.isEmpty()) {
                     const cityNameToSet = setCity && !addr.getCity().isEmpty() ? addr.getCityName() : '';
-                    const action = new UpdateFeatureAddress(segModel, {
+                    const action = new UpdateFeatureAddress(segment, {
                         countryID: addr.getCountry().id,
                         stateID: addr.getState().id,
                         cityName: cityNameToSet,
@@ -363,15 +362,20 @@ function main(argsObject) {
         });
     }
 
-    function onRoadTypeButtonClick(roadTypeAbbr) {
-        const segments = W.selectionManager.getSelectedFeatures();
+    function addDefaultSpeedLimits(roadTypeAbbr, segments) {
+        
+    }
+
+    function onRoadTypeButtonClick(evt) {
+        const roadTypeAbbr = $(evt.target).data('key');
+        const segments = W.selectionManager.getSelectedFeatures().map(f => f.model);
         const roadTypeVal = ROAD_TYPES[roadTypeAbbr].val;
         let action;
         if (segments.length > 1) {
             action = new MultiAction();
             action.setModel(W.model);
             segments.forEach(segment => {
-                const subAction = new UpdateObject(segment.model, { roadType: roadTypeVal });
+                const subAction = new UpdateObject(segment, { roadType: roadTypeVal });
                 action.doSubAction(subAction);
             });
             action._description = I18n.t(
@@ -383,21 +387,17 @@ function main(argsObject) {
                 }
             );
         } else {
-            action = new UpdateObject(segments[0].model, { roadType: roadTypeVal });
+            action = new UpdateObject(segments[0], { roadType: roadTypeVal });
         }
         W.model.actionManager.add(action);
 
-        if (roadTypeAbbr === 'PLR' && isChecked('csClearNewPLRCheckBox') && typeof require !== 'undefined') {
-            setStreetAndCity(isChecked('csSetNewPLRCityCheckBox'));
-        } else if (roadTypeAbbr === 'PR' && isChecked('csClearNewPRCheckBox') && typeof require !== 'undefined') {
-            setStreetAndCity(isChecked('csSetNewPRCityCheckBox'));
-        } else if (roadTypeAbbr === 'RR' && isChecked('csClearNewRRCheckBox') && typeof require !== 'undefined') { // added by jm6087
-            setStreetAndCity(isChecked('csSetNewRRCityCheckBox')); // added by jm6087
-        } else if (roadTypeAbbr === 'PB' && isChecked('csClearNewPBCheckBox') && typeof require !== 'undefined') { // added by jm6087
-            setStreetAndCity(isChecked('csSetNewPBCityCheckBox')); // added by jm6087
-        } else if (roadTypeAbbr === 'OR' && isChecked('csClearNewORCheckBox') && typeof require !== 'undefined') {
-            setStreetAndCity(isChecked('csSetNewORCityCheckBox'));
+        const allowDefaultStreetAndCity = ['PLR', 'PR', 'RR', 'PB', 'OR'];
+        if (typeof require !== 'undefined' && allowDefaultStreetAndCity.includes(roadTypeAbbr)) { // TODO: Verify if this require() check is still needed.
+            if (isChecked(`csClearNew${roadTypeAbbr}CheckBox`)) {
+                setStreetAndCity(isChecked(`csSetNew${roadTypeAbbr}CityCheckBox`), segments);
+            }
         }
+        addDefaultSpeedLimits(roadTypeAbbr, segments);
     }
 
     function addRoadTypeButtons() {
@@ -405,8 +405,8 @@ function main(argsObject) {
         if (seg.type !== 'segment') return;
         const isPed = isPedestrianTypeSegment(seg);
         const $dropDown = $(ROAD_TYPE_DROPDOWN_SELECTOR);
-        $('#csRoadTypeButtonsContainer').remove();
-        const $container = $('<div>', { id: 'csRoadTypeButtonsContainer', class: 'rth-btn-container' });
+        $('#cs-road-type-buttons-container').remove();
+        const $container = $('<div>', { id: 'cs-road-type-buttons-container', class: 'rth-btn-container' });
         const $street = $('<div>', { id: 'csStreetButtonContainer', class: 'cs-rt-btn-container' });
         const $highway = $('<div>', { id: 'csHighwayButtonContainer', class: 'cs-rt-btn-container' });
         const $otherDrivable = $('<div>', { id: 'csOtherDrivableButtonContainer', class: 'cs-rt-btn-container' });
@@ -433,8 +433,7 @@ function main(argsObject) {
                             .text(_trans.roadTypeButtons[roadTypeKey].text)
                             .prop('checked', roadType.visible)
                             .data('key', roadTypeKey)
-                            // TODO: change onRoadTypeButtonClick handler to work with element rather than data
-                            .click(function rtbClick() { onRoadTypeButtonClick($(this).data('key')); })
+                            .click(onRoadTypeButtonClick)
                     );
                 }
             }
@@ -534,7 +533,7 @@ function main(argsObject) {
         const id = 'csElevationButtonsContainer';
         if ($(`#${id}`).length === 0) {
             const dropDown = document.querySelector(ELEVATION_DROPDOWN_SELECTOR);
-            if (!dropDown.disabled) {
+            if (dropDown && !dropDown.disabled) {
                 const baseClass = 'btn';
                 // TODO css
                 const style = 'height: 20px;padding-left: 8px;padding-right: 8px;margin-right: 4px;padding-top: 1px;';
@@ -671,7 +670,7 @@ function main(argsObject) {
     function injectCss() {
         const css = [
             // Road type button formatting
-            '.csRoadTypeButtonsCheckBoxContainer {margin-left:15px;}',
+            '.cs-settings-road-types-container {margin-left:15px;}',
             '.rth-btn-container {margin-bottom:5px;height:21px;}',
             '.rth-btn-container .btn-rth {font-size:11px;line-height:20px;color:black;padding:0px 4px;height:20px;'
             + 'margin-right:2px;border-style:solid;border-width:1px;}',
@@ -728,7 +727,7 @@ function main(argsObject) {
     }
 
     function initUserPanel() {
-        const $roadTypesDiv = $('<div>', { class: 'csRoadTypeButtonsCheckBoxContainer' });
+        const $roadTypesDiv = $('<div>', { class: 'cs-settings-road-types-container' });
         $roadTypesDiv.append(
             createSettingsCheckbox('csUseOldRoadColorsCheckBox', 'useOldRoadColors', _trans.prefs.useOldRoadColors)
         );
@@ -759,30 +758,28 @@ function main(argsObject) {
         );
 
         const $panel = $('<div>', { class: 'tab-pane', id: 'sidepanel-clicksaver' }).append(
-            $('<div>', { class: 'side-panel-section>' }).append(
+            $('<div>', { class: 'controls-container' }).append(
                 // TODO css
+                $('<div>', { class: 'form-group' }).append(
+                    $('<label>', { class: 'cs-group-label' }).text(_trans.prefs.dropdownHelperGroup),
+                    $('<div>').append(
+                        createSettingsCheckbox('csRoadTypeButtonsCheckBox', 'roadButtons',
+                            _trans.prefs.roadTypeButtons)
+                    ).append($roadTypesDiv),
+                    createSettingsCheckbox('csElevationButtonsCheckBox', 'elevationButtons',
+                        _trans.prefs.elevationButtons),
+                    createSettingsCheckbox('csParkingCostButtonsCheckBox', 'parkingCostButtons',
+                        _trans.prefs.parkingCostButtons),
+                    createSettingsCheckbox('csParkingSpacesButtonsCheckBox', 'parkingSpacesButtons',
+                        _trans.prefs.parkingSpacesButtons)
+                ),
+                $('<label>', { class: 'cs-group-label' }).text('Time Savers'),
                 $('<div>', { style: 'margin-bottom:8px;' }).append(
-                    $('<div>', { class: 'form-group' }).append(
-                        $('<label>', { class: 'cs-group-label' }).text(_trans.prefs.dropdownHelperGroup),
-                        $('<div>').append(
-                            createSettingsCheckbox('csRoadTypeButtonsCheckBox', 'roadButtons',
-                                _trans.prefs.roadTypeButtons)
-                        ).append($roadTypesDiv),
-                        createSettingsCheckbox('csElevationButtonsCheckBox', 'elevationButtons',
-                            _trans.prefs.elevationButtons),
-                        createSettingsCheckbox('csParkingCostButtonsCheckBox', 'parkingCostButtons',
-                            _trans.prefs.parkingCostButtons),
-                        createSettingsCheckbox('csParkingSpacesButtonsCheckBox', 'parkingSpacesButtons',
-                            _trans.prefs.parkingSpacesButtons)
-                    ),
-                    $('<label>', { class: 'cs-group-label' }).text('Time Savers'),
-                    $('<div>', { style: 'margin-bottom:8px;' }).append(
-                        // THIS IS CURRENTLY DISABLED
-                        createSettingsCheckbox('csAddAltCityButtonCheckBox', 'addAltCityButton',
-                            'Show "Add alt city" button'),
-                        isSwapPedestrianPermitted() ? createSettingsCheckbox('csAddSwapPedestrianButtonCheckBox',
-                            'addSwapPedestrianButton', 'Show "Swap driving<->walking segment type" button') : ''
-                    )
+                    // THIS IS CURRENTLY DISABLED
+                    createSettingsCheckbox('csAddAltCityButtonCheckBox', 'addAltCityButton',
+                        'Show "Add alt city" button'),
+                    isSwapPedestrianPermitted() ? createSettingsCheckbox('csAddSwapPedestrianButtonCheckBox',
+                        'addSwapPedestrianButton', 'Show "Swap driving<->walking segment type" button') : ''
                 )
             )
         );
@@ -801,11 +798,12 @@ function main(argsObject) {
         $('#user-info > .flex-parent > .tab-content').append($panel);
 
         // Add change events
-        $('#csRoadTypeButtonsCheckBox').change(function onRoadTypeButtonCheckChanged() {
-            if (this.checked) {
-                $('.csRoadTypeButtonsCheckBoxContainer').show();
+        $('#csRoadTypeButtonsCheckBox').change(evt => {
+            const $container = $('.cs-settings-road-types-container');
+            if (evt.target.checked) {
+                $container.show();
             } else {
-                $('.csRoadTypeButtonsCheckBoxContainer').hide();
+                $container.hide();
             }
             saveSettingsToStorage();
         });
