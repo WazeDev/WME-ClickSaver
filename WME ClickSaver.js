@@ -107,7 +107,8 @@ function main(argsObject) {
     // states: States within the country allowed to use default speed limits.  Empty array = all states.
     // roadTypes: The road types that will be allowed to have a default speed limit applied.
     const DEFAULT_SPEED_LIMITS = [
-        { country: 'PO', states: [], roadTypes: ['St', 'PLR', 'PR', 'OR'] } // Portugal
+        { country: 'PO', states: [], roadTypes: ['St', 'PLR', 'PR', 'OR'] }, // Portugal
+        { country: 'US', states: ['Texas'], roadTypes: ['OR'] }
     ];
 
     /* eslint-enable object-curly-newline */
@@ -344,7 +345,6 @@ function main(argsObject) {
         }, 10);
     }
 
-    // eslint-disable-next-line no-unused-vars
     function onAddAltCityButtonClick() {
         const streetID = W.selectionManager.getSelectedFeatures()[0].model.attributes.primaryStreetID;
         $('wz-button[class="add-alt-street-btn"]').click();
@@ -363,7 +363,38 @@ function main(argsObject) {
     }
 
     function addDefaultSpeedLimits(roadTypeAbbr, segments) {
-        
+        // TEST CODE - DO NOT PUSH THIS TO PRODUCTION.
+        const action = new MultiAction();
+        action.setModel(W.model);
+        const { isImperial } = W.prefs.attributes;
+        let updatedSegments = 0;
+        // TODO - Determine if any default speed limits exist first. Store in array for use below.
+        segments.forEach(segment => {
+            const address = segment.getAddress();
+            if (address) {
+                const { country } = address.attributes;
+                if (country) {
+                    const slCountry = DEFAULT_SPEED_LIMITS.find(c => c.country === country.abbr);
+                    if (slCountry && (slCountry.states.length === 0 || slCountry.states.includes(address.attributes.state.name))) {
+                        const subAction = new UpdateObject(segment, { fwdMaxSpeed: 100 * 1.609, revMaxSpeed: 100 * 1.609 }); // TODO - Get correct speed limits
+                        action.doSubAction(subAction);
+                        updatedSegments++;
+                    }
+                }
+            }
+        });
+        if (updatedSegments) {
+            // TODO handle if only one action (delay creating MultiAction until now)
+            action._description = I18n.t(
+                'save.changes_log.actions.UpdateObject.changed',
+                {
+                    propertyName: I18n.t('edit.segment.fields.speed_limit'),
+                    objectsString: I18n.t('objects.segment.multi', { count: updatedSegments }),
+                    value: '100 mph' // TODO - update speed limit and units (translated)
+                }
+            );
+        }
+        W.model.actionManager.add(action);
     }
 
     function onRoadTypeButtonClick(evt) {
