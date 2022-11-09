@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.11.09.001
+// @version         2022.11.09.002
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -40,7 +40,6 @@
     function main(argsObject) {
         /* eslint-disable object-curly-newline */
         const ROAD_TYPE_DROPDOWN_SELECTOR = 'wz-select[name="roadType"]';
-        const ELEVATION_DROPDOWN_SELECTOR = '.side-panel-section wz-select[name="level"]';
         const PARKING_SPACES_DROPDOWN_SELECTOR = 'select[name="estimatedNumberOfSpots"]';
         const PARKING_COST_DROPDOWN_SELECTOR = 'select[name="costType"]';
         const SETTINGS_STORE_NAME = 'clicksaver_settings';
@@ -73,7 +72,6 @@
                 setStreetCityToNone_Title: 'NOTE: Only works if connected directly or indirectly'
                     + ' to a segment with State / Country already set.',
                 setCityToConnectedSegCity: 'Set City to connected segment\'s City',
-                elevationButtons: 'Add elevation buttons',
                 parkingCostButtons: 'Add PLA cost buttons',
                 parkingSpacesButtons: 'Add PLA estimated spaces buttons',
                 spaceSaversGroup: 'SPACE SAVERS',
@@ -145,7 +143,6 @@
                 lastVersion: null,
                 roadButtons: true,
                 roadTypeButtons: ['St', 'PS', 'mH', 'MH', 'Fw', 'Rmp', 'PLR', 'PR', 'PB'],
-                elevationButtons: true,
                 parkingCostButtons: true,
                 parkingSpacesButtons: true,
                 setNewPLRStreetToNone: true,
@@ -182,7 +179,6 @@
             } else {
                 $('.csRoadTypeButtonsCheckBoxContainer').hide();
             }
-            setChecked('csElevationButtonsCheckBox', _settings.elevationButtons);
             setChecked('csParkingSpacesButtonsCheckBox', _settings.parkingSpacesButtons);
             setChecked('csParkingCostButtonsCheckBox', _settings.parkingCostButtons);
             setChecked('csSetNewPLRCityCheckBox', _settings.setNewPLRCity);
@@ -205,7 +201,6 @@
                 const settings = {
                     lastVersion: argsObject.scriptVersion,
                     roadButtons: _settings.roadButtons,
-                    elevationButtons: _settings.elevationButtons,
                     parkingCostButtons: _settings.parkingCostButtons,
                     parkingSpacesButtons: _settings.parkingSpacesButtons,
                     setNewPLRCity: _settings.setNewPLRCity,
@@ -519,39 +514,6 @@
             $dropDown.hide();
         }
 
-        function addElevationButtons() {
-            const id = 'csElevationButtonsContainer';
-            if ($(`#${id}`).length === 0) {
-                const dropDown = document.querySelector(ELEVATION_DROPDOWN_SELECTOR);
-                if (!dropDown.disabled) {
-                    const baseClass = 'btn';
-                    // TODO css
-                    const style = 'height: 20px;padding-left: 8px;padding-right: 8px;margin-right: 4px;padding-top: 1px;';
-                    // TODO css
-                    const $div = $('<div>', { id, style: 'margin-bottom: 5px;' }).append(
-                        $('<button>', { class: baseClass, style }).text('-').click(() => {
-                            const level = dropDown.value;
-                            if (level !== 'MIXED' && level > -8) { dropDown.value = level - 1; }
-                        }),
-                        $('<button>', { class: baseClass, style }).text(_trans.groundButtonText)
-                            .click(() => {
-                                const level = dropDown.value;
-                                if (level !== 0) { dropDown.value = 0; }
-                            }),
-                        $('<button>', { class: baseClass, style }).text('+').click(() => {
-                            const level = dropDown.value;
-                            if (level !== 'MIXED' && level < 9) { dropDown.value = level + 1; }
-                        })
-                    );
-                    // TODO css
-                    $(dropDown).css({ display: 'inline-block', width: '120px', marginRight: '10px' });
-                    $(dropDown).before($div);
-                    $(dropDown).detach();
-                    $div.prepend($(dropDown));
-                }
-            }
-        }
-
         function addAddAltCityButton() {
             const selFeatures = W.selectionManager.getSelectedFeatures();
             const streetID = selFeatures[0].model.attributes.primaryStreetID;
@@ -733,8 +695,6 @@
                                 createSettingsCheckbox('csRoadTypeButtonsCheckBox', 'roadButtons',
                                     _trans.prefs.roadTypeButtons)
                             ).append($roadTypesDiv),
-                            createSettingsCheckbox('csElevationButtonsCheckBox', 'elevationButtons',
-                                _trans.prefs.elevationButtons),
                             createSettingsCheckbox('csParkingCostButtonsCheckBox', 'parkingCostButtons',
                                 _trans.prefs.parkingCostButtons),
                             createSettingsCheckbox('csParkingSpacesButtonsCheckBox', 'parkingSpacesButtons',
@@ -796,9 +756,6 @@
         function updateControls() {
             if ($(ROAD_TYPE_DROPDOWN_SELECTOR).length > 0) {
                 if (isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
-            }
-            if ($(ELEVATION_DROPDOWN_SELECTOR).length > 0 && isChecked('csElevationButtonsCheckBox')) {
-                addElevationButtons();
             }
             if ($(PARKING_SPACES_DROPDOWN_SELECTOR).length > 0 && isChecked('csParkingSpacesButtonsCheckBox')) {
                 addParkingSpacesButtons(); // TODO - add option setting
@@ -914,9 +871,6 @@
                                 if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
                                     addSwapPedestrianButton();
                                 }
-                            }
-                            if (addedNode.querySelector(ELEVATION_DROPDOWN_SELECTOR) && isChecked('csElevationButtonsCheckBox')) {
-                                addElevationButtons();
                             }
                             if (addedNode.querySelector(PARKING_SPACES_DROPDOWN_SELECTOR) && isChecked('csParkingSpacesButtonsCheckBox')) {
                                 addParkingSpacesButtons();
