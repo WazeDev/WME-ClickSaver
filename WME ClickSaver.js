@@ -448,7 +448,6 @@
                     }
                 }
             });
-            logDebug('Compact Mode');
         }
 
         function isPLA(item) {
