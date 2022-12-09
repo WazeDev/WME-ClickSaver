@@ -432,10 +432,14 @@
             $dropDown.before($container);
         }
 
+        //Function to add an event listener to the chip select for the road type in compact mode
         function addCompactRoadTypeChangeEvents() {
             const chipSelect = document.getElementsByClassName('road-type-chip-select')[0];
             chipSelect.addEventListener('chipSelected', function() {
                 const chipNodes = chipSelect.getElementsByTagName('wz-checkable-chip');
+
+                //Identifies which road type is now selected then calls the onRoadTypeButtonClick
+                //function with the road type abbreviation from the chip.
                 for (let i = 0; i < chipNodes.length; i++) {
                     const chip = chipNodes[i];
                     if (chip.checked) {
@@ -550,7 +554,7 @@
             }
         }
 
-        function addSwapPedestrianButton(displayMode) {
+        function addSwapPedestrianButton(displayMode) { //Added displayMode argument to identify compact vs. regular mode.
             const id = 'csSwapPedestrianContainer';
             $(`#${id}`).remove();
             const selectedFeatures = W.selectionManager.getSelectedFeatures();
@@ -570,6 +574,7 @@
                 });
                 $container.append($button);
 
+                //Inser swap button in the correct location based on display mode.
                 if (displayMode === 'compact') {
                     const $label = $('wz-chip-select[class="road-type-chip-select"]').parent().find('wz-label');
                     $label.css({ display: 'inline' }).before($container);
@@ -591,8 +596,14 @@
                         }
                     }
 
-                    // delete the selected segment
+                    //Check for paths before deleting.
                     let segment = W.selectionManager.getSelectedFeatures()[0];
+                    if (segment.model.hasPaths()) {
+                        WazeWrap.Alerts.error('Clicksaver', 'Paths must be removed from segment before changing between road and pedestrian.');
+                        return;
+                    }
+
+                    // delete the selected segment
                     const oldGeom = segment.geometry.clone();
                     W.model.actionManager.add(new DelSeg(segment.model));
 
@@ -889,12 +900,14 @@
                         const addedNode = mutation.addedNodes[i];
 
                         if (addedNode.nodeType === Node.ELEMENT_NODE) {
+                            //Checks to identify if this is a segment in regular display mode.
                             if (addedNode.querySelector(ROAD_TYPE_DROPDOWN_SELECTOR)) {
                                 if (isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
                                 if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
                                     addSwapPedestrianButton('regular');
                                 }
                             }
+                            //Checks to identify if this is a segment in compact display mode.
                             if (addedNode.querySelector(ROAD_TYPE_CHIP_SELECTOR)) {
                                 if (isChecked('csRoadTypeButtonsCheckBox')) addCompactRoadTypeChangeEvents();
                                 if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
