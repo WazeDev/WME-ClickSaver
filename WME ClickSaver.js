@@ -40,6 +40,7 @@
     function main(argsObject) {
         /* eslint-disable object-curly-newline */
         const ROAD_TYPE_DROPDOWN_SELECTOR = 'wz-select[name="roadType"]';
+        const ROAD_TYPE_CHIP_SELECTOR = 'wz-chip-select[class="road-type-chip-select"]';
         const PARKING_SPACES_DROPDOWN_SELECTOR = 'select[name="estimatedNumberOfSpots"]';
         const PARKING_COST_DROPDOWN_SELECTOR = 'select[name="costType"]';
         const SETTINGS_STORE_NAME = 'clicksaver_settings';
@@ -414,11 +415,11 @@
                                 class: `btn cs-rt-button cs-rt-button-${roadTypeKey} btn-positive`,
                                 title: I18n.t('segment.road_types')[roadType.val]
                             })
-                                .text(_trans.roadTypeButtons[roadTypeKey].text)
-                                .prop('checked', roadType.visible)
-                                .data('key', roadTypeKey)
-                                // TODO: change onRoadTypeButtonClick handler to work with element rather than data
-                                .click(function rtbClick() { onRoadTypeButtonClick($(this).data('key')); })
+                            .text(_trans.roadTypeButtons[roadTypeKey].text)
+                            .prop('checked', roadType.visible)
+                            .data('key', roadTypeKey)
+                            // TODO: change onRoadTypeButtonClick handler to work with element rather than data
+                            .click(function rtbClick() { onRoadTypeButtonClick($(this).data('key')); })
                         );
                     }
                 }
@@ -429,6 +430,24 @@
                 $container.append($street).append($highway).append($otherDrivable).append($nonDrivable);
             }
             $dropDown.before($container);
+        }
+
+        //Function to add an event listener to the chip select for the road type in compact mode
+        function addCompactRoadTypeChangeEvents() {
+            const chipSelect = document.getElementsByClassName('road-type-chip-select')[0];
+            chipSelect.addEventListener('chipSelected', function() {
+                const chipNodes = chipSelect.getElementsByTagName('wz-checkable-chip');
+
+                //Identifies which road type is now selected then calls the onRoadTypeButtonClick
+                //function with the road type abbreviation from the chip.
+                for (let i = 0; i < chipNodes.length; i++) {
+                    const chip = chipNodes[i];
+                    if (chip.checked) {
+                        onRoadTypeButtonClick(chip.innerText);
+                        break;
+                    }
+                }
+            });
         }
 
         function isPLA(item) {
@@ -534,7 +553,7 @@
             }
         }
 
-        function addSwapPedestrianButton() {
+        function addSwapPedestrianButton(displayMode) { //Added displayMode argument to identify compact vs. regular mode.
             const id = 'csSwapPedestrianContainer';
             $(`#${id}`).remove();
             const selectedFeatures = W.selectionManager.getSelectedFeatures();
@@ -549,13 +568,21 @@
                 });
                 $button.append('<span class="fa fa-arrows-h" style="font-size:20px; color:#e84545;"></span>')
                     .attr({
-                        title: 'Swap between driving-type and walking-type segments.\nWARNING!'
-                            + ' This will DELETE and recreate the segment.  Nodes may need to be reconnected.'
-                    });
+                    title: 'Swap between driving-type and walking-type segments.\nWARNING!'
+                    + ' This will DELETE and recreate the segment.  Nodes may need to be reconnected.'
+                });
                 $container.append($button);
-                const $label = $('wz-select[name="roadType"]').closest('form').find('wz-label').first();
+
+                //Inser swap button in the correct location based on display mode.
+                if (displayMode === 'compact') {
+                    const $label = $('wz-chip-select[class="road-type-chip-select"]').parent().find('wz-label');
+                    $label.css({ display: 'inline' }).before($container);
+                }
+                else {
+                    const $label = $('wz-select[name="roadType"]').closest('form').find('wz-label').first();
+                    $label.css({ display: 'inline' }).after($container);
+                }
                 // TODO css
-                $label.css({ display: 'inline' }).after($container);
 
                 $('#csBtnSwapPedestrianRoadType').click(() => {
                     if (_settings.warnOnPedestrianTypeSwap) {
@@ -568,8 +595,14 @@
                         }
                     }
 
-                    // delete the selected segment
+                    //Check for paths before deleting.
                     let segment = W.selectionManager.getSelectedFeatures()[0];
+                    if (segment.model.hasPaths()) {
+                        WazeWrap.Alerts.error('Clicksaver', 'Paths must be removed from segment before changing between road and pedestrian.');
+                        return;
+                    }
+
+                    // delete the selected segment
                     const oldGeom = segment.geometry.clone();
                     W.model.actionManager.add(new DelSeg(segment.model));
 
@@ -866,10 +899,18 @@
                         const addedNode = mutation.addedNodes[i];
 
                         if (addedNode.nodeType === Node.ELEMENT_NODE) {
+                            //Checks to identify if this is a segment in regular display mode.
                             if (addedNode.querySelector(ROAD_TYPE_DROPDOWN_SELECTOR)) {
                                 if (isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
                                 if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
-                                    addSwapPedestrianButton();
+                                    addSwapPedestrianButton('regular');
+                                }
+                            }
+                            //Checks to identify if this is a segment in compact display mode.
+                            if (addedNode.querySelector(ROAD_TYPE_CHIP_SELECTOR)) {
+                                if (isChecked('csRoadTypeButtonsCheckBox')) addCompactRoadTypeChangeEvents();
+                                if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
+                                    addSwapPedestrianButton('compact');
                                 }
                             }
                             if (addedNode.querySelector(PARKING_SPACES_DROPDOWN_SELECTOR) && isChecked('csParkingSpacesButtonsCheckBox')) {
