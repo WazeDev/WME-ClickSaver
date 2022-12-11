@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.12.09.001
+// @version         2022.12.11.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -64,7 +64,6 @@
                 RT: { text: 'RT' },
                 Pw: { text: 'Pw' }
             },
-            groundButtonText: 'Ground',
             multiLockLevelWarning: 'Multiple lock levels selected!',
             prefs: {
                 dropdownHelperGroup: 'DROPDOWN HELPERS',
@@ -77,8 +76,14 @@
                 parkingCostButtons: 'Add PLA cost buttons',
                 parkingSpacesButtons: 'Add PLA estimated spaces buttons',
                 timeSaversGroup: 'TIME SAVERS',
-                discussionForumLinkText: 'Discussion Forum'
-            }
+                discussionForumLinkText: 'Discussion Forum',
+                showAddAltCityButton: 'Show "Add alt city" button',
+                showSwapDrivingWalkingButton: 'Show "Swap driving<->walking segment type" button',
+                showSwapDrivingWalkingButton_Title: 'Swap between driving-type and walking-type segments. WARNING! This will DELETE and recreate the segment. Nodes may need to be reconnected.'
+            },
+            swapSegmentTypeWarning: 'This will DELETE the segment and recreate it. Any speed data will be lost, and nodes will need to be reconnected. This message will only be displayed once. Continue?',
+            swapSegmentTypeError_Paths: 'Paths must be removed from segment before changing between driving and pedestrian road type.',
+            addAltCityButtonText: 'Add alt city'
         };
         const ROAD_TYPES = {
             St: { val: 1, wmeColor: '#ffffeb', svColor: '#ffffff', category: 'streets', visible: true },
@@ -539,7 +544,7 @@
                         style: 'float: right;text-transform: none;'
                             + 'font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif;color: #26bae8;'
                             + 'font-weight: normal;'
-                    }).text('Add alt city').click(onAddAltCityButtonClick)
+                    }).text(_trans.addAltCityButtonText).click(onAddAltCityButtonClick)
                 );
             }
         }
@@ -559,8 +564,7 @@
                 });
                 $button.append('<i class="fa fa-blind fa-lg"></i><i class="fa fa-arrows-h fa-lg" style="color:#e84545"></i><i class="fa fa-car fa-lg"></i>')
                     .attr({
-                        title: 'Swap between driving-type and walking-type segments.\nWARNING!'
-                        + ' This will DELETE and recreate the segment.  Nodes may need to be reconnected.'
+                        title: _trans.prefs.showSwapDrivingWalkingButton_Title
                     });
                 $container.append($button);
 
@@ -578,9 +582,7 @@
                     if (_settings.warnOnPedestrianTypeSwap) {
                         _settings.warnOnPedestrianTypeSwap = false;
                         saveSettingsToStorage();
-                        if (!confirm('This will DELETE the segment and recreate it. Any speed data will be lost,'
-                            + ' and nodes will need to be reconnected (if applicable).'
-                            + ' This message will only be displayed once. Continue?')) {
+                        if (!confirm(_trans.swapSegmentTypeWarning)) {
                             return;
                         }
                     }
@@ -588,7 +590,7 @@
                     // Check for paths before deleting.
                     let segment = W.selectionManager.getSelectedFeatures()[0];
                     if (segment.model.hasPaths()) {
-                        WazeWrap.Alerts.error('Clicksaver', 'Paths must be removed from segment before changing between road and pedestrian.');
+                        WazeWrap.Alerts.error('Clicksaver', _trans.swapSegmentTypeError_Paths);
                         return;
                     }
 
@@ -727,9 +729,9 @@
                         $('<div>', { style: 'margin-bottom:8px;' }).append(
                             // THIS IS CURRENTLY DISABLED
                             createSettingsCheckbox('csAddAltCityButtonCheckBox', 'addAltCityButton',
-                                'Show "Add alt city" button'),
+                                _trans.prefs.showAddAltCityButton),
                             isSwapPedestrianPermitted() ? createSettingsCheckbox('csAddSwapPedestrianButtonCheckBox',
-                                'addSwapPedestrianButton', 'Show "Swap driving<->walking segment type" button') : ''
+                                'addSwapPedestrianButton', _trans.prefs.showSwapDrivingWalkingButton) : ''
                         )
                     )
                 )
