@@ -64,7 +64,6 @@
                 RT: { text: 'RT' },
                 Pw: { text: 'Pw' }
             },
-            multiLockLevelWarning: 'Multiple lock levels selected!',
             prefs: {
                 dropdownHelperGroup: 'DROPDOWN HELPERS',
                 roadTypeButtons: 'Add road type buttons',
