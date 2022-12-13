@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.12.11.002
+// @version         2022.12.12.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -391,7 +391,9 @@
         }
 
         function addRoadTypeButtons() {
-            const seg = W.selectionManager.getSelectedFeatures()[0].model;
+            let seg = W.selectionManager.getSelectedFeatures()[0];
+            if (!seg) return;
+            seg = seg.model;
             if (seg.type !== 'segment') return;
             const isPed = isPedestrianTypeSegment(seg);
             const $dropDown = $(ROAD_TYPE_DROPDOWN_SELECTOR);
@@ -423,7 +425,7 @@
                                 .text(_trans.roadTypeButtons[roadTypeKey].text)
                                 .prop('checked', roadType.visible)
                                 .data('val', roadType.val)
-                                .click(function rtbClick() { onRoadTypeButtonClick($(this).data('key')); })
+                                .click(function rtbClick() { onRoadTypeButtonClick($(this).data('val')); })
                         );
                     }
                 }
