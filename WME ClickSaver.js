@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.12.12.001
+// @version         2022.12.14.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -571,11 +571,11 @@
 
                 // Insert swap button in the correct location based on display mode.
                 if (displayMode === 'compact') {
-                    const $label = $('wz-chip-select[class="road-type-chip-select"]').parent().find('wz-label');
-                    $label.css({ display: 'inline' }).before($container);
+                    const $label = $('#segment-edit-general > form > div.road-type-control.form-group > wz-label');
+                    $label.css({ display: 'inline' }).append($container);
                 } else {
-                    const $label = $('wz-select[name="roadType"]').closest('form').find('wz-label').first();
-                    $label.css({ display: 'inline' }).after($container);
+                    const $label = $('#segment-edit-general > form > div.road-type-control.form-group > wz-label');
+                    $label.css({ display: 'inline' }).append($container);
                 }
                 // TODO css
 
