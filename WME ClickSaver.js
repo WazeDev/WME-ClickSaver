@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.12.14.002
+// @version         2022.12.16.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -657,6 +657,7 @@
                 'div .cs-rt-buttons-group {float:left; margin: 0px 5px 5px 0px;}',
                 '#sidepanel-clicksaver .controls-container {padding:0px;}',
                 '#sidepanel-clicksaver .controls-container label {white-space: normal;}',
+                '#sidepanel-clicksaver {font-size:13px;}',
 
                 // Lock button formatting
                 '.cs-group-label {font-size: 11px; width: 100%; font-family: Poppins, sans-serif;'
@@ -741,7 +742,7 @@
             $panel.append(
                 // TODO css
                 $('<div>', { style: 'margin-top:20px;font-size:10px;color:#999999;' }).append(
-                    $('<div>').text(`version ${argsObject.scriptVersion}${argsObject.scriptName.toLowerCase().includes('beta') ? ' beta' : ''}`),
+                    $('<div>').text(`v ${argsObject.scriptVersion}${argsObject.scriptName.toLowerCase().includes('beta') ? ' beta' : ''}`),
                     $('<div>').append(
                         $('<a>', { href: argsObject.forumUrl, target: '__blank' }).text(_trans.prefs.discussionForumLinkText)
                     )
