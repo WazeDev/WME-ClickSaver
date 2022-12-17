@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.12.16.001
+// @version         2022.12.16.002
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -39,8 +39,8 @@
     /* eslint-disable object-curly-newline */
     const ROAD_TYPE_DROPDOWN_SELECTOR = 'wz-select[name="roadType"]';
     const ROAD_TYPE_CHIP_SELECTOR = 'wz-chip-select[class="road-type-chip-select"]';
-    const PARKING_SPACES_DROPDOWN_SELECTOR = 'select[name="estimatedNumberOfSpots"]';
-    const PARKING_COST_DROPDOWN_SELECTOR = 'select[name="costType"]';
+    // const PARKING_SPACES_DROPDOWN_SELECTOR = 'select[name="estimatedNumberOfSpots"]';
+    // const PARKING_COST_DROPDOWN_SELECTOR = 'select[name="costType"]';
     const SETTINGS_STORE_NAME = 'clicksaver_settings';
     const ROAD_TYPES = {
         St: { val: 1, wmeColor: '#ffffeb', svColor: '#ffffff', category: 'streets', visible: true },
@@ -144,8 +144,8 @@
         } else {
             $('.csRoadTypeButtonsCheckBoxContainer').hide();
         }
-        setChecked('csParkingSpacesButtonsCheckBox', _settings.parkingSpacesButtons);
-        setChecked('csParkingCostButtonsCheckBox', _settings.parkingCostButtons);
+        // setChecked('csParkingSpacesButtonsCheckBox', _settings.parkingSpacesButtons);
+        // setChecked('csParkingCostButtonsCheckBox', _settings.parkingCostButtons);
         setChecked('csSetNewPLRCityCheckBox', _settings.setNewPLRCity);
         setChecked('csClearNewPLRCheckBox', _settings.setNewPLRStreetToNone);
         setChecked('csSetNewPRCityCheckBox', _settings.setNewPRCity);
@@ -423,88 +423,88 @@
         });
     }
 
-    function isPLA(item) {
-        return (item.model.type === 'venue') && item.model.attributes.categories.includes('PARKING_LOT');
-    }
+    // function isPLA(item) {
+    //     return (item.model.type === 'venue') && item.model.attributes.categories.includes('PARKING_LOT');
+    // }
 
-    function addParkingSpacesButtons() {
-        const $dropDown = $(PARKING_SPACES_DROPDOWN_SELECTOR);
-        const selItems = W.selectionManager.getSelectedFeatures();
-        const item = selItems[0];
+    // function addParkingSpacesButtons() {
+    //     const $dropDown = $(PARKING_SPACES_DROPDOWN_SELECTOR);
+    //     const selItems = W.selectionManager.getSelectedFeatures();
+    //     const item = selItems[0];
 
-        // If it's not a PLA, exit.
-        if (!isPLA(item)) return;
+    //     // If it's not a PLA, exit.
+    //     if (!isPLA(item)) return;
 
-        $('#csParkingSpacesContainer').remove();
-        const $div = $('<div>', { id: 'csParkingSpacesContainer' });
-        const dropdownDisabled = $dropDown.attr('disabled') === 'disabled';
-        const optionNodes = $(`${PARKING_SPACES_DROPDOWN_SELECTOR} option`);
+    //     $('#csParkingSpacesContainer').remove();
+    //     const $div = $('<div>', { id: 'csParkingSpacesContainer' });
+    //     const dropdownDisabled = $dropDown.attr('disabled') === 'disabled';
+    //     const optionNodes = $(`${PARKING_SPACES_DROPDOWN_SELECTOR} option`);
 
-        for (let i = 0; i < optionNodes.length; i++) {
-            const $option = $(optionNodes[i]);
-            const text = $option.text();
-            const selected = $option.val() === $dropDown.val();
-            $div.append(
-                // TODO css
-                $('<div>', {
-                    class: `btn waze-btn waze-btn-white${selected ? ' waze-btn-blue' : ''}${dropdownDisabled ? ' disabled' : ''}`,
-                    style: 'margin-bottom: 5px; height: 22px; padding: 2px 8px 0px 8px; margin-right: 3px;'
-                })
-                    .text(text)
-                    .data('val', $option.val())
-                    // eslint-disable-next-line func-names
-                    .hover(() => { })
-                    .click(function onParkingSpacesButtonClick() {
-                        if (!dropdownDisabled) {
-                            $(PARKING_SPACES_DROPDOWN_SELECTOR).val($(this).data('val')).change();
-                            addParkingSpacesButtons();
-                        }
-                    })
-            );
-        }
+    //     for (let i = 0; i < optionNodes.length; i++) {
+    //         const $option = $(optionNodes[i]);
+    //         const text = $option.text();
+    //         const selected = $option.val() === $dropDown.val();
+    //         $div.append(
+    //             // TODO css
+    //             $('<div>', {
+    //                 class: `btn waze-btn waze-btn-white${selected ? ' waze-btn-blue' : ''}${dropdownDisabled ? ' disabled' : ''}`,
+    //                 style: 'margin-bottom: 5px; height: 22px; padding: 2px 8px 0px 8px; margin-right: 3px;'
+    //             })
+    //                 .text(text)
+    //                 .data('val', $option.val())
+    //                 // eslint-disable-next-line func-names
+    //                 .hover(() => { })
+    //                 .click(function onParkingSpacesButtonClick() {
+    //                     if (!dropdownDisabled) {
+    //                         $(PARKING_SPACES_DROPDOWN_SELECTOR).val($(this).data('val')).change();
+    //                         addParkingSpacesButtons();
+    //                     }
+    //                 })
+    //         );
+    //     }
 
-        $dropDown.before($div);
-        $dropDown.hide();
-    }
+    //     $dropDown.before($div);
+    //     $dropDown.hide();
+    // }
 
-    function addParkingCostButtons() {
-        const $dropDown = $(PARKING_COST_DROPDOWN_SELECTOR);
-        const selItems = W.selectionManager.getSelectedFeatures();
-        const item = selItems[0];
+    // function addParkingCostButtons() {
+    //     const $dropDown = $(PARKING_COST_DROPDOWN_SELECTOR);
+    //     const selItems = W.selectionManager.getSelectedFeatures();
+    //     const item = selItems[0];
 
-        // If it's not a PLA, exit.
-        if (!isPLA(item)) return;
+    //     // If it's not a PLA, exit.
+    //     if (!isPLA(item)) return;
 
-        $('#csParkingCostContainer').remove();
-        const $div = $('<div>', { id: 'csParkingCostContainer' });
-        const dropdownDisabled = $dropDown.attr('disabled') === 'disabled';
-        const optionNodes = $(`${PARKING_COST_DROPDOWN_SELECTOR} option`);
-        for (let i = 0; i < optionNodes.length; i++) {
-            const $option = $(optionNodes[i]);
-            const text = $option.text();
-            const selected = $option.val() === $dropDown.val();
-            $div.append(
-                $('<div>', {
-                    class: `btn waze-btn waze-btn-white${selected ? ' waze-btn-blue' : ''}${dropdownDisabled ? ' disabled' : ''}`,
-                    // TODO css
-                    style: 'margin-bottom: 5px; height: 22px; padding: 2px 8px 0px 8px; margin-right: 4px;'
-                })
-                    .text(text !== '' ? text : '?')
-                    .data('val', $option.val())
-                    // eslint-disable-next-line func-names
-                    .hover(() => { })
-                    .click(function onParkingCostButtonClick() {
-                        if (!dropdownDisabled) {
-                            $(PARKING_COST_DROPDOWN_SELECTOR).val($(this).data('val')).change();
-                            addParkingCostButtons();
-                        }
-                    })
-            );
-        }
+    //     $('#csParkingCostContainer').remove();
+    //     const $div = $('<div>', { id: 'csParkingCostContainer' });
+    //     const dropdownDisabled = $dropDown.attr('disabled') === 'disabled';
+    //     const optionNodes = $(`${PARKING_COST_DROPDOWN_SELECTOR} option`);
+    //     for (let i = 0; i < optionNodes.length; i++) {
+    //         const $option = $(optionNodes[i]);
+    //         const text = $option.text();
+    //         const selected = $option.val() === $dropDown.val();
+    //         $div.append(
+    //             $('<div>', {
+    //                 class: `btn waze-btn waze-btn-white${selected ? ' waze-btn-blue' : ''}${dropdownDisabled ? ' disabled' : ''}`,
+    //                 // TODO css
+    //                 style: 'margin-bottom: 5px; height: 22px; padding: 2px 8px 0px 8px; margin-right: 4px;'
+    //             })
+    //                 .text(text !== '' ? text : '?')
+    //                 .data('val', $option.val())
+    //                 // eslint-disable-next-line func-names
+    //                 .hover(() => { })
+    //                 .click(function onParkingCostButtonClick() {
+    //                     if (!dropdownDisabled) {
+    //                         $(PARKING_COST_DROPDOWN_SELECTOR).val($(this).data('val')).change();
+    //                         addParkingCostButtons();
+    //                     }
+    //                 })
+    //         );
+    //     }
 
-        $dropDown.before($div);
-        $dropDown.hide();
-    }
+    //     $dropDown.before($div);
+    //     $dropDown.hide();
+    // }
 
     function addAddAltCityButton() {
         const selFeatures = W.selectionManager.getSelectedFeatures();
@@ -697,11 +697,11 @@
                         $('<div>').append(
                             createSettingsCheckbox('csRoadTypeButtonsCheckBox', 'roadButtons',
                                 _translation.prefs.roadTypeButtons)
-                        ).append($roadTypesDiv),
-                        createSettingsCheckbox('csParkingCostButtonsCheckBox', 'parkingCostButtons',
-                            _translation.prefs.parkingCostButtons),
-                        createSettingsCheckbox('csParkingSpacesButtonsCheckBox', 'parkingSpacesButtons',
-                            _translation.prefs.parkingSpacesButtons)
+                        ).append($roadTypesDiv)// ,
+                        // createSettingsCheckbox('csParkingCostButtonsCheckBox', 'parkingCostButtons',
+                        //     _translation.prefs.parkingCostButtons),
+                        // createSettingsCheckbox('csParkingSpacesButtonsCheckBox', 'parkingSpacesButtons',
+                        //     _translation.prefs.parkingSpacesButtons)
                     ),
                     $('<label>', { class: 'cs-group-label' }).text(_translation.prefs.timeSaversGroup),
                     $('<div>', { style: 'margin-bottom:8px;' }).append(
@@ -718,7 +718,7 @@
         $panel.append(
             // TODO css
             $('<div>', { style: 'margin-top:20px;font-size:10px;color:#999999;' }).append(
-                $('<div>').text(`v ${SCRIPT_VERSION}${SCRIPT_NAME.toLowerCase().includes('beta') ? ' beta' : ''}`),
+                $('<div>').text(`v. ${SCRIPT_VERSION}${SCRIPT_NAME.toLowerCase().includes('beta') ? ' beta' : ''}`),
                 $('<div>').append(
                     $('<a>', { href: FORUM_URL, target: '__blank' }).text(_translation.prefs.discussionForumLinkText)
                 )
@@ -760,12 +760,12 @@
         if ($(ROAD_TYPE_DROPDOWN_SELECTOR).length > 0) {
             if (isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
         }
-        if ($(PARKING_SPACES_DROPDOWN_SELECTOR).length > 0 && isChecked('csParkingSpacesButtonsCheckBox')) {
-            addParkingSpacesButtons(); // TODO - add option setting
-        }
-        if ($(PARKING_COST_DROPDOWN_SELECTOR).length > 0 && isChecked('csParkingCostButtonsCheckBox')) {
-            addParkingCostButtons(); // TODO - add option setting
-        }
+        // if ($(PARKING_SPACES_DROPDOWN_SELECTOR).length > 0 && isChecked('csParkingSpacesButtonsCheckBox')) {
+        //     addParkingSpacesButtons(); // TODO - add option setting
+        // }
+        // if ($(PARKING_COST_DROPDOWN_SELECTOR).length > 0 && isChecked('csParkingCostButtonsCheckBox')) {
+        //     addParkingCostButtons(); // TODO - add option setting
+        // }
     }
 
     function replaceWord(target, searchWord, replaceWithWord) {
@@ -874,13 +874,13 @@
                                 addSwapPedestrianButton('compact');
                             }
                         }
-                        if (addedNode.querySelector(PARKING_SPACES_DROPDOWN_SELECTOR) && isChecked('csParkingSpacesButtonsCheckBox')) {
-                            addParkingSpacesButtons();
-                        }
-                        if (addedNode.querySelector(PARKING_COST_DROPDOWN_SELECTOR)
-                            && isChecked('csParkingCostButtonsCheckBox')) {
-                            addParkingCostButtons();
-                        }
+                        // if (addedNode.querySelector(PARKING_SPACES_DROPDOWN_SELECTOR) && isChecked('csParkingSpacesButtonsCheckBox')) {
+                        //     addParkingSpacesButtons();
+                        // }
+                        // if (addedNode.querySelector(PARKING_COST_DROPDOWN_SELECTOR)
+                        //     && isChecked('csParkingCostButtonsCheckBox')) {
+                        //     addParkingCostButtons();
+                        // }
                         if (addedNode.querySelector('.side-panel-section') && isChecked('csAddAltCityButtonCheckBox')) {
                             addAddAltCityButton();
                         }
