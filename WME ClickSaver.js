@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.12.22.001
+// @version         2022.12.22.002
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -461,7 +461,7 @@
                 if (rtChip.length !== 1) return;
                 waitForShadowElem(`.road-type-chip-select wz-checkable-chip[value='${roadType.val}']`, 'div', shadowElem => {
                     const $elem = $(shadowElem);
-                    $elem.css({ backgroundColor: bgColor, padding: '0px 9px' });
+                    $elem.css({ backgroundColor: bgColor, padding: '0px 8px' });
                 });
             });
         }
