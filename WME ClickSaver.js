@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.12.16.002
+// @version         2022.12.22.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -451,16 +451,17 @@
         }
 
         // Function to add road type colors to the chips in compact mode
-        function addCompactRoadTypeColors(){
+        function addCompactRoadTypeColors() {
             const useOldColors = _settings.useOldRoadColors;
-            $(`.road-type-chip-select wz-checkable-chip`).addClass('cs-compact-button');
+            $('.road-type-chip-select wz-checkable-chip').addClass('cs-compact-button');
             Object.keys(ROAD_TYPES).forEach(roadTypeKey => {
                 const roadType = ROAD_TYPES[roadTypeKey];
                 const bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
                 const rtChip = $(`.road-type-chip-select wz-checkable-chip[value=${roadType.val}]`);
-                if (rtChip.length != 1) return;
+                if (rtChip.length !== 1) return;
                 waitForShadowElem(`.road-type-chip-select wz-checkable-chip[value='${roadType.val}']`, 'div', shadowElem => {
-                    shadowElem.style.cssText += `background-color: ${bgColor}`;
+                    const $elem = $(shadowElem);
+                    $elem.css({ backgroundColor: bgColor, padding: '0px 9px' });
                 });
             });
         }
@@ -677,8 +678,8 @@
                 '#sidepanel-clicksaver .controls-container label {white-space: normal;}',
                 '#sidepanel-clicksaver {font-size:13px;}',
 
-                //Compact moad road type button formatting.
-                '.cs-compact-button[checked="false"] {opacity: 0.65;}',
+                // Compact moad road type button formatting.
+                '.cs-compact-button[checked="false"] {opacity: 0.7;}',
 
                 // Lock button formatting
                 '.cs-group-label {font-size: 11px; width: 100%; font-family: Poppins, sans-serif;'
