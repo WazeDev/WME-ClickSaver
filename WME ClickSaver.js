@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.12.22.002
+// @version         2022.12.22.003
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -226,7 +226,8 @@
                     useOldRoadColors: _settings.useOldRoadColors,
                     addAltCityButton: _settings.addAltCityButton,
                     addSwapPedestrianButton: _settings.addSwapPedestrianButton,
-                    warnOnPedestrianTypeSwap: _settings.warnOnPedestrianTypeSwap
+                    warnOnPedestrianTypeSwap: _settings.warnOnPedestrianTypeSwap,
+                    addCompactColors: _settings.addCompactColors
                 };
                 settings.roadTypeButtons = [];
                 Object.keys(ROAD_TYPES).forEach(roadTypeAbbr => {
