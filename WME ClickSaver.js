@@ -453,12 +453,12 @@
 
         function addCompactRoadTypeColors(){
             const useOldColors = _settings.useOldRoadColors;
+            $(`.road-type-chip-select wz-checkable-chip`).addClass('cs-compact-button');
             Object.keys(ROAD_TYPES).forEach(roadTypeKey => {
                 const roadType = ROAD_TYPES[roadTypeKey];
                 const bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
                 const rtChip = $(`.road-type-chip-select wz-checkable-chip[value=${roadType.val}]`);
                 if (rtChip.length != 1) return;
-                rtChip[0].setAttribute('show-check-icon-when-checked', 'true');
                 waitForShadowElem(`.road-type-chip-select wz-checkable-chip[value='${roadType.val}']`, 'div', shadowElem => {
                     shadowElem.style.cssText += `background-color: ${bgColor}`;
                 });
@@ -675,6 +675,9 @@
                 'div .cs-rt-buttons-group {float:left; margin: 0px 5px 5px 0px;}',
                 '#sidepanel-clicksaver .controls-container {padding:0px;}',
                 '#sidepanel-clicksaver .controls-container label {white-space: normal;}',
+
+                //Compact moad road type button formatting.
+                '.cs-compact-button[checked="false"] {opacity: 0.65;}',
 
                 // Lock button formatting
                 '.cs-group-label {font-size: 11px; width: 100%; font-family: Poppins, sans-serif;'
