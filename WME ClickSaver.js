@@ -78,7 +78,8 @@
                 discussionForumLinkText: 'Discussion Forum',
                 showAddAltCityButton: 'Show "Add alt city" button',
                 showSwapDrivingWalkingButton: 'Show "Swap driving<->walking segment type" button',
-                showSwapDrivingWalkingButton_Title: 'Swap between driving-type and walking-type segments. WARNING! This will DELETE and recreate the segment. Nodes may need to be reconnected.'
+                showSwapDrivingWalkingButton_Title: 'Swap between driving-type and walking-type segments. WARNING! This will DELETE and recreate the segment. Nodes may need to be reconnected.',
+                addCompactColors: 'Add colors to compact mode road type buttons'
             },
             swapSegmentTypeWarning: 'This will DELETE the segment and recreate it. Any speed data will be lost, and nodes will need to be reconnected. This message will only be displayed once. Continue?',
             swapSegmentTypeError_Paths: 'Paths must be removed from segment before changing between driving and pedestrian road type.',
@@ -165,7 +166,8 @@
                 addAltCityButton: true,
                 addSwapPedestrianButton: false,
                 useOldRoadColors: false,
-                warnOnPedestrianTypeSwap: true
+                warnOnPedestrianTypeSwap: true,
+                addCompactColors: true
             };
             _settings = loadedSettings || defaultSettings;
             Object.keys(defaultSettings).forEach(prop => {
@@ -201,6 +203,7 @@
             setChecked('csUseOldRoadColorsCheckBox', _settings.useOldRoadColors);
             setChecked('csAddAltCityButtonCheckBox', _settings.addAltCityButton);
             setChecked('csAddSwapPedestrianButtonCheckBox', _settings.addSwapPedestrianButton);
+            setChecked('csAddCompactColorsCheckBox', _settings.addCompactColors);
         }
 
         function saveSettingsToStorage() {
@@ -447,6 +450,21 @@
             });
         }
 
+        // Function to add road type colors to the chips in compact mode
+        function addCompactRoadTypeColors(){
+            const useOldColors = _settings.useOldRoadColors;
+            $(`.road-type-chip-select wz-checkable-chip`).addClass('cs-compact-button');
+            Object.keys(ROAD_TYPES).forEach(roadTypeKey => {
+                const roadType = ROAD_TYPES[roadTypeKey];
+                const bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
+                const rtChip = $(`.road-type-chip-select wz-checkable-chip[value=${roadType.val}]`);
+                if (rtChip.length != 1) return;
+                waitForShadowElem(`.road-type-chip-select wz-checkable-chip[value='${roadType.val}']`, 'div', shadowElem => {
+                    shadowElem.style.cssText += `background-color: ${bgColor}`;
+                });
+            });
+        }
+
         // function isPLA(item) {
         //     return (item.model.type === 'venue') && item.model.attributes.categories.includes('PARKING_LOT');
         // }
@@ -659,6 +677,9 @@
                 '#sidepanel-clicksaver .controls-container label {white-space: normal;}',
                 '#sidepanel-clicksaver {font-size:13px;}',
 
+                //Compact moad road type button formatting.
+                '.cs-compact-button[checked="false"] {opacity: 0.65;}',
+
                 // Lock button formatting
                 '.cs-group-label {font-size: 11px; width: 100%; font-family: Poppins, sans-serif;'
                 + ' text-transform: uppercase; font-weight: 700; color: #354148; margin-bottom: 6px;}'
@@ -721,7 +742,9 @@
                             $('<div>').append(
                                 createSettingsCheckbox('csRoadTypeButtonsCheckBox', 'roadButtons',
                                     _trans.prefs.roadTypeButtons)
-                            ).append($roadTypesDiv)// ,
+                            ).append($roadTypesDiv),
+                            createSettingsCheckbox('csAddCompactColorsCheckBox', 'addCompactColors',
+                                _trans.prefs.addCompactColors)// ,
                             // createSettingsCheckbox('csParkingCostButtonsCheckBox', 'parkingCostButtons',
                             //     _trans.prefs.parkingCostButtons),
                             // createSettingsCheckbox('csParkingSpacesButtonsCheckBox', 'parkingSpacesButtons',
@@ -902,6 +925,7 @@
                             // Checks to identify if this is a segment in compact display mode.
                             if (addedNode.querySelector(ROAD_TYPE_CHIP_SELECTOR)) {
                                 if (isChecked('csRoadTypeButtonsCheckBox')) addCompactRoadTypeChangeEvents();
+                                if (isChecked('csAddCompactColorsCheckBox')) addCompactRoadTypeColors();
                                 if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
                                     addSwapPedestrianButton('compact');
                                 }
