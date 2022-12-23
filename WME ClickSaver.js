@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.12.22.003
+// @version         2022.12.22.004
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -465,6 +465,9 @@
                     $elem.css({ backgroundColor: bgColor, padding: '0px 8px' });
                 });
             });
+            waitForShadowElem('.road-type-chip-select wz-checkable-chip[checked=""]', 'div', shadowElem => {
+                $(shadowElem).css({ border: 'black 2px solid' });
+            });
         }
 
         // function isPLA(item) {
@@ -680,7 +683,7 @@
                 '#sidepanel-clicksaver {font-size:13px;}',
 
                 // Compact moad road type button formatting.
-                '.cs-compact-button[checked="false"] {opacity: 0.7;}',
+                '.cs-compact-button[checked="false"] {opacity: 0.65;}',
 
                 // Lock button formatting
                 '.cs-group-label {font-size: 11px; width: 100%; font-family: Poppins, sans-serif;'
@@ -909,6 +912,30 @@
             });
 
             document.addEventListener('paste', onPaste);
+
+            // This is a hack that updates the border style of all compact road type buttons whenever
+            // a segment property change is detected. This is mostly needed when the user isn't clicking
+            // the button, i.e. when using Undo/Redo.  There might be a better way, but I coulnd't figure
+            // it out because we're dealing with Shadow DOM here. For example, a style sheet isn't an option.
+            W.model.segments.on('objectschanged', () => {
+                if (W.prefs.attributes.compactDensity && isChecked('csAddCompactColorsCheckBox')) {
+                    const selectedItems = W.selectionManager.getSelectedFeatures().map(feature => feature.model);
+                    if (selectedItems.length && selectedItems[0].type === 'segment') {
+                        setTimeout(() => {
+                            // Do not change to an arrow function. function() is required to access "this".
+                            $('.road-type-chip-select wz-checkable-chip').each(function() {
+                                let borderStyle;
+                                if (this.getAttribute('checked') === 'false') {
+                                    borderStyle = '';
+                                } else {
+                                    borderStyle = 'black 2px solid';
+                                }
+                                $(this.shadowRoot.querySelector('div')).css('border', borderStyle);
+                            });
+                        }, 100);
+                    }
+                }
+            });
 
             // check for changes in the edit-panel
             const observer = new MutationObserver(mutations => {
