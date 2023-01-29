@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2022.12.22.004
+// @version         2023.01.29.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -13,15 +13,12 @@
 // @require         https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // ==/UserScript==
 
-/* global GM_info */
 /* global W */
 /* global I18n */
 /* global OL */
-/* global $ */
 /* global WazeWrap */
-/* global GM_addElement */
 
-(function() {
+(function main() {
     'use strict';
 
     const UPDATE_MESSAGE = '';
@@ -38,7 +35,7 @@
     const EXTERNAL_SETTINGS_NAME = 'clicksaver_settings_ext';
 
     // This function is injected into the page.
-    function main(argsObject) {
+    function clicksaver(argsObject) {
         /* eslint-disable object-curly-newline */
         const ROAD_TYPE_DROPDOWN_SELECTOR = 'wz-select[name="roadType"]';
         const ROAD_TYPE_CHIP_SELECTOR = 'wz-chip-select[class="road-type-chip-select"]';
@@ -586,7 +583,7 @@
                     // TODO css
                     style: 'display:inline-block;cursor:pointer;'
                 });
-                $button.append('<i class="fa fa-blind fa-lg"></i><i class="fa fa-arrows-h fa-lg" style="color:#e84545"></i><i class="fa fa-car fa-lg"></i>')
+                $button.append('<i class="w-icon w-icon-streetview w-icon-lg"></i><i class="fa fa-arrows-h fa-lg" style="color: #e84545;vertical-align: top;"></i><i class="w-icon w-icon-car w-icon-lg"></i>')
                     .attr({
                         title: _trans.prefs.showSwapDrivingWalkingButton_Title
                     });
@@ -724,12 +721,22 @@
                 if (['PLR', 'PR', 'RR', 'PB', 'OR'].includes(roadTypeAbbr)) { // added RR & PB by jm6087
                     $roadTypesDiv.append(
                         // TODO css
-                        createSettingsCheckbox(`csClearNew${roadTypeAbbr}CheckBox`, `setNew${roadTypeAbbr}StreetToNone`,
-                            _trans.prefs.setStreetCityToNone, _trans.prefs.setStreetCityToNone_Title,
-                            { paddingLeft: '20px', marginRight: '4px' }, { fontStyle: 'italic' }),
-                        createSettingsCheckbox(`csSetNew${roadTypeAbbr}CityCheckBox`, `setNew${roadTypeAbbr}City`,
-                            _trans.prefs.setCityToConnectedSegCity, '',
-                            { paddingLeft: '30px', marginRight: '4px' }, { fontStyle: 'italic' })
+                        createSettingsCheckbox(
+                            `csClearNew${roadTypeAbbr}CheckBox`,
+                            `setNew${roadTypeAbbr}StreetToNone`,
+                            _trans.prefs.setStreetCityToNone,
+                            _trans.prefs.setStreetCityToNone_Title,
+                            { paddingLeft: '20px', marginRight: '4px' },
+                            { fontStyle: 'italic' }
+                        ),
+                        createSettingsCheckbox(
+                            `csSetNew${roadTypeAbbr}CityCheckBox`,
+                            `setNew${roadTypeAbbr}City`,
+                            _trans.prefs.setCityToConnectedSegCity,
+                            '',
+                            { paddingLeft: '30px', marginRight: '4px' },
+                            { fontStyle: 'italic' }
+                        )
                     );
                 }
             });
@@ -745,22 +752,30 @@
                         $('<div>', { class: 'form-group' }).append(
                             $('<label>', { class: 'cs-group-label' }).text(_trans.prefs.dropdownHelperGroup),
                             $('<div>').append(
-                                createSettingsCheckbox('csRoadTypeButtonsCheckBox', 'roadButtons',
-                                    _trans.prefs.roadTypeButtons)
+                                createSettingsCheckbox(
+                                    'csRoadTypeButtonsCheckBox',
+                                    'roadButtons',
+                                    _trans.prefs.roadTypeButtons
+                                )
                             ).append($roadTypesDiv),
-                            createSettingsCheckbox('csAddCompactColorsCheckBox', 'addCompactColors',
-                                _trans.prefs.addCompactColors)// ,
-                            // createSettingsCheckbox('csParkingCostButtonsCheckBox', 'parkingCostButtons',
-                            //     _trans.prefs.parkingCostButtons),
-                            // createSettingsCheckbox('csParkingSpacesButtonsCheckBox', 'parkingSpacesButtons',
-                            //     _trans.prefs.parkingSpacesButtons)
+                            createSettingsCheckbox(
+                                'csAddCompactColorsCheckBox',
+                                'addCompactColors',
+                                _trans.prefs.addCompactColors
+                            )
                         ),
                         $('<label>', { class: 'cs-group-label' }).text(_trans.prefs.timeSaversGroup),
                         $('<div>', { style: 'margin-bottom:8px;' }).append(
-                            createSettingsCheckbox('csAddAltCityButtonCheckBox', 'addAltCityButton',
-                                _trans.prefs.showAddAltCityButton),
-                            isSwapPedestrianPermitted() ? createSettingsCheckbox('csAddSwapPedestrianButtonCheckBox',
-                                'addSwapPedestrianButton', _trans.prefs.showSwapDrivingWalkingButton) : ''
+                            createSettingsCheckbox(
+                                'csAddAltCityButtonCheckBox',
+                                'addAltCityButton',
+                                _trans.prefs.showAddAltCityButton
+                            ),
+                            isSwapPedestrianPermitted() ? createSettingsCheckbox(
+                                'csAddSwapPedestrianButtonCheckBox',
+                                'addSwapPedestrianButton',
+                                _trans.prefs.showSwapDrivingWalkingButton
+                            ) : ''
                         )
                     )
                 )
@@ -923,7 +938,7 @@
                     if (selectedItems.length && selectedItems[0].type === 'segment') {
                         setTimeout(() => {
                             // Do not change to an arrow function. function() is required to access "this".
-                            $('.road-type-chip-select wz-checkable-chip').each(function() {
+                            $('.road-type-chip-select wz-checkable-chip').each(function updateRoadTypeChip() {
                                 let borderStyle;
                                 if (this.getAttribute('checked') === 'false') {
                                     borderStyle = '';
@@ -1002,20 +1017,19 @@
             logDebug('Bootstrap...');
             bootstrap();
         });
-    } // END Main function (code to be injected)
+    } // END clicksaver function (code to be injected)
 
-    function injectMain(argsObject) {
-        if (typeof require !== 'undefined' && typeof $ !== 'undefined') {
-            // const scriptElem = document.createElement('script');
-            // scriptElem.textContent = `(function(){${main.toString()}\n main(${JSON.stringify(argsObject).replace('\'', '\\\'')})})();`;
-            // scriptElem.setAttribute('type', 'application/javascript');
-            // document.body.appendChild(scriptElem);
+    function exists(...objects) {
+        return objects.every(object => typeof object !== 'undefined' && object !== null);
+    }
 
+    function injectScript(argsObject) {
+        if (exists(require, $)) {
             GM_addElement('script', {
-                textContent: `(function(){${main.toString()}\n main(${JSON.stringify(argsObject).replace('\'', '\\\'')})})();`
+                textContent: `(function(){${clicksaver.toString()}\n clicksaver(${JSON.stringify(argsObject).replace('\'', '\\\'')})})();`
             });
         } else {
-            setTimeout(() => injectMain(argsObject), 250);
+            setTimeout(() => injectScript(argsObject), 250);
         }
     }
 
@@ -1074,7 +1088,7 @@
                 // Leave this document.ready function. Some people randomly get a "require is not defined" error unless the injectMain function
                 // is called late enough.  Even with a "typeof require !== 'undefined'" check.
                 $(document).ready(() => {
-                    injectMain(args);
+                    injectScript(args);
                 });
             });
         }
