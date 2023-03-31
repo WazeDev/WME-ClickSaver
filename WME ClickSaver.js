@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2023.01.29.001
+// @version         2023.03.31.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -66,6 +66,7 @@
                 roadTypeButtons: 'Add road type buttons',
                 useOldRoadColors: 'Use old road colors (requires refresh)',
                 setStreetCityToNone: 'Set Street/City to None (new seg\'s only)',
+                // eslint-disable-next-line camelcase
                 setStreetCityToNone_Title: 'NOTE: Only works if connected directly or indirectly'
                     + ' to a segment with State / Country already set.',
                 setCityToConnectedSegCity: 'Set City to connected segment\'s City',
@@ -75,10 +76,12 @@
                 discussionForumLinkText: 'Discussion Forum',
                 showAddAltCityButton: 'Show "Add alt city" button',
                 showSwapDrivingWalkingButton: 'Show "Swap driving<->walking segment type" button',
+                // eslint-disable-next-line camelcase
                 showSwapDrivingWalkingButton_Title: 'Swap between driving-type and walking-type segments. WARNING! This will DELETE and recreate the segment. Nodes may need to be reconnected.',
                 addCompactColors: 'Add colors to compact mode road type buttons'
             },
             swapSegmentTypeWarning: 'This will DELETE the segment and recreate it. Any speed data will be lost, and nodes will need to be reconnected. This message will only be displayed once. Continue?',
+            // eslint-disable-next-line camelcase
             swapSegmentTypeError_Paths: 'Paths must be removed from segment before changing between driving and pedestrian road type.',
             addAltCityButtonText: 'Add alt city'
         };
@@ -1019,18 +1022,21 @@
         });
     } // END clicksaver function (code to be injected)
 
-    function exists(...objects) {
-        return objects.every(object => typeof object !== 'undefined' && object !== null);
-    }
+    // function exists(...objects) {
+    //     return objects.every(object => typeof object !== 'undefined' && object !== null);
+    // }
 
     function injectScript(argsObject) {
-        if (exists(require, $)) {
-            GM_addElement('script', {
-                textContent: `(function(){${clicksaver.toString()}\n clicksaver(${JSON.stringify(argsObject).replace('\'', '\\\'')})})();`
-            });
-        } else {
-            setTimeout(() => injectScript(argsObject), 250);
-        }
+        // 3/31/2023 - removing script injection due to loading errors that I can't track down ("require is not defined").
+        // Not sure if injection is needed anymore. I believe it was to get around an issue with Greasemonkey / Firefox.
+        clicksaver(argsObject);
+        // if (exists(require, $)) {
+        //     GM_addElement('script', {
+        //         textContent: `(function(){${clicksaver.toString()}\n clicksaver(${JSON.stringify(argsObject).replace('\'', '\\\'')})})();`
+        //     });
+        // } else {
+        //     setTimeout(() => injectScript(argsObject), 250);
+        // }
     }
 
     function setValue(object, path, value) {
@@ -1097,9 +1103,15 @@
     // This function requires WazeWrap so it must be called outside of the injected code, as
     // WazeWrap is not guaranteed to be available in the page's scope.
     function addToggleDrawNewRoadsAsTwoWayShortcut() {
-        new WazeWrap.Interface.Shortcut('ToggleTwoWayNewSeg', 'Toggle new segment two-way drawing',
-            'editing', 'editToggleNewSegTwoWayDrawing', EXTERNAL_SETTINGS.toggleTwoWaySegDrawingShortcut,
-            () => { $('wz-checkbox[name="twoWaySegmentsByDefault"]').click(); }, null).add();
+        new WazeWrap.Interface.Shortcut(
+            'ToggleTwoWayNewSeg',
+            'Toggle new segment two-way drawing',
+            'editing',
+            'editToggleNewSegTwoWayDrawing',
+            EXTERNAL_SETTINGS.toggleTwoWaySegDrawingShortcut,
+            () => { $('wz-checkbox[name="twoWaySegmentsByDefault"]').click(); },
+            null
+        ).add();
     }
 
     function sandboxLoadSettings() {
