@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2023.03.31.001
+// @version         2023.04.18.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -340,7 +340,6 @@
             }, 10);
         }
 
-        // eslint-disable-next-line no-unused-vars
         function onAddAltCityButtonClick() {
             const streetID = W.selectionManager.getSelectedFeatures()[0].model.attributes.primaryStreetID;
             $('wz-button[class="add-alt-street-btn"]').click();
@@ -348,8 +347,6 @@
                 elem.focus();
                 waitForShadowElem('wz-autocomplete.alt-street-name', `wz-menu-item[item-id="${streetID}"]`, shadowElem => {
                     shadowElem.click();
-                    const emptyCityCheckbox = $('wz-checkbox.empty-city');
-                    if (emptyCityCheckbox[0].checked) { emptyCityCheckbox.click(); }
                     waitForShadowElem('wz-autocomplete.alt-city-name', 'wz-text-input', (cityTextElem, cityAutocompleteElem) => {
                         cityTextElem.value = null;
                         cityAutocompleteElem.focus();
@@ -462,7 +459,7 @@
                 if (rtChip.length !== 1) return;
                 waitForShadowElem(`.road-type-chip-select wz-checkable-chip[value='${roadType.val}']`, 'div', shadowElem => {
                     const $elem = $(shadowElem);
-                    $elem.css({ backgroundColor: bgColor, padding: '0px 8px' });
+                    $elem.css({ backgroundColor: bgColor, padding: '0px 8px', color: 'black' });
                 });
             });
             waitForShadowElem('.road-type-chip-select wz-checkable-chip[checked=""]', 'div', shadowElem => {
