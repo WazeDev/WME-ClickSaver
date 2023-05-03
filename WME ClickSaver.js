@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2023.04.18.001
+// @version         2023.05.03.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
 // @license         GNU GPLv3
 // @connect         sheets.googleapis.com
+// @connect         greasyfork.org
 // @contributionURL https://github.com/WazeDev/Thank-The-Authors
 // @grant           GM_xmlhttpRequest
 // @grant           GM_addElement
@@ -25,6 +26,7 @@
 
     const SCRIPT_NAME = GM_info.script.name;
     const SCRIPT_VERSION = GM_info.script.version;
+    const DOWNLOAD_URL = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
     const FORUM_URL = 'https://www.waze.com/forum/viewtopic.php?f=819&t=199894';
     const TRANSLATIONS_URL = 'https://sheets.googleapis.com/v4/spreadsheets/1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/values/ClickSaver';
     const API_KEY = 'YTJWNVBVRkplbUZUZVVGMFl6aFVjMjVOTW0wNU5GaG5kVE40TUZoNWJVZEhWbU5rUjNacVdtdFlWUT09';
@@ -1132,9 +1134,21 @@
         localStorage.setItem(EXTERNAL_SETTINGS_NAME, JSON.stringify(EXTERNAL_SETTINGS));
     }
 
+    function loadScriptUpdateMonitor() {
+        let updateMonitor;
+        try {
+            updateMonitor = new WazeWrap.Alerts.ScriptUpdateMonitor(SCRIPT_NAME, SCRIPT_VERSION, DOWNLOAD_URL, GM_xmlhttpRequest);
+            updateMonitor.start();
+        } catch (ex) {
+            // Report, but don't stop if ScriptUpdateMonitor fails.
+            console.error('WMEPH:', ex);
+        }
+    }
+
     function sandboxBootstrap() {
         if (WazeWrap && WazeWrap.Ready) {
             WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, UPDATE_MESSAGE, FORUM_URL);
+            loadScriptUpdateMonitor();
             sandboxLoadSettings();
         } else {
             setTimeout(sandboxBootstrap, 250);
