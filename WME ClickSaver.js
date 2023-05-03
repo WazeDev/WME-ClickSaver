@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2023.05.03.001
+// @version         2023.05.03.002
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -1141,7 +1141,7 @@
             updateMonitor.start();
         } catch (ex) {
             // Report, but don't stop if ScriptUpdateMonitor fails.
-            console.error('WMEPH:', ex);
+            console.error(`${SCRIPT_NAME}:`, ex);
         }
     }
 
