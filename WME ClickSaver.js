@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2023.05.03.002
+// @version         2023.05.15.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -318,43 +318,63 @@
             }
         }
 
-        function waitForElem(selector, callback) {
-            const elem = document.querySelector(selector);
-            setTimeout(() => {
-                if (!elem) {
-                    waitForElem(selector, callback);
-                } else {
-                    callback(elem);
+        function waitForElem(selector) {
+            return new Promise((resolve, reject) => {
+                function checkIt(tries = 0) {
+                    if (tries < 150) { // try for about 3 seconds;
+                        const elem = document.querySelector(selector);
+                        setTimeout(() => {
+                            if (!elem) {
+                                checkIt(++tries);
+                            } else {
+                                resolve(elem);
+                            }
+                        }, 20);
+                    } else {
+                        reject(new Error(`Element was not found within 3 seconds: ${selector}`));
+                    }
                 }
-            }, 10);
+                checkIt();
+            });
         }
 
-        function waitForShadowElem(parentElemSelector, shadowElemSelector, callback) {
-            setTimeout(() => {
-                const parentElem = document.querySelector(parentElemSelector);
-                const sRoot = parentElem ? parentElem.shadowRoot : null;
-                const shadowElem = sRoot ? sRoot.querySelector(shadowElemSelector) : null;
-                if (!shadowElem) {
-                    waitForShadowElem(parentElemSelector, shadowElemSelector, callback);
-                } else {
-                    callback(shadowElem, parentElem);
-                }
-            }, 10);
-        }
-
-        function onAddAltCityButtonClick() {
-            const streetID = W.selectionManager.getSelectedFeatures()[0].model.attributes.primaryStreetID;
-            $('wz-button[class="add-alt-street-btn"]').click();
-            waitForElem('wz-autocomplete.alt-street-name', elem => {
-                elem.focus();
-                waitForShadowElem('wz-autocomplete.alt-street-name', `wz-menu-item[item-id="${streetID}"]`, shadowElem => {
-                    shadowElem.click();
-                    waitForShadowElem('wz-autocomplete.alt-city-name', 'wz-text-input', (cityTextElem, cityAutocompleteElem) => {
-                        cityTextElem.value = null;
-                        cityAutocompleteElem.focus();
-                    });
+        async function waitForShadowElem(parentElemSelector, shadowElemSelectors) {
+            const parentElem = await waitForElem(parentElemSelector);
+            return new Promise((resolve, reject) => {
+                shadowElemSelectors.forEach((shadowElemSelector, idx) => {
+                    function checkIt(parent, tries = 0) {
+                        if (tries < 150) { // try for about 3 seconds;
+                            const shadowElem = parent.shadowRoot.querySelector(shadowElemSelector);
+                            setTimeout(() => {
+                                if (!shadowElem) {
+                                    checkIt(parent, ++tries);
+                                } else if (idx === shadowElemSelectors.length - 1) {
+                                    resolve({ shadowElem, parentElem });
+                                } else {
+                                    checkIt(shadowElem, 0);
+                                }
+                            }, 20);
+                        } else {
+                            reject(new Error(`Shadow element was not found within 3 seconds: ${shadowElemSelector}`));
+                        }
+                    }
+                    checkIt(parentElem);
                 });
             });
+        }
+
+        async function onAddAltCityButtonClick() {
+            const streetID = W.selectionManager.getSelectedFeatures()[0].model.attributes.primaryStreetID;
+            $('wz-button[class="add-alt-street-btn"]').click();
+            const elem = await waitForElem('wz-autocomplete.alt-street-name');
+            elem.focus();
+            let result = await waitForShadowElem('wz-autocomplete.alt-street-name', ['wz-text-input']);
+            result.shadowElem.click();
+            result = await waitForShadowElem('wz-autocomplete.alt-street-name', [`wz-menu-item[item-id="${streetID}"]`]);
+            result.shadowElem.click();
+            result = await waitForShadowElem('wz-autocomplete.alt-city-name', ['wz-text-input']);
+            result.shadowElem.value = null;
+            result.parentElem.focus();
         }
 
         function onRoadTypeButtonClick(roadTypeVal) {
@@ -451,22 +471,38 @@
         }
 
         // Function to add road type colors to the chips in compact mode
-        function addCompactRoadTypeColors() {
-            const useOldColors = _settings.useOldRoadColors;
-            $('.road-type-chip-select wz-checkable-chip').addClass('cs-compact-button');
-            Object.keys(ROAD_TYPES).forEach(roadTypeKey => {
-                const roadType = ROAD_TYPES[roadTypeKey];
-                const bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
-                const rtChip = $(`.road-type-chip-select wz-checkable-chip[value=${roadType.val}]`);
-                if (rtChip.length !== 1) return;
-                waitForShadowElem(`.road-type-chip-select wz-checkable-chip[value='${roadType.val}']`, 'div', shadowElem => {
-                    const $elem = $(shadowElem);
-                    $elem.css({ backgroundColor: bgColor, padding: '0px 8px', color: 'black' });
+        async function addCompactRoadTypeColors() {
+            // TODO: Clean this up. Was combined from two functions.
+            if (W.prefs.attributes.compactDensity && isChecked('csAddCompactColorsCheckBox') && getSelectedSegments().length) {
+                const useOldColors = _settings.useOldRoadColors;
+                await waitForElem('.road-type-chip-select wz-checkable-chip');
+                $('.road-type-chip-select wz-checkable-chip').addClass('cs-compact-button');
+                Object.keys(ROAD_TYPES).forEach(roadTypeKey => {
+                    const roadType = ROAD_TYPES[roadTypeKey];
+                    const bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
+                    const rtChip = $(`.road-type-chip-select wz-checkable-chip[value=${roadType.val}]`);
+                    if (rtChip.length !== 1) return;
+                    waitForShadowElem(`.road-type-chip-select wz-checkable-chip[value='${roadType.val}']`, ['div']).then(result => {
+                        const $elem = $(result.shadowElem);
+                        const padding = $elem.hasClass('checked') ? '0px 7px' : '0px 8px';
+                        $elem.css({ backgroundColor: bgColor, padding, color: 'black' });
+                    });
                 });
-            });
-            waitForShadowElem('.road-type-chip-select wz-checkable-chip[checked=""]', 'div', shadowElem => {
-                $(shadowElem).css({ border: 'black 2px solid' });
-            });
+                const result = await waitForShadowElem('.road-type-chip-select wz-checkable-chip[checked=""]', ['div']);
+                $(result.shadowElem).css({ border: 'black 2px solid', padding: '0px 7px' });
+
+                $('.road-type-chip-select wz-checkable-chip').each(function updateRoadTypeChip() {
+                    const style = {};
+                    if (this.getAttribute('checked') === 'false') {
+                        style.border = '';
+                        style.padding = '0px 8px';
+                    } else {
+                        style.border = 'black 2px solid';
+                        style.padding = '0px 7px';
+                    }
+                    $(this.shadowRoot.querySelector('div')).css(style);
+                });
+            }
         }
 
         // function isPLA(item) {
@@ -824,10 +860,18 @@
             });
         }
 
+        function getSelectedModels() {
+            return W.selectionManager.getSelectedFeatures().map(feature => feature.repositoryObject ?? feature.model);
+        }
+        function getSelectedSegments() {
+            return getSelectedModels().filter(model => model.type === 'segment');
+        }
+
         function updateControls() {
             if ($(ROAD_TYPE_DROPDOWN_SELECTOR).length > 0) {
                 if (isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
             }
+            addCompactRoadTypeColors();
             // if ($(PARKING_SPACES_DROPDOWN_SELECTOR).length > 0 && isChecked('csParkingSpacesButtonsCheckBox')) {
             //     addParkingSpacesButtons(); // TODO - add option setting
             // }
@@ -915,6 +959,26 @@
             }
         }
 
+        function onSegmentsChanged(segments) {
+            addCompactRoadTypeColors();
+            // if (W.prefs.attributes.compactDensity && isChecked('csAddCompactColorsCheckBox')) {
+            //     setTimeout(() => {
+            //         // Do not change to an arrow function. function() is required to access "this".
+            //         $('.road-type-chip-select wz-checkable-chip').each(function updateRoadTypeChip() {
+            //             const style = {};
+            //             if (this.getAttribute('checked') === 'false') {
+            //                 style.border = '';
+            //                 style.padding = '0px 8px';
+            //             } else {
+            //                 style.border = 'black 2px solid';
+            //                 style.padding = '0px 7px';
+            //             }
+            //             $(this.shadowRoot.querySelector('div')).css(style);
+            //         });
+            //     }, 100);
+            // }
+        }
+
         function init() {
             UpdateObject = require('Waze/Action/UpdateObject');
             UpdateFeatureAddress = require('Waze/Action/UpdateFeatureAddress');
@@ -930,29 +994,8 @@
 
             document.addEventListener('paste', onPaste);
 
-            // This is a hack that updates the border style of all compact road type buttons whenever
-            // a segment property change is detected. This is mostly needed when the user isn't clicking
-            // the button, i.e. when using Undo/Redo.  There might be a better way, but I coulnd't figure
-            // it out because we're dealing with Shadow DOM here. For example, a style sheet isn't an option.
-            W.model.segments.on('objectschanged', () => {
-                if (W.prefs.attributes.compactDensity && isChecked('csAddCompactColorsCheckBox')) {
-                    const selectedItems = W.selectionManager.getSelectedFeatures().map(feature => feature.model);
-                    if (selectedItems.length && selectedItems[0].type === 'segment') {
-                        setTimeout(() => {
-                            // Do not change to an arrow function. function() is required to access "this".
-                            $('.road-type-chip-select wz-checkable-chip').each(function updateRoadTypeChip() {
-                                let borderStyle;
-                                if (this.getAttribute('checked') === 'false') {
-                                    borderStyle = '';
-                                } else {
-                                    borderStyle = 'black 2px solid';
-                                }
-                                $(this.shadowRoot.querySelector('div')).css('border', borderStyle);
-                            });
-                        }, 100);
-                    }
-                }
-            });
+            W.model.segments.on('objectschanged', onSegmentsChanged);
+            W.selectionManager.events.register('selectionchanged', null, () => errorHandler(updateControls));
 
             // check for changes in the edit-panel
             const observer = new MutationObserver(mutations => {
@@ -971,7 +1014,6 @@
                             // Checks to identify if this is a segment in compact display mode.
                             if (addedNode.querySelector(ROAD_TYPE_CHIP_SELECTOR)) {
                                 if (isChecked('csRoadTypeButtonsCheckBox')) addCompactRoadTypeChangeEvents();
-                                if (isChecked('csAddCompactColorsCheckBox')) addCompactRoadTypeColors();
                                 if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
                                     addSwapPedestrianButton('compact');
                                 }
@@ -997,7 +1039,6 @@
             injectCss();
             // W.prefs.on('change:isImperial', () => errorHandler(() => { initUserPanel(); loadSettingsFromStorage(); }));
             updateControls(); // In case of PL w/ segments selected.
-            W.selectionManager.events.register('selectionchanged', null, () => errorHandler(updateControls));
 
             logDebug('Initialized');
         }
