@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2023.05.15.001
+// @version         2023.05.16.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -287,20 +287,19 @@
         }
 
         function setStreetAndCity(setCity) {
-            const segments = W.selectionManager.getSelectedFeatures();
-            if (segments.length === 0 || segments[0].model.type !== 'segment') {
+            const segments = getSelectedSegments();
+            if (segments.length === 0) {
                 return;
             }
 
             const mAction = new MultiAction();
             mAction.setModel(W.model);
             segments.forEach(segment => {
-                const segModel = segment.model;
-                if (segModel.attributes.primaryStreetID === null) {
-                    const addr = getFirstConnectedSegmentAddress(segModel);
+                if (segment.attributes.primaryStreetID === null) {
+                    const addr = getFirstConnectedSegmentAddress(segment);
                     if (addr && !addr.isEmpty()) {
                         const cityNameToSet = setCity && !addr.getCity().isEmpty() ? addr.getCityName() : '';
-                        const action = new UpdateFeatureAddress(segModel, {
+                        const action = new UpdateFeatureAddress(segment, {
                             countryID: addr.getCountry().id,
                             stateID: addr.getState().id,
                             cityName: cityNameToSet,
@@ -318,6 +317,8 @@
             }
         }
 
+        class WaitForElementError extends Error { }
+
         function waitForElem(selector) {
             return new Promise((resolve, reject) => {
                 function checkIt(tries = 0) {
@@ -331,7 +332,7 @@
                             }
                         }, 20);
                     } else {
-                        reject(new Error(`Element was not found within 3 seconds: ${selector}`));
+                        reject(new WaitForElementError(`Element was not found within 3 seconds: ${selector}`));
                     }
                 }
                 checkIt();
@@ -355,7 +356,7 @@
                                 }
                             }, 20);
                         } else {
-                            reject(new Error(`Shadow element was not found within 3 seconds: ${shadowElemSelector}`));
+                            reject(new WaitForElementError(`Shadow element was not found within 3 seconds: ${shadowElemSelector}`));
                         }
                     }
                     checkIt(parentElem);
@@ -364,7 +365,7 @@
         }
 
         async function onAddAltCityButtonClick() {
-            const streetID = W.selectionManager.getSelectedFeatures()[0].model.attributes.primaryStreetID;
+            const streetID = getSelectedSegments()[0].attributes.primaryStreetID;
             $('wz-button[class="add-alt-street-btn"]').click();
             const elem = await waitForElem('wz-autocomplete.alt-street-name');
             elem.focus();
@@ -378,13 +379,13 @@
         }
 
         function onRoadTypeButtonClick(roadTypeVal) {
-            const segments = W.selectionManager.getSelectedFeatures();
+            const segments = getSelectedSegments();
             let action;
             if (segments.length > 1) {
                 action = new MultiAction();
                 action.setModel(W.model);
                 segments.forEach(segment => {
-                    const subAction = new UpdateObject(segment.model, { roadType: roadTypeVal });
+                    const subAction = new UpdateObject(segment, { roadType: roadTypeVal });
                     action.doSubAction(subAction);
                 });
                 action._description = I18n.t(
@@ -396,7 +397,7 @@
                     }
                 );
             } else {
-                action = new UpdateObject(segments[0].model, { roadType: roadTypeVal });
+                action = new UpdateObject(segments[0], { roadType: roadTypeVal });
             }
             W.model.actionManager.add(action);
 
@@ -414,11 +415,9 @@
         }
 
         function addRoadTypeButtons() {
-            let seg = W.selectionManager.getSelectedFeatures()[0];
-            if (!seg) return;
-            seg = seg.model;
-            if (seg.type !== 'segment') return;
-            const isPed = isPedestrianTypeSegment(seg);
+            const segment = getSelectedSegments()[0];
+            if (!segment) return;
+            const isPed = isPedestrianTypeSegment(segment);
             const $dropDown = $(ROAD_TYPE_DROPDOWN_SELECTOR);
             $('#csRoadTypeButtonsContainer').remove();
             const $container = $('<div>', { id: 'csRoadTypeButtonsContainer', class: 'cs-rt-buttons-container', style: 'display: inline-table;' });
@@ -473,35 +472,44 @@
         // Function to add road type colors to the chips in compact mode
         async function addCompactRoadTypeColors() {
             // TODO: Clean this up. Was combined from two functions.
-            if (W.prefs.attributes.compactDensity && isChecked('csAddCompactColorsCheckBox') && getSelectedSegments().length) {
-                const useOldColors = _settings.useOldRoadColors;
-                await waitForElem('.road-type-chip-select wz-checkable-chip');
-                $('.road-type-chip-select wz-checkable-chip').addClass('cs-compact-button');
-                Object.keys(ROAD_TYPES).forEach(roadTypeKey => {
-                    const roadType = ROAD_TYPES[roadTypeKey];
-                    const bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
-                    const rtChip = $(`.road-type-chip-select wz-checkable-chip[value=${roadType.val}]`);
-                    if (rtChip.length !== 1) return;
-                    waitForShadowElem(`.road-type-chip-select wz-checkable-chip[value='${roadType.val}']`, ['div']).then(result => {
-                        const $elem = $(result.shadowElem);
-                        const padding = $elem.hasClass('checked') ? '0px 7px' : '0px 8px';
-                        $elem.css({ backgroundColor: bgColor, padding, color: 'black' });
+            try {
+                if (W.prefs.attributes.compactDensity && isChecked('csAddCompactColorsCheckBox') && getSelectedSegments().length) {
+                    const useOldColors = _settings.useOldRoadColors;
+                    await waitForElem('.road-type-chip-select wz-checkable-chip');
+                    $('.road-type-chip-select wz-checkable-chip').addClass('cs-compact-button');
+                    Object.keys(ROAD_TYPES).forEach(roadTypeKey => {
+                        const roadType = ROAD_TYPES[roadTypeKey];
+                        const bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
+                        const rtChip = $(`.road-type-chip-select wz-checkable-chip[value=${roadType.val}]`);
+                        if (rtChip.length !== 1) return;
+                        waitForShadowElem(`.road-type-chip-select wz-checkable-chip[value='${roadType.val}']`, ['div']).then(result => {
+                            const $elem = $(result.shadowElem);
+                            const padding = $elem.hasClass('checked') ? '0px 7px' : '0px 8px';
+                            $elem.css({ backgroundColor: bgColor, padding, color: 'black' });
+                        });
                     });
-                });
-                const result = await waitForShadowElem('.road-type-chip-select wz-checkable-chip[checked=""]', ['div']);
-                $(result.shadowElem).css({ border: 'black 2px solid', padding: '0px 7px' });
 
-                $('.road-type-chip-select wz-checkable-chip').each(function updateRoadTypeChip() {
-                    const style = {};
-                    if (this.getAttribute('checked') === 'false') {
-                        style.border = '';
-                        style.padding = '0px 8px';
-                    } else {
-                        style.border = 'black 2px solid';
-                        style.padding = '0px 7px';
-                    }
-                    $(this.shadowRoot.querySelector('div')).css(style);
-                });
+                    const result = await waitForShadowElem('.road-type-chip-select wz-checkable-chip[checked=""]', ['div']);
+                    $(result.shadowElem).css({ border: 'black 2px solid', padding: '0px 7px' });
+
+                    $('.road-type-chip-select wz-checkable-chip').each(function updateRoadTypeChip() {
+                        const style = {};
+                        if (this.getAttribute('checked') === 'false') {
+                            style.border = '';
+                            style.padding = '0px 8px';
+                        } else {
+                            style.border = 'black 2px solid';
+                            style.padding = '0px 7px';
+                        }
+                        $(this.shadowRoot.querySelector('div')).css(style);
+                    });
+                }
+            } catch (ex) {
+                if (ex instanceof WaitForElementError) {
+                    // waitForElem will throw an error if Undo causes a deselection. Ignore it.
+                } else {
+                    throw ex;
+                }
             }
         }
 
@@ -589,13 +597,13 @@
         // }
 
         function addAddAltCityButton() {
-            const selFeatures = W.selectionManager.getSelectedFeatures();
-            const streetID = selFeatures[0].model.attributes.primaryStreetID;
+            const segments = getSelectedSegments();
+            const streetID = segments[0].attributes.primaryStreetID;
             // Only show the button if every segment has the same primary city and street.
-            if (selFeatures.length > 1 && !selFeatures.every(f => f.model.attributes.primaryStreetID === streetID)) return;
+            if (segments.length > 1 && !segments.every(segment => segment.attributes.primaryStreetID === streetID)) return;
 
             const id = 'csAddAltCityButton';
-            if (selFeatures[0].model.type === 'segment' && $(`#${id}`).length === 0) {
+            if ($(`#${id}`).length === 0) {
                 $('div.address-edit').prev('wz-label').append(
                     $('<a>', {
                         href: '#',
@@ -611,8 +619,8 @@
         function addSwapPedestrianButton(displayMode) { // Added displayMode argument to identify compact vs. regular mode.
             const id = 'csSwapPedestrianContainer';
             $(`#${id}`).remove();
-            const selectedFeatures = W.selectionManager.getSelectedFeatures();
-            if (selectedFeatures.length === 1 && selectedFeatures[0].model.type === 'segment') {
+            const segments = getSelectedSegments();
+            if (segments.length === 1) {
                 // TODO css
                 const $container = $('<div>', { id, style: 'white-space: nowrap;float: right;display: inline;' });
                 const $button = $('<div>', {
@@ -647,22 +655,23 @@
                     }
 
                     // Check for paths before deleting.
-                    let segment = W.selectionManager.getSelectedFeatures()[0];
-                    if (segment.model.hasPaths()) {
+                    let feature = W.selectionManager.getSelectedFeatures()[0];
+                    const segment = feature.attributes.repositoryObject;
+                    if (segment.hasPaths()) {
                         WazeWrap.Alerts.error('Clicksaver', _trans.swapSegmentTypeError_Paths);
                         return;
                     }
 
                     // delete the selected segment
-                    const oldGeom = segment.geometry.clone();
-                    W.model.actionManager.add(new DelSeg(segment.model));
+                    const oldGeom = feature.geometry.clone();
+                    W.model.actionManager.add(new DelSeg(segment));
 
                     // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
                     // Note: this doesn't work in a MultiAction for some reason.
-                    const newRoadType = isPedestrianTypeSegment(segment.model) ? 1 : 5;
-                    segment = new Segment({ geometry: oldGeom, roadType: newRoadType });
-                    segment.state = OL.State.INSERT;
-                    W.model.actionManager.add(new AddSeg(segment, {
+                    const newRoadType = isPedestrianTypeSegment(segment) ? 1 : 5;
+                    feature = new Segment({ geometry: oldGeom, roadType: newRoadType });
+                    feature.state = OL.State.INSERT;
+                    W.model.actionManager.add(new AddSeg(feature, {
                         createNodes: !0,
                         openAllTurns: W.prefs.get('enableTurnsByDefault'),
                         createTwoWay: W.prefs.get('twoWaySegmentsByDefault'),
@@ -861,7 +870,7 @@
         }
 
         function getSelectedModels() {
-            return W.selectionManager.getSelectedFeatures().map(feature => feature.repositoryObject ?? feature.model);
+            return W.selectionManager.getSelectedFeatures().map(feature => feature.attributes.repositoryObject);
         }
         function getSelectedSegments() {
             return getSelectedModels().filter(model => model.type === 'segment');
@@ -959,24 +968,8 @@
             }
         }
 
-        function onSegmentsChanged(segments) {
+        function onSegmentsChanged() {
             addCompactRoadTypeColors();
-            // if (W.prefs.attributes.compactDensity && isChecked('csAddCompactColorsCheckBox')) {
-            //     setTimeout(() => {
-            //         // Do not change to an arrow function. function() is required to access "this".
-            //         $('.road-type-chip-select wz-checkable-chip').each(function updateRoadTypeChip() {
-            //             const style = {};
-            //             if (this.getAttribute('checked') === 'false') {
-            //                 style.border = '';
-            //                 style.padding = '0px 8px';
-            //             } else {
-            //                 style.border = 'black 2px solid';
-            //                 style.padding = '0px 7px';
-            //             }
-            //             $(this.shadowRoot.querySelector('div')).css(style);
-            //         });
-            //     }, 100);
-            // }
         }
 
         function init() {
