@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2023.05.16.001
+// @version         2023.07.11.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -370,9 +370,7 @@
             const elem = await waitForElem('wz-autocomplete.alt-street-name');
             elem.focus();
             let result = await waitForShadowElem('wz-autocomplete.alt-street-name', ['wz-text-input']);
-            result.shadowElem.click();
-            result = await waitForShadowElem('wz-autocomplete.alt-street-name', [`wz-menu-item[item-id="${streetID}"]`]);
-            result.shadowElem.click();
+            result.shadowElem.value = W.model.streets.objects[streetID].name;
             result = await waitForShadowElem('wz-autocomplete.alt-city-name', ['wz-text-input']);
             result.shadowElem.value = null;
             result.parentElem.focus();
@@ -870,7 +868,7 @@
         }
 
         function getSelectedModels() {
-            return W.selectionManager.getSelectedFeatures().map(feature => feature.attributes.repositoryObject);
+            return W.selectionManager.getSelectedDataModelObjects();
         }
         function getSelectedSegments() {
             return getSelectedModels().filter(model => model.type === 'segment');
