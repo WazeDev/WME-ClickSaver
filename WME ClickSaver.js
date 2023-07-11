@@ -868,7 +868,7 @@
         }
 
         function getSelectedModels() {
-            return W.selectionManager.getSelectedFeatures().map(feature => feature.attributes.repositoryObject);
+            return W.selectionManager.getSelectedDataModelObjects();
         }
         function getSelectedSegments() {
             return getSelectedModels().filter(model => model.type === 'segment');
