@@ -370,7 +370,7 @@
             const elem = await waitForElem('wz-autocomplete.alt-street-name');
             elem.focus();
             let result = await waitForShadowElem('wz-autocomplete.alt-street-name', ['wz-text-input']);
-            result.shadowElem.value = W.model.streets.objects[streetID].name;
+            result.shadowElem.value = W.model.streets.getObjectById(streetID).attributes.name;
             result = await waitForShadowElem('wz-autocomplete.alt-city-name', ['wz-text-input']);
             result.shadowElem.value = null;
             result.parentElem.focus();
