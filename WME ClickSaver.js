@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2023.08.02.001
+// @version         2023.08.23.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -300,8 +300,8 @@
                     if (addr && !addr.isEmpty()) {
                         const cityNameToSet = setCity && !addr.getCity().isEmpty() ? addr.getCityName() : '';
                         const action = new UpdateFeatureAddress(segment, {
-                            countryID: addr.getCountry().id,
-                            stateID: addr.getState().id,
+                            countryID: addr.getCountry().getID(),
+                            stateID: addr.getState().getID(),
                             cityName: cityNameToSet,
                             emptyStreet: true,
                             emptyCity: !setCity
