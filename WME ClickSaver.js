@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2023.08.23.001
+// @version         2023.09.04.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -32,7 +32,8 @@
     const API_KEY = 'YTJWNVBVRkplbUZUZVVGMFl6aFVjMjVOTW0wNU5GaG5kVE40TUZoNWJVZEhWbU5rUjNacVdtdFlWUT09';
     const DEC = s => atob(atob(s));
     const EXTERNAL_SETTINGS = {
-        toggleTwoWaySegDrawingShortcut: null
+        toggleTwoWaySegDrawingShortcut: null,
+        copyCoordinatesShortcut: null
     };
     const EXTERNAL_SETTINGS_NAME = 'clicksaver_settings_ext';
 
@@ -1131,16 +1132,37 @@
         }
     }
 
-    // This function requires WazeWrap so it must be called outside of the injected code, as
-    // WazeWrap is not guaranteed to be available in the page's scope.
+    async function copyCoordinates() {
+        try {
+            const center = W.map.getCenter();
+            const center4326 = WazeWrap.Geometry.ConvertTo4326(center.lon, center.lat);
+            await navigator.clipboard.writeText(`${center4326.lat.toFixed(5)}, ${center4326.lon.toFixed(5)}`);
+            console.log('Content copied to clipboard');
+        } catch (err) {
+            console.error('Failed to copy: ', err);
+        }
+    }
+
     function addToggleDrawNewRoadsAsTwoWayShortcut() {
         new WazeWrap.Interface.Shortcut(
             'ToggleTwoWayNewSeg',
             'Toggle new segment two-way drawing',
-            'editing',
-            'editToggleNewSegTwoWayDrawing',
+            'clicksaver',
+            'ClickSaver',
             EXTERNAL_SETTINGS.toggleTwoWaySegDrawingShortcut,
             () => { $('wz-checkbox[name="twoWaySegmentsByDefault"]').click(); },
+            null
+        ).add();
+    }
+
+    function addCopyCoordinatesShortcut() {
+        new WazeWrap.Interface.Shortcut(
+            'CopyCoordinates',
+            'Copy map center coordinates',
+            'clicksaver',
+            'ClickSaver',
+            EXTERNAL_SETTINGS.copyCoordinatesShortcut,
+            copyCoordinates,
             null
         ).add();
     }
@@ -1148,13 +1170,15 @@
     function sandboxLoadSettings() {
         const loadedSettings = JSON.parse(localStorage.getItem(EXTERNAL_SETTINGS_NAME)) || {};
         EXTERNAL_SETTINGS.toggleTwoWaySegDrawingShortcut = loadedSettings.toggleTwoWaySegDrawingShortcut || '';
+        EXTERNAL_SETTINGS.copyCoordinatesShortcut = loadedSettings.copyCoordinatesShortcut || '';
         addToggleDrawNewRoadsAsTwoWayShortcut();
+        addCopyCoordinatesShortcut();
         $(window).on('beforeunload', () => sandboxSaveSettings());
     }
 
-    function sandboxSaveSettings() {
+    function getShortcutKeys(shortcutAction) {
         let keys = '';
-        const { shortcut } = W.accelerators.Actions.ToggleTwoWayNewSeg;
+        const { shortcut } = shortcutAction;
         if (shortcut) {
             if (shortcut.altKey) keys += 'A';
             if (shortcut.shiftKey) keys += 'S';
@@ -1162,7 +1186,12 @@
             if (keys.length) keys += '+';
             if (shortcut.keyCode) keys += shortcut.keyCode;
         }
-        EXTERNAL_SETTINGS.toggleTwoWaySegDrawingShortcut = keys;
+        return keys;
+    }
+
+    function sandboxSaveSettings() {
+        EXTERNAL_SETTINGS.toggleTwoWaySegDrawingShortcut = getShortcutKeys(W.accelerators.Actions.ToggleTwoWayNewSeg);
+        EXTERNAL_SETTINGS.copyCoordinatesShortcut = getShortcutKeys(W.accelerators.Actions.CopyCoordinates);
         localStorage.setItem(EXTERNAL_SETTINGS_NAME, JSON.stringify(EXTERNAL_SETTINGS));
     }
 
