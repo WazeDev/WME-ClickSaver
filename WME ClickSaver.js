@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2023.09.04.001
+// @version         2023.09.07.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -141,8 +141,8 @@
 
         function isSwapPedestrianPermitted() {
             const { user } = W.loginManager;
-            const rank = user.rank + 1;
-            return rank >= 4 || (rank === 3 && user.isAreaManager);
+            const rank = user.attributes.rank + 1;
+            return rank >= 4 || (rank === 3 && user.attributes.isAreaManager);
         }
 
         function setChecked(checkboxId, checked) {
@@ -654,21 +654,20 @@
                     }
 
                     // Check for paths before deleting.
-                    let feature = W.selectionManager.getSelectedFeatures()[0];
-                    const segment = feature.attributes.repositoryObject;
+                    const segment = W.selectionManager.getSelectedDataModelObjects()[0];
                     if (segment.hasPaths()) {
-                        WazeWrap.Alerts.error('Clicksaver', _trans.swapSegmentTypeError_Paths);
+                        WazeWrap.Alerts.error(SCRIPT_NAME, _trans.swapSegmentTypeError_Paths);
                         return;
                     }
 
                     // delete the selected segment
-                    const oldGeom = feature.geometry.clone();
+                    const oldGeom = segment.attributes.geometry.clone();
                     W.model.actionManager.add(new DelSeg(segment));
 
                     // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
                     // Note: this doesn't work in a MultiAction for some reason.
                     const newRoadType = isPedestrianTypeSegment(segment) ? 1 : 5;
-                    feature = new Segment({ geometry: oldGeom, roadType: newRoadType });
+                    const feature = new Segment({ geometry: oldGeom, roadType: newRoadType });
                     feature.state = OL.State.INSERT;
                     W.model.actionManager.add(new AddSeg(feature, {
                         createNodes: !0,
