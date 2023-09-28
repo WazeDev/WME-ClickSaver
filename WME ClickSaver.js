@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2023.09.07.001
+// @version         2023.09.27.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -16,7 +16,7 @@
 
 /* global W */
 /* global I18n */
-/* global OL */
+/* global OpenLayers */
 /* global WazeWrap */
 
 (function main() {
@@ -668,7 +668,7 @@
                     // Note: this doesn't work in a MultiAction for some reason.
                     const newRoadType = isPedestrianTypeSegment(segment) ? 1 : 5;
                     const feature = new Segment({ geometry: oldGeom, roadType: newRoadType });
-                    feature.state = OL.State.INSERT;
+                    feature.state = OpenLayers.State.INSERT;
                     W.model.actionManager.add(new AddSeg(feature, {
                         createNodes: !0,
                         openAllTurns: W.prefs.get('enableTurnsByDefault'),
@@ -971,6 +971,7 @@
         }
 
         function init() {
+            logDebug('Initializing...');
             UpdateObject = require('Waze/Action/UpdateObject');
             UpdateFeatureAddress = require('Waze/Action/UpdateFeatureAddress');
             MultiAction = require('Waze/Action/MultiAction');
@@ -1035,8 +1036,7 @@
         }
 
         function bootstrap() {
-            if (typeof require !== 'undefined' && W && W.loginManager && W.loginManager.events.register && W.map && W.loginManager.user) {
-                logDebug('Initializing...');
+            if (typeof W === 'object' && W.userscripts?.state.isReady) {
                 init();
             } else {
                 logDebug('Bootstrap failed. Trying again...');
@@ -1206,7 +1206,7 @@
     }
 
     function sandboxBootstrap() {
-        if (WazeWrap && WazeWrap.Ready) {
+        if (WazeWrap?.Ready) {
             WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, UPDATE_MESSAGE, FORUM_URL);
             loadScriptUpdateMonitor();
             sandboxLoadSettings();
