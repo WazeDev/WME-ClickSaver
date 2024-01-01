@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2023.09.27.001
+// @version         2024.01.01.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -293,8 +293,7 @@
                 return;
             }
 
-            const mAction = new MultiAction();
-            mAction.setModel(W.model);
+            const actions = [];
             segments.forEach(segment => {
                 if (segment.attributes.primaryStreetID === null) {
                     const addr = getFirstConnectedSegmentAddress(segment);
@@ -307,14 +306,12 @@
                             emptyStreet: true,
                             emptyCity: !setCity
                         }, { streetIDField: 'primaryStreetID' });
-                        mAction.doSubAction(action);
+                        actions.push(action);
                     }
                 }
             });
-            const count = mAction.subActions.length;
-            if (count) {
-                mAction._description = `Updated address on ${count} segment${count > 1 ? 's' : ''}`;
-                W.model.actionManager.add(mAction);
+            if (actions.length) {
+                W.model.actionManager.add(new MultiAction(actions));
             }
         }
 
@@ -381,20 +378,12 @@
             const segments = getSelectedSegments();
             let action;
             if (segments.length > 1) {
-                action = new MultiAction();
-                action.setModel(W.model);
+                const actions = [];
                 segments.forEach(segment => {
                     const subAction = new UpdateObject(segment, { roadType: roadTypeVal });
-                    action.doSubAction(subAction);
+                    actions.push(subAction);
                 });
-                action._description = I18n.t(
-                    'save.changes_log.actions.UpdateObject.changed',
-                    {
-                        propertyName: I18n.t('objects.segment.fields.roadType'),
-                        objectsString: I18n.t('objects.segment.multi', { count: segments.length }),
-                        value: I18n.t('segment.road_types')[roadTypeVal]
-                    }
-                );
+                action = new MultiAction(actions);
             } else {
                 action = new UpdateObject(segments[0], { roadType: roadTypeVal });
             }
