@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2024.01.01.001
+// @version         2024.03.24.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -649,20 +649,25 @@
                         return;
                     }
 
-                    // delete the selected segment
-                    const oldGeom = segment.attributes.geometry.clone();
+                    // Copy the selected segment geometry, then delete it.
+                    const newGeom = { type: 'LineString', coordinates: [] };
+                    segment.getGeometry().coordinates.forEach(coord => {
+                        newGeom.coordinates.push(coord.slice());
+                    });
                     W.model.actionManager.add(new DelSeg(segment));
 
                     // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
                     // Note: this doesn't work in a MultiAction for some reason.
                     const newRoadType = isPedestrianTypeSegment(segment) ? 1 : 5;
-                    const feature = new Segment({ geometry: oldGeom, roadType: newRoadType });
+                    const feature = new Segment({ geoJSONGeometry: newGeom, roadType: newRoadType });
                     feature.state = OpenLayers.State.INSERT;
                     W.model.actionManager.add(new AddSeg(feature, {
                         createNodes: !0,
                         openAllTurns: W.prefs.get('enableTurnsByDefault'),
-                        createTwoWay: W.prefs.get('twoWaySegmentsByDefault'),
-                        snappedFeatures: [null, null]
+                        createTwoWay: W.prefs.get('twoWaySegmentsByDefault')
+                        // 2024-03-23 (mapomatic) I'm not sure what snappedFeatures is supposed to do, but it
+                        // was not working with [null, null] after a recent WME update.
+                        // snappedFeatures: [null, null]
                     }));
                     const newId = W.model.repos.segments.idGenerator.lastValue;
                     const newSegment = W.model.segments.getObjectById(newId);
