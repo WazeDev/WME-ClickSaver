@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2024.03.24.001
+// @version         2024.07.21.000
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -633,47 +633,61 @@
                 }
                 // TODO css
 
-                $('#csBtnSwapPedestrianRoadType').click(() => {
-                    if (_settings.warnOnPedestrianTypeSwap) {
-                        _settings.warnOnPedestrianTypeSwap = false;
-                        saveSettingsToStorage();
-                        if (!confirm(_trans.swapSegmentTypeWarning)) {
-                            return;
-                        }
-                    }
-
-                    // Check for paths before deleting.
-                    const segment = W.selectionManager.getSelectedDataModelObjects()[0];
-                    if (segment.hasPaths()) {
-                        WazeWrap.Alerts.error(SCRIPT_NAME, _trans.swapSegmentTypeError_Paths);
-                        return;
-                    }
-
-                    // Copy the selected segment geometry, then delete it.
-                    const newGeom = { type: 'LineString', coordinates: [] };
-                    segment.getGeometry().coordinates.forEach(coord => {
-                        newGeom.coordinates.push(coord.slice());
-                    });
-                    W.model.actionManager.add(new DelSeg(segment));
-
-                    // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
-                    // Note: this doesn't work in a MultiAction for some reason.
-                    const newRoadType = isPedestrianTypeSegment(segment) ? 1 : 5;
-                    const feature = new Segment({ geoJSONGeometry: newGeom, roadType: newRoadType });
-                    feature.state = OpenLayers.State.INSERT;
-                    W.model.actionManager.add(new AddSeg(feature, {
-                        createNodes: !0,
-                        openAllTurns: W.prefs.get('enableTurnsByDefault'),
-                        createTwoWay: W.prefs.get('twoWaySegmentsByDefault')
-                        // 2024-03-23 (mapomatic) I'm not sure what snappedFeatures is supposed to do, but it
-                        // was not working with [null, null] after a recent WME update.
-                        // snappedFeatures: [null, null]
-                    }));
-                    const newId = W.model.repos.segments.idGenerator.lastValue;
-                    const newSegment = W.model.segments.getObjectById(newId);
-                    W.selectionManager.setSelectedModels([newSegment]);
-                });
+                $('#csBtnSwapPedestrianRoadType').click(onSwapPedestrianButtonClick);
             }
+        }
+
+        function onSwapPedestrianButtonClick() {
+            if (_settings.warnOnPedestrianTypeSwap) {
+                _settings.warnOnPedestrianTypeSwap = false;
+                saveSettingsToStorage();
+                if (!confirm(_trans.swapSegmentTypeWarning)) {
+                    return;
+                }
+            }
+
+            // Check for paths before deleting.
+            const segment = W.selectionManager.getSelectedDataModelObjects()[0];
+            if (segment.hasPaths()) {
+                WazeWrap.Alerts.error(SCRIPT_NAME, _trans.swapSegmentTypeError_Paths);
+                return;
+            }
+
+            const actions = [];
+
+            // Copy the selected segment geometry and attributes, then delete it.
+            const newGeom = { type: 'LineString', coordinates: [] };
+            const oldPrimaryStreetID = segment.attributes.primaryStreetID;
+            const oldAltStreetIDs = segment.attributes.streetIDs.slice();
+            segment.getGeometry().coordinates.forEach(coord => {
+                newGeom.coordinates.push(coord.slice());
+            });
+            actions.push(new DelSeg(segment));
+
+            // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
+            const newRoadType = isPedestrianTypeSegment(segment) ? 1 : 5;
+            const feature = new Segment({
+                geoJSONGeometry: newGeom,
+                roadType: newRoadType,
+                primaryStreetID: oldPrimaryStreetID,
+                streetIDs: oldAltStreetIDs
+            });
+            feature.state = OpenLayers.State.INSERT;
+            actions.push(new AddSeg(feature, {
+                createNodes: !0,
+                openAllTurns: W.prefs.get('enableTurnsByDefault'),
+                createTwoWay: W.prefs.get('twoWaySegmentsByDefault')
+                // 2024-03-23 (mapomatic) I'm not sure what snappedFeatures is supposed to do, but it
+                // was not working with [null, null] after a recent WME update.
+                // snappedFeatures: [null, null]
+            }));
+            const description = `Change segment type to ${newRoadType === 1 ? 'drivable' : 'pedestrian'}`;
+            W.model.actionManager.add(new MultiAction(actions, { description }));
+
+            // Get the new segment and select it.
+            const newId = W.model.repos.segments.idGenerator.lastValue;
+            const newSegment = W.model.segments.getObjectById(newId);
+            W.selectionManager.setSelectedModels([newSegment]);
         }
 
         /* eslint-disable no-bitwise, no-mixed-operators */
