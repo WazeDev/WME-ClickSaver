@@ -1043,11 +1043,19 @@
             logDebug('Initialized');
         }
 
+        function skipLoginDialog() {
+            if(!W.loginManager || W.loginManager.isLoggedIn()) {
+                return;
+            }
+            $('wz-button.do-login')?.click();
+        }
+
         function bootstrap() {
             if (typeof W === 'object' && W.userscripts?.state.isReady) {
                 init();
             } else {
                 logDebug('Bootstrap failed. Trying again...');
+                skipLoginDialog();
                 setTimeout(bootstrap, 250);
             }
         }
