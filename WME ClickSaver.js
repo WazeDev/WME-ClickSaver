@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2024.07.21.000
+// @version         2024.07.28.000
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -1044,7 +1044,7 @@
         }
 
         function skipLoginDialog() {
-            if(!W.loginManager || W.loginManager.isLoggedIn()) {
+            if (!W.loginManager || W.loginManager.isLoggedIn()) {
                 return;
             }
             $('wz-button.do-login')?.click();
