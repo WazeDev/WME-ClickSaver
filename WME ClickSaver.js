@@ -16,14 +16,13 @@
 
 /* global W */
 /* global I18n */
-/* global OpenLayers */
 /* global WazeWrap */
+/* global getWmeSdk */
 
 (function main() {
     'use strict';
 
     const UPDATE_MESSAGE = '';
-
     const SCRIPT_NAME = GM_info.script.name;
     const SCRIPT_VERSION = GM_info.script.version;
     const DOWNLOAD_URL = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
@@ -36,6 +35,7 @@
         copyCoordinatesShortcut: null
     };
     const EXTERNAL_SETTINGS_NAME = 'clicksaver_settings_ext';
+    let sdk;
 
     // This function is injected into the page.
     function clicksaver(argsObject) {
@@ -112,12 +112,8 @@
         let _trans; // Translation object
 
         // Do not make these const values.  They may get assigned before require() is defined.  Trust me.  Don't do it.
-        let UpdateObject;
         let UpdateFeatureAddress;
         let MultiAction;
-        let AddSeg;
-        let Segment;
-        let DelSeg;
 
         // function log(message) {
         //     console.log('ClickSaver:', message);
@@ -140,6 +136,7 @@
         }
 
         function isSwapPedestrianPermitted() {
+            // SDK: use UserSession when it's available
             const { user } = W.loginManager;
             const rank = user.attributes.rank + 1;
             return rank >= 4 || (rank === 3 && user.attributes.isAreaManager);
@@ -221,9 +218,9 @@
                     setNewPRCity: _settings.setNewPRCity,
                     setNewPRStreetToNone: _settings.setNewPRStreetToNone,
                     setNewRRCity: _settings.setNewRRCity,
-                    setNewRRStreetToNone: _settings.setNewRRStreetToNone, // added by jm6087
+                    setNewRRStreetToNone: _settings.setNewRRStreetToNone,
                     setNewPBCity: _settings.setNewPBCity,
-                    setNewPBStreetToNone: _settings.setNewPBStreetToNone, // added by jm6087
+                    setNewPBStreetToNone: _settings.setNewPBStreetToNone,
                     setNewORCity: _settings.setNewORCity,
                     setNewORStreetToNone: _settings.setNewORStreetToNone,
                     useOldRoadColors: _settings.useOldRoadColors,
@@ -244,38 +241,28 @@
         }
 
         function isPedestrianTypeSegment(segment) {
-            return [5, 10, 16].includes(segment.attributes.roadType);
+            const pedRoadTypes = Object.values(ROAD_TYPES)
+                .filter(roadType => roadType.category === 'pedestrian')
+                .map(roadType => roadType.val);
+            return pedRoadTypes.includes(segment.roadType);
         }
 
-        function getConnectedSegmentIDs(segmentID) {
-            const IDs = [];
-            const segment = W.model.segments.getObjectById(segmentID);
-            [
-                W.model.nodes.getObjectById(segment.attributes.fromNodeID),
-                W.model.nodes.getObjectById(segment.attributes.toNodeID)
-            ].forEach(node => {
-                if (node) {
-                    node.attributes.segIDs.forEach(segID => {
-                        if (segID !== segmentID) { IDs.push(segID); }
-                    });
-                }
-            });
-            return IDs;
+        function getConnectedSegmentIDs(segmentId) {
+            return [
+                ...sdk.DataModel.Segments.getConnectedSegments({ segmentId, reverseDirection: false }),
+                ...sdk.DataModel.Segments.getConnectedSegments({ segmentId, reverseDirection: true })
+            ].map(segment => segment.id);
         }
 
-        function getFirstConnectedSegmentAddress(startSegment) {
+        function getFirstConnectedSegmentAddress(segmentId) {
             const nonMatches = [];
-            const segmentIDsToSearch = [startSegment.getID()];
+            const segmentIDsToSearch = [segmentId];
+            const hasAddress = id => !sdk.DataModel.Segments.getAddress({ segmentId: id }).isEmpty;
             while (segmentIDsToSearch.length > 0) {
                 const startSegmentID = segmentIDsToSearch.pop();
-                startSegment = W.model.segments.getObjectById(startSegmentID);
                 const connectedSegmentIDs = getConnectedSegmentIDs(startSegmentID);
-                for (let i = 0; i < connectedSegmentIDs.length; i++) {
-                    const addr = W.model.segments.getObjectById(connectedSegmentIDs[i]).getAddress();
-                    if (!addr.isEmpty()) {
-                        return addr;
-                    }
-                }
+                const hasAddrSegmentId = connectedSegmentIDs.find(hasAddress);
+                if (hasAddrSegmentId) return sdk.DataModel.Segments.getAddress({ segmentId: hasAddrSegmentId });
 
                 nonMatches.push(startSegmentID);
                 connectedSegmentIDs.forEach(segmentID => {
@@ -284,24 +271,25 @@
                     }
                 });
             }
-            return undefined;
+            return null;
         }
 
         function setStreetAndCity(setCity) {
-            const segments = getSelectedSegments();
-            if (segments.length === 0) {
-                return;
-            }
+            const selection = sdk.Editing.getSelection();
+
+            if (!selection) return;
 
             const actions = [];
-            segments.forEach(segment => {
-                if (segment.attributes.primaryStreetID === null) {
-                    const addr = getFirstConnectedSegmentAddress(segment);
-                    if (addr && !addr.isEmpty()) {
-                        const cityNameToSet = setCity && !addr.getCity().isEmpty() ? addr.getCityName() : '';
-                        const action = new UpdateFeatureAddress(segment, {
-                            countryID: addr.getCountry().getID(),
-                            stateID: addr.getState().getID(),
+            selection.ids.forEach(segmentId => {
+                if (sdk.DataModel.Segments.getAddress({ segmentId }).isEmpty) {
+                    const addr = getFirstConnectedSegmentAddress(segmentId);
+                    if (addr) {
+                        const cityNameToSet = setCity && !addr.city?.isEmpty ? addr.city.name : '';
+                        // SDK: FR submitted for UpdateFeatureAddress
+                        const OLD_SEG = W.model.segments.getObjectById(segmentId);
+                        const action = new UpdateFeatureAddress(OLD_SEG, {
+                            countryID: addr.country.id,
+                            stateID: addr.state.id,
                             cityName: cityNameToSet,
                             emptyStreet: true,
                             emptyCity: !setCity
@@ -310,6 +298,7 @@
                     }
                 }
             });
+            // SDK: FR submitted to replace MultiAction
             if (actions.length) {
                 W.model.actionManager.add(new MultiAction(actions));
             }
@@ -363,49 +352,54 @@
         }
 
         async function onAddAltCityButtonClick() {
-            const streetID = getSelectedSegments()[0].attributes.primaryStreetID;
+            const segmentId = sdk.Editing.getSelection().ids[0];
+            const addr = sdk.DataModel.Segments.getAddress({ segmentId });
+
             $('wz-button[class="add-alt-street-btn"]').click();
-            const elem = await waitForElem('wz-autocomplete.alt-street-name');
-            elem.focus();
+            await waitForElem('wz-autocomplete.alt-street-name');
+
+            // Set the street name field
             let result = await waitForShadowElem('wz-autocomplete.alt-street-name', ['wz-text-input']);
-            result.shadowElem.value = W.model.streets.getObjectById(streetID).attributes.name;
+            result.shadowElem.focus();
+            result.shadowElem.value = addr?.street?.name ?? '';
+
+            // Clear the city name field
             result = await waitForShadowElem('wz-autocomplete.alt-city-name', ['wz-text-input']);
+            result.shadowElem.focus();
             result.shadowElem.value = null;
-            result.parentElem.focus();
         }
 
-        function onRoadTypeButtonClick(roadTypeVal) {
-            const segments = getSelectedSegments();
-            let action;
-            if (segments.length > 1) {
-                const actions = [];
-                segments.forEach(segment => {
-                    const subAction = new UpdateObject(segment, { roadType: roadTypeVal });
-                    actions.push(subAction);
-                });
-                action = new MultiAction(actions);
-            } else {
-                action = new UpdateObject(segments[0], { roadType: roadTypeVal });
-            }
-            W.model.actionManager.add(action);
+        function onRoadTypeButtonClick(roadType) {
+            const selection = sdk.Editing.getSelection();
 
-            if (roadTypeVal === 20 && isChecked('csClearNewPLRCheckBox') && typeof require !== 'undefined') {
+            // SDK: Add a multiaction here if implemented in sdk
+            if (selection) {
+                selection.ids.forEach(segmentId => {
+                    // Check for same roadType is necessary to prevent an error.
+                    if (sdk.DataModel.Segments.getById({ segmentId }).roadType !== roadType) {
+                        sdk.DataModel.Segments.updateSegment({ segmentId, roadType });
+                    }
+                });
+            }
+
+            if (roadType === ROAD_TYPES.PLR.val && isChecked('csClearNewPLRCheckBox')) {
                 setStreetAndCity(isChecked('csSetNewPLRCityCheckBox'));
-            } else if (roadTypeVal === 17 && isChecked('csClearNewPRCheckBox') && typeof require !== 'undefined') {
+            } else if (roadType === ROAD_TYPES.PR.val && isChecked('csClearNewPRCheckBox')) {
                 setStreetAndCity(isChecked('csSetNewPRCityCheckBox'));
-            } else if (roadTypeVal === 18 && isChecked('csClearNewRRCheckBox') && typeof require !== 'undefined') { // added by jm6087
-                setStreetAndCity(isChecked('csSetNewRRCityCheckBox')); // added by jm6087
-            } else if (roadTypeVal === 10 && isChecked('csClearNewPBCheckBox') && typeof require !== 'undefined') { // added by jm6087
-                setStreetAndCity(isChecked('csSetNewPBCityCheckBox')); // added by jm6087
-            } else if (roadTypeVal === 8 && isChecked('csClearNewORCheckBox') && typeof require !== 'undefined') {
+            } else if (roadType === ROAD_TYPES.RR.val && isChecked('csClearNewRRCheckBox')) {
+                setStreetAndCity(isChecked('csSetNewRRCityCheckBox'));
+            } else if (roadType === ROAD_TYPES.PB && isChecked('csClearNewPBCheckBox')) {
+                setStreetAndCity(isChecked('csSetNewPBCityCheckBox'));
+            } else if (roadType === ROAD_TYPES.OR.val && isChecked('csClearNewORCheckBox')) {
                 setStreetAndCity(isChecked('csSetNewORCityCheckBox'));
             }
         }
 
         function addRoadTypeButtons() {
-            const segment = getSelectedSegments()[0];
-            if (!segment) return;
-            const isPed = isPedestrianTypeSegment(segment);
+            const segmentId = sdk.Editing.getSelection().ids[0];
+            const sdkSeg = sdk.DataModel.Segments.getById({ segmentId });
+            if (!sdkSeg) return;
+            const isPed = isPedestrianTypeSegment(sdkSeg);
             const $dropDown = $(ROAD_TYPE_DROPDOWN_SELECTOR);
             $('#csRoadTypeButtonsContainer').remove();
             const $container = $('<div>', { id: 'csRoadTypeButtonsContainer', class: 'cs-rt-buttons-container', style: 'display: inline-table;' });
@@ -461,12 +455,13 @@
         async function addCompactRoadTypeColors() {
             // TODO: Clean this up. Was combined from two functions.
             try {
-                if (W.prefs.attributes.compactDensity && isChecked('csAddCompactColorsCheckBox') && getSelectedSegments().length) {
+                if (sdk.Settings.getUserSettings().isCompactMode
+                    && isChecked('csAddCompactColorsCheckBox')
+                    && sdk.Editing.getSelection()) {
                     const useOldColors = _settings.useOldRoadColors;
                     await waitForElem('.road-type-chip-select wz-checkable-chip');
                     $('.road-type-chip-select wz-checkable-chip').addClass('cs-compact-button');
-                    Object.keys(ROAD_TYPES).forEach(roadTypeKey => {
-                        const roadType = ROAD_TYPES[roadTypeKey];
+                    Object.values(ROAD_TYPES).forEach(roadType => {
                         const bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
                         const rtChip = $(`.road-type-chip-select wz-checkable-chip[value=${roadType.val}]`);
                         if (rtChip.length !== 1) return;
@@ -585,10 +580,18 @@
         // }
 
         function addAddAltCityButton() {
-            const segments = getSelectedSegments();
-            const streetID = segments[0].attributes.primaryStreetID;
+            const selection = sdk.Editing.getSelection();
+            if (!selection) return;
+
             // Only show the button if every segment has the same primary city and street.
-            if (segments.length > 1 && !segments.every(segment => segment.attributes.primaryStreetID === streetID)) return;
+            if (selection.ids.length > 1) {
+                const firstStreetId = sdk.DataModel.Segments.getAddress({ segmentId: selection.ids[0] })?.street?.id;
+                if (!selection.ids
+                    .map(segmentId => sdk.DataModel.Segments.getAddress({ segmentId }))
+                    .every(addr => addr.street?.id === firstStreetId)) {
+                    return;
+                }
+            }
 
             const id = 'csAddAltCityButton';
             if ($(`#${id}`).length === 0) {
@@ -607,8 +610,8 @@
         function addSwapPedestrianButton(displayMode) { // Added displayMode argument to identify compact vs. regular mode.
             const id = 'csSwapPedestrianContainer';
             $(`#${id}`).remove();
-            const segments = getSelectedSegments();
-            if (segments.length === 1) {
+            const selection = sdk.Editing.getSelection();
+            if (selection?.ids.length === 1 && selection.objectType === 'segment') {
                 // TODO css
                 const $container = $('<div>', { id, style: 'white-space: nowrap;float: right;display: inline;' });
                 const $button = $('<div>', {
@@ -646,48 +649,37 @@
                 }
             }
 
+            const sdkSeg = sdk.DataModel.Segments.getById({ segmentId: sdk.Editing.getSelection().ids[0] });
+
             // Check for paths before deleting.
+            // SDK: FR submitted to add a way to check if object is deletable (path, JB, etc). The Alert text will need to be updated.
             const segment = W.selectionManager.getSelectedDataModelObjects()[0];
             if (segment.hasPaths()) {
                 WazeWrap.Alerts.error(SCRIPT_NAME, _trans.swapSegmentTypeError_Paths);
                 return;
             }
 
-            const actions = [];
-
             // Copy the selected segment geometry and attributes, then delete it.
-            const newGeom = { type: 'LineString', coordinates: [] };
-            const oldPrimaryStreetID = segment.attributes.primaryStreetID;
-            const oldAltStreetIDs = segment.attributes.streetIDs.slice();
-            segment.getGeometry().coordinates.forEach(coord => {
-                newGeom.coordinates.push(coord.slice());
-            });
-            actions.push(new DelSeg(segment));
+            // const oldPrimaryStreetID = segment.attributes.primaryStreetID;
+            // const oldAltStreetIDs = segment.attributes.streetIDs.slice();
+            const newRoadType = isPedestrianTypeSegment(sdkSeg) ? 1 : 5;
+            sdk.DataModel.Segments.deleteSegment({ segmentId: sdkSeg.id });
 
             // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
-            const newRoadType = isPedestrianTypeSegment(segment) ? 1 : 5;
-            const feature = new Segment({
-                geoJSONGeometry: newGeom,
-                roadType: newRoadType,
-                primaryStreetID: oldPrimaryStreetID,
-                streetIDs: oldAltStreetIDs
-            });
-            feature.state = OpenLayers.State.INSERT;
-            actions.push(new AddSeg(feature, {
-                createNodes: !0,
-                openAllTurns: W.prefs.get('enableTurnsByDefault'),
-                createTwoWay: W.prefs.get('twoWaySegmentsByDefault')
-                // 2024-03-23 (mapomatic) I'm not sure what snappedFeatures is supposed to do, but it
-                // was not working with [null, null] after a recent WME update.
-                // snappedFeatures: [null, null]
-            }));
-            const description = `Change segment type to ${newRoadType === 1 ? 'drivable' : 'pedestrian'}`;
-            W.model.actionManager.add(new MultiAction(actions, { description }));
 
-            // Get the new segment and select it.
-            const newId = W.model.repos.segments.idGenerator.lastValue;
-            const newSegment = W.model.segments.getObjectById(newId);
-            W.selectionManager.setSelectedModels([newSegment]);
+            const newId = sdk.DataModel.Segments.addSegment({ geometry: sdkSeg.geometry, roadType: newRoadType });
+            // SDK: update segment address when this is available
+            // const feature = new Segment({
+            //     geoJSONGeometry: newGeom,
+            //     roadType: newRoadType,
+            //     primaryStreetID: oldPrimaryStreetID,
+            //     streetIDs: oldAltStreetIDs
+            // });
+            sdk.Editing.setSelection({ selection: { ids: [newId], objectType: 'segment' } });
+
+            // SDK: PH submitted to replace MultiAction
+            // const description = `Change segment type to ${newRoadType === 1 ? 'drivable' : 'pedestrian'}`;
+            // W.model.actionManager.add(new MultiAction(actions, { description }));
         }
 
         /* eslint-disable no-bitwise, no-mixed-operators */
@@ -875,13 +867,6 @@
             });
         }
 
-        function getSelectedModels() {
-            return W.selectionManager.getSelectedDataModelObjects();
-        }
-        function getSelectedSegments() {
-            return getSelectedModels().filter(model => model.type === 'segment');
-        }
-
         function updateControls() {
             if ($(ROAD_TYPE_DROPDOWN_SELECTOR).length > 0) {
                 if (isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
@@ -980,12 +965,9 @@
 
         function init() {
             logDebug('Initializing...');
-            UpdateObject = require('Waze/Action/UpdateObject');
+            sdk = getWmeSdk({ scriptId: SCRIPT_NAME, scriptName: SCRIPT_NAME });
             UpdateFeatureAddress = require('Waze/Action/UpdateFeatureAddress');
             MultiAction = require('Waze/Action/MultiAction');
-            AddSeg = require('Waze/Action/AddSegment');
-            Segment = require('Waze/Feature/Vector/Segment');
-            DelSeg = require('Waze/Action/DeleteSegment');
 
             _trans = getTranslationObject();
             Object.keys(ROAD_TYPES).forEach(rtName => {
@@ -994,8 +976,9 @@
 
             document.addEventListener('paste', onPaste);
 
+            // SDK: FR submitted for objectschanged event
             W.model.segments.on('objectschanged', onSegmentsChanged);
-            W.selectionManager.events.register('selectionchanged', null, () => errorHandler(updateControls));
+            document.addEventListener('wme-selection-changed', () => errorHandler(updateControls));
 
             // check for changes in the edit-panel
             const observer = new MutationObserver(mutations => {
@@ -1037,40 +1020,30 @@
             initUserPanel();
             loadSettingsFromStorage();
             injectCss();
-            // W.prefs.on('change:isImperial', () => errorHandler(() => { initUserPanel(); loadSettingsFromStorage(); }));
-            updateControls(); // In case of PL w/ segments selected.
+            // updateControls(); // In case of PL w/ segments selected.
 
             logDebug('Initialized');
         }
 
-        let skipped = false;
-        function skipLoginDialog() {
-            if (!W.loginManager || W.loginManager.isLoggedIn()) {
+        function skipLoginDialog(tries = 0) {
+            if (sdk || tries === 1000) return;
+            if ($('wz-button.do-login').length) {
+                $('wz-button.do-login').click();
                 return;
             }
-            if (!skipped && $('wz-button.do-login').length) {
-                $('wz-button.do-login').click();
-                skipped = true;
-            }
+            setTimeout(skipLoginDialog, 100, ++tries);
         }
 
         function bootstrap() {
-            if (typeof W === 'object' && W.userscripts?.state.isReady) {
+            skipLoginDialog();
+            if (window.getWmeSdk) {
                 init();
             } else {
-                logDebug('Bootstrap failed. Trying again...');
-                skipLoginDialog();
-                setTimeout(bootstrap, 250);
+                document.addEventListener('wme-ready', init, { once: true });
             }
         }
 
-        // Not sure if the document.ready is necessary but I'm leaving it because of some random errors
-        // that people were having with "require is not defined".  I tried several things to fix it and
-        // I'm leaving those things, though all may not be needed.
-        $(document).ready(() => {
-            logDebug('Bootstrap...');
-            bootstrap();
-        });
+        bootstrap();
     } // END clicksaver function (code to be injected)
 
     // function exists(...objects) {
@@ -1151,42 +1124,51 @@
         }
     }
 
-    async function copyCoordinates() {
+    async function onCopyCoordinatesShortcut() {
         try {
-            const center = W.map.getCenter();
-            const center4326 = WazeWrap.Geometry.ConvertTo4326(center.lon, center.lat);
-            await navigator.clipboard.writeText(`${center4326.lat.toFixed(5)}, ${center4326.lon.toFixed(5)}`);
-            console.log('Content copied to clipboard');
+            const center = sdk.Map.getMapCenter();
+            await navigator.clipboard.writeText(`${center.lat.toFixed(5)}, ${center.lon.toFixed(5)}`);
+            console.debug('Map coordinates copied to clipboard:', center);
         } catch (err) {
-            console.error('Failed to copy: ', err);
+            console.error('Failed to copy map center coordinates to clipboard: ', err);
         }
     }
 
+    function onToggleDrawNewRoadsAsTwoWayShortcut() {
+        const options = sdk.Settings.getUserSettings();
+        options.isCreateRoadsAsTwoWay = !options.isCreateRoadsAsTwoWay;
+        sdk.Settings.setUserSettings(options);
+        // WazeWrap.Alerts.info('WME ClickSaver', `New segments will be drawn as ${options.isCreateRoadsAsTwoWay ? 'two-way' : 'one-way'}.`);
+    }
+
     function addToggleDrawNewRoadsAsTwoWayShortcut() {
+        // SDK: Waiting to see if an empty shortcut can be created.
         new WazeWrap.Interface.Shortcut(
             'ToggleTwoWayNewSeg',
             'Toggle new segment two-way drawing',
             'clicksaver',
             'ClickSaver',
             EXTERNAL_SETTINGS.toggleTwoWaySegDrawingShortcut,
-            () => { $('wz-checkbox[name="twoWaySegmentsByDefault"]').click(); },
+            onToggleDrawNewRoadsAsTwoWayShortcut,
             null
         ).add();
     }
 
     function addCopyCoordinatesShortcut() {
+        // SDK: Waiting to see if an empty shortcut can be created.
         new WazeWrap.Interface.Shortcut(
             'CopyCoordinates',
             'Copy map center coordinates',
             'clicksaver',
             'ClickSaver',
             EXTERNAL_SETTINGS.copyCoordinatesShortcut,
-            copyCoordinates,
+            onCopyCoordinatesShortcut,
             null
         ).add();
     }
 
     function sandboxLoadSettings() {
+        // SDK: Waiting to see if an empty shortcut can be created.
         const loadedSettings = JSON.parse(localStorage.getItem(EXTERNAL_SETTINGS_NAME)) || {};
         EXTERNAL_SETTINGS.toggleTwoWaySegDrawingShortcut = loadedSettings.toggleTwoWaySegDrawingShortcut || '';
         EXTERNAL_SETTINGS.copyCoordinatesShortcut = loadedSettings.copyCoordinatesShortcut || '';
@@ -1195,6 +1177,7 @@
         $(window).on('beforeunload', () => sandboxSaveSettings());
     }
 
+    // SDK: This can probably be deleted after the new Shortcuts are added.
     function getShortcutKeys(shortcutAction) {
         let keys = '';
         const { shortcut } = shortcutAction;
@@ -1209,6 +1192,9 @@
     }
 
     function sandboxSaveSettings() {
+        // SDK: Waiting to see if an empty shortcut can be created.
+        const shortcuts = sdk.Shortcuts.getAllShortcuts();
+        console.log(shortcuts);
         EXTERNAL_SETTINGS.toggleTwoWaySegDrawingShortcut = getShortcutKeys(W.accelerators.Actions.ToggleTwoWayNewSeg);
         EXTERNAL_SETTINGS.copyCoordinatesShortcut = getShortcutKeys(W.accelerators.Actions.CopyCoordinates);
         localStorage.setItem(EXTERNAL_SETTINGS_NAME, JSON.stringify(EXTERNAL_SETTINGS));
