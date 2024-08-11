@@ -136,10 +136,9 @@
         }
 
         function isSwapPedestrianPermitted() {
-            // SDK: use UserSession when it's available
-            const { user } = W.loginManager;
-            const rank = user.attributes.rank + 1;
-            return rank >= 4 || (rank === 3 && user.attributes.isAreaManager);
+            const { userInfo } = sdk.State;
+            const rank = userInfo.rank + 1;
+            return rank >= 4 || (rank === 3 && userInfo.isAreaManager);
         }
 
         function setChecked(checkboxId, checked) {
@@ -965,7 +964,7 @@
 
         function init() {
             logDebug('Initializing...');
-            sdk = getWmeSdk({ scriptId: SCRIPT_NAME, scriptName: SCRIPT_NAME });
+            sdk = getWmeSdk({ scriptId: 'wmeClickSaver', scriptName: SCRIPT_NAME });
             UpdateFeatureAddress = require('Waze/Action/UpdateFeatureAddress');
             MultiAction = require('Waze/Action/MultiAction');
 
