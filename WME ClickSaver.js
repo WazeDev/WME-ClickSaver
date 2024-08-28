@@ -472,22 +472,22 @@
                         if (rtChip.length !== 1) return;
                         waitForShadowElem(`.road-type-chip-select wz-checkable-chip[value='${roadType.val}']`, ['div']).then(result => {
                             const $elem = $(result.shadowElem);
-                            const padding = $elem.hasClass('checked') ? '0px 7px' : '0px 8px';
+                            const padding = $elem.hasClass('checked') ? '0px 3px' : '0px 4px';
                             $elem.css({ backgroundColor: bgColor, padding, color: 'black' });
                         });
                     });
 
                     const result = await waitForShadowElem('.road-type-chip-select wz-checkable-chip[checked=""]', ['div']);
-                    $(result.shadowElem).css({ border: 'black 2px solid', padding: '0px 7px' });
+                    $(result.shadowElem).css({ border: 'black 2px solid', padding: '0px 3px' });
 
                     $('.road-type-chip-select wz-checkable-chip').each(function updateRoadTypeChip() {
                         const style = {};
                         if (this.getAttribute('checked') === 'false') {
                             style.border = '';
-                            style.padding = '0px 8px';
+                            style.padding = '0px 4px';
                         } else {
                             style.border = 'black 2px solid';
-                            style.padding = '0px 7px';
+                            style.padding = '0px 3px';
                         }
                         $(this.shadowRoot.querySelector('div')).css(style);
                     });
