@@ -298,7 +298,6 @@
 
             if (!selection) return;
 
-            const actions = [];
             selection.ids.forEach(segmentId => {
                 if (sdk.DataModel.Segments.getAddress({ segmentId }).isEmpty) {
                     const addr = getFirstConnectedSegmentAddress(segmentId);
@@ -330,9 +329,9 @@
                 }
             });
             // SDK: FR submitted to replace MultiAction
-            if (actions.length) {
-                W.model.actionManager.add(new MultiAction(actions));
-            }
+            // if (actions.length) {
+            //     W.model.actionManager.add(new MultiAction(actions));
+            // }
         }
 
         class WaitForElementError extends Error { }
