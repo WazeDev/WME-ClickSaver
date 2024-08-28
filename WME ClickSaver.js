@@ -660,10 +660,10 @@
 
                 // Insert swap button in the correct location based on display mode.
                 if (displayMode === 'compact') {
-                    const $label = $('#segment-edit-general > form > div.road-type-control.form-group > wz-label');
+                    const $label = $('#segment-edit-general > form > div > div.road-type-control > wz-label');
                     $label.css({ display: 'inline' }).append($container);
                 } else {
-                    const $label = $('#segment-edit-general > form > div.road-type-control.form-group > wz-label');
+                    const $label = $('#segment-edit-general > form > div[0] > wz-label');
                     $label.css({ display: 'inline' }).append($container);
                 }
                 // TODO css
@@ -684,31 +684,30 @@
             const originalSegment = sdk.DataModel.Segments.getById({ segmentId: sdk.Editing.getSelection().ids[0] });
 
             // Copy the selected segment geometry and attributes, then delete it.
-            // const oldPrimaryStreetID = segment.attributes.primaryStreetID;
-            // const oldAltStreetIDs = segment.attributes.streetIDs.slice();
-            const newRoadType = isPedestrianTypeSegment(originalSegment) ? 1 : 5;
+            const oldPrimaryStreetId = originalSegment.primaryStreetId;
+            const oldAltStreetIds = originalSegment.alternateStreetIds;
+
+            const newRoadType = isPedestrianTypeSegment(originalSegment) ? ROAD_TYPE.STREET : ROAD_TYPE.WALKING_TRAIL;
             try {
                 sdk.DataModel.Segments.deleteSegment({ segmentId: originalSegment.id });
             } catch (ex) {
-                if (ex instanceof InvalidStateError) {
-                    if (segment.hasPaths()) {
-                        WazeWrap.Alerts.error(SCRIPT_NAME, 'Something prevents this segment from being deleted.');
-                        return;
-                    }
+                if (ex instanceof sdk.Errors.InvalidStateError) {
+                    WazeWrap.Alerts.error(SCRIPT_NAME, 'Something prevents this segment from being deleted.');
+                    return;
                 }
             }
 
             // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
 
-            const newId = sdk.DataModel.Segments.addSegment({ geometry: originalSegment.geometry, roadType: newRoadType });
-            // SDK: update segment address when this is available
-            // const feature = new Segment({
-            //     geoJSONGeometry: newGeom,
-            //     roadType: newRoadType,
-            //     primaryStreetID: oldPrimaryStreetID,
-            //     streetIDs: oldAltStreetIDs
-            // });
-            sdk.Editing.setSelection({ selection: { ids: [newId], objectType: 'segment' } });
+            const newSegmentId = sdk.DataModel.Segments.addSegment({ geometry: originalSegment.geometry, roadType: newRoadType });
+
+            sdk.DataModel.Segments.updateAddress({
+                segmentId: newSegmentId,
+                primaryStreetId: oldPrimaryStreetId,
+                alternateStreetIds: oldAltStreetIds
+            });
+
+            sdk.Editing.setSelection({ selection: { ids: [newSegmentId], objectType: 'segment' } });
 
             // SDK: PH submitted to replace MultiAction
             // const description = `Change segment type to ${newRoadType === 1 ? 'drivable' : 'pedestrian'}`;
@@ -992,6 +991,10 @@
             }
         }
 
+        /**
+         * This event handler is necessary to adjust the styling of the selected
+         * compact road type chip when the user changes it.
+         */
         function onSegmentsChanged() {
             addCompactRoadTypeColors();
         }
