@@ -88,23 +88,44 @@
             swapSegmentTypeError_Paths: 'Paths must be removed from segment before changing between driving and pedestrian road type.',
             addAltCityButtonText: 'Add alt city'
         };
-        const ROAD_TYPES = {
-            St: { val: 1, wmeColor: '#ffffeb', svColor: '#ffffff', category: 'streets', visible: true },
-            PS: { val: 2, wmeColor: '#f0ea58', svColor: '#cba12e', category: 'streets', visible: true },
-            Pw: { val: 22, wmeColor: '#64799a', svColor: '#64799a', category: 'streets', visible: false },
-            mH: { val: 7, wmeColor: '#69bf88', svColor: '#ece589', category: 'highways', visible: true },
-            MH: { val: 6, wmeColor: '#45b8d1', svColor: '#c13040', category: 'highways', visible: true },
-            Fw: { val: 3, wmeColor: '#c577d2', svColor: '#387fb8', category: 'highways', visible: false },
-            Rmp: { val: 4, wmeColor: '#b3bfb3', svColor: '#58c53b', category: 'highways', visible: false },
-            OR: { val: 8, wmeColor: '#867342', svColor: '#82614a', category: 'otherDrivable', visible: false },
-            PLR: { val: 20, wmeColor: '#ababab', svColor: '#2282ab', category: 'otherDrivable', visible: true },
-            PR: { val: 17, wmeColor: '#beba6c', svColor: '#00ffb3', category: 'otherDrivable', visible: true },
-            Fer: { val: 15, wmeColor: '#d7d8f8', svColor: '#ff8000', category: 'otherDrivable', visible: false },
-            RR: { val: 18, wmeColor: '#c62925', svColor: '#ffffff', category: 'nonDrivable', visible: false },
-            RT: { val: 19, wmeColor: '#ffffff', svColor: '#00ff00', category: 'nonDrivable', visible: false },
-            WT: { val: 5, wmeColor: '#b0a790', svColor: '#00ff00', category: 'pedestrian', visible: false },
-            PB: { val: 10, wmeColor: '#9a9a9a', svColor: '#0000ff', category: 'pedestrian', visible: false },
-            Sw: { val: 16, wmeColor: '#999999', svColor: '#b700ff', category: 'pedestrian', visible: false }
+
+        // Road types defined in the WME SDK documentation
+        const ROAD_TYPE = {
+            ALLEY: 22,
+            FERRY: 15,
+            FREEWAY: 3,
+            MAJOR_HIGHWAY: 6,
+            MINOR_HIGHWAY: 7,
+            OFF_ROAD: 8,
+            PARKING_LOT_ROAD: 20,
+            PEDESTRIAN_BOARDWALK: 10,
+            PRIMARY_STREET: 2,
+            PRIVATE_ROAD: 17,
+            RAILROAD: 18,
+            RAMP: 4,
+            RUNWAY_TAXIWAY: 19,
+            STAIRWAY: 16,
+            STREET: 1,
+            WALKING_TRAIL: 5,
+            WALKWAY: 9
+        };
+        const ROAD_TYPE_SETTINGS = {
+            St: { id: ROAD_TYPE.STREET, wmeColor: '#ffffeb', svColor: '#ffffff', category: 'streets', visible: true },
+            PS: { id: ROAD_TYPE.PRIMARY_STREET, wmeColor: '#f0ea58', svColor: '#cba12e', category: 'streets', visible: true },
+            Pw: { id: ROAD_TYPE.ALLEY, wmeColor: '#64799a', svColor: '#64799a', category: 'streets', visible: false },
+            mH: { id: ROAD_TYPE.MINOR_HIGHWAY, wmeColor: '#69bf88', svColor: '#ece589', category: 'highways', visible: true },
+            MH: { id: ROAD_TYPE.MAJOR_HIGHWAY, wmeColor: '#45b8d1', svColor: '#c13040', category: 'highways', visible: true },
+            Fw: { id: ROAD_TYPE.FREEWAY, wmeColor: '#c577d2', svColor: '#387fb8', category: 'highways', visible: false },
+            Rmp: { id: ROAD_TYPE.RAMP, wmeColor: '#b3bfb3', svColor: '#58c53b', category: 'highways', visible: false },
+            OR: { id: ROAD_TYPE.OFF_ROAD, wmeColor: '#867342', svColor: '#82614a', category: 'otherDrivable', visible: false },
+            PLR: { id: ROAD_TYPE.PARKING_LOT_ROAD, wmeColor: '#ababab', svColor: '#2282ab', category: 'otherDrivable', visible: true },
+            PR: { id: ROAD_TYPE.PRIVATE_ROAD, wmeColor: '#beba6c', svColor: '#00ffb3', category: 'otherDrivable', visible: true },
+            Fer: { id: ROAD_TYPE.FERRY, wmeColor: '#d7d8f8', svColor: '#ff8000', category: 'otherDrivable', visible: false },
+            RR: { id: ROAD_TYPE.RAILROAD, wmeColor: '#c62925', svColor: '#ffffff', category: 'nonDrivable', visible: false },
+            RT: { id: ROAD_TYPE.RUNWAY_TAXIWAY, wmeColor: '#ffffff', svColor: '#00ff00', category: 'nonDrivable', visible: false },
+            WT: { id: ROAD_TYPE.WALKING_TRAIL, wmeColor: '#b0a790', svColor: '#00ff00', category: 'pedestrian', visible: false },
+            PB: { id: ROAD_TYPE.PEDESTRIAN_BOARDWALK, wmeColor: '#9a9a9a', svColor: '#0000ff', category: 'pedestrian', visible: false },
+            Sw: { id: ROAD_TYPE.STAIRWAY, wmeColor: '#999999', svColor: '#b700ff', category: 'pedestrian', visible: false }
         };
 
         /* eslint-enable object-curly-newline */
@@ -112,7 +133,6 @@
         let _trans; // Translation object
 
         // Do not make these const values.  They may get assigned before require() is defined.  Trust me.  Don't do it.
-        let UpdateFeatureAddress;
         let MultiAction;
 
         // function log(message) {
@@ -177,7 +197,7 @@
 
             setChecked('csRoadTypeButtonsCheckBox', _settings.roadButtons);
             if (_settings.roadTypeButtons) {
-                Object.keys(ROAD_TYPES).forEach(roadTypeAbbr1 => {
+                Object.keys(ROAD_TYPE_SETTINGS).forEach(roadTypeAbbr1 => {
                     setChecked(`cs${roadTypeAbbr1}CheckBox`, _settings.roadTypeButtons.indexOf(roadTypeAbbr1) !== -1);
                 });
             }
@@ -229,7 +249,7 @@
                     addCompactColors: _settings.addCompactColors
                 };
                 settings.roadTypeButtons = [];
-                Object.keys(ROAD_TYPES).forEach(roadTypeAbbr => {
+                Object.keys(ROAD_TYPE_SETTINGS).forEach(roadTypeAbbr => {
                     if (_settings.roadTypeButtons.indexOf(roadTypeAbbr) !== -1) {
                         settings.roadTypeButtons.push(roadTypeAbbr);
                     }
@@ -240,9 +260,9 @@
         }
 
         function isPedestrianTypeSegment(segment) {
-            const pedRoadTypes = Object.values(ROAD_TYPES)
+            const pedRoadTypes = Object.values(ROAD_TYPE_SETTINGS)
                 .filter(roadType => roadType.category === 'pedestrian')
-                .map(roadType => roadType.val);
+                .map(roadType => roadType.id);
             return pedRoadTypes.includes(segment.roadType);
         }
 
@@ -283,17 +303,29 @@
                 if (sdk.DataModel.Segments.getAddress({ segmentId }).isEmpty) {
                     const addr = getFirstConnectedSegmentAddress(segmentId);
                     if (addr) {
-                        const cityNameToSet = setCity && !addr.city?.isEmpty ? addr.city.name : '';
-                        // SDK: FR submitted for UpdateFeatureAddress
-                        const OLD_SEG = W.model.segments.getObjectById(segmentId);
-                        const action = new UpdateFeatureAddress(OLD_SEG, {
-                            countryID: addr.country.id,
-                            stateID: addr.state.id,
-                            cityName: cityNameToSet,
-                            emptyStreet: true,
-                            emptyCity: !setCity
-                        }, { streetIDField: 'primaryStreetID' });
-                        actions.push(action);
+                        // Process the city
+                        const newCityProperties = {
+                            cityName: setCity && !addr.city?.isEmpty ? addr.city.name : '',
+                            countryId: addr.country.id,
+                            stateId: addr.state.id
+                        };
+                        let newCityId = sdk.DataModel.Cities.getCity(newCityProperties)?.id;
+                        if (newCityId == null) {
+                            newCityId = sdk.DataModel.Cities.addCity(newCityProperties);
+                        }
+
+                        // Process the street
+                        const newStreetProperties = {
+                            cityId: newCityId,
+                            streetName: ''
+                        };
+                        let newPrimaryStreetId = sdk.DataModel.Streets.getStreet(newStreetProperties)?.id;
+                        if (newPrimaryStreetId == null) {
+                            newPrimaryStreetId = sdk.Data.Streets.addStreet(newStreetProperties);
+                        }
+
+                        // Update the segment with the new street
+                        sdk.DataModel.Segments.updateAddress({ segmentId, primaryStreetId: newPrimaryStreetId });
                     }
                 }
             });
@@ -381,21 +413,22 @@
                 });
             }
 
-            if (roadType === ROAD_TYPES.PLR.val && isChecked('csClearNewPLRCheckBox')) {
+            if (roadType === ROAD_TYPE_SETTINGS.PLR.id && isChecked('csClearNewPLRCheckBox')) {
                 setStreetAndCity(isChecked('csSetNewPLRCityCheckBox'));
-            } else if (roadType === ROAD_TYPES.PR.val && isChecked('csClearNewPRCheckBox')) {
+            } else if (roadType === ROAD_TYPE_SETTINGS.PR.id && isChecked('csClearNewPRCheckBox')) {
                 setStreetAndCity(isChecked('csSetNewPRCityCheckBox'));
-            } else if (roadType === ROAD_TYPES.RR.val && isChecked('csClearNewRRCheckBox')) {
+            } else if (roadType === ROAD_TYPE_SETTINGS.RR.id && isChecked('csClearNewRRCheckBox')) {
                 setStreetAndCity(isChecked('csSetNewRRCityCheckBox'));
-            } else if (roadType === ROAD_TYPES.PB && isChecked('csClearNewPBCheckBox')) {
+            } else if (roadType === ROAD_TYPE_SETTINGS.PB && isChecked('csClearNewPBCheckBox')) {
                 setStreetAndCity(isChecked('csSetNewPBCityCheckBox'));
-            } else if (roadType === ROAD_TYPES.OR.val && isChecked('csClearNewORCheckBox')) {
+            } else if (roadType === ROAD_TYPE_SETTINGS.OR.id && isChecked('csClearNewORCheckBox')) {
                 setStreetAndCity(isChecked('csSetNewORCityCheckBox'));
             }
         }
 
         function addRoadTypeButtons() {
-            const segmentId = sdk.Editing.getSelection().ids[0];
+            const segmentId = sdk.Editing.getSelection()?.ids[0];
+            if (segmentId == null) return;
             const sdkSeg = sdk.DataModel.Segments.getById({ segmentId });
             if (!sdkSeg) return;
             const isPed = isPedestrianTypeSegment(sdkSeg);
@@ -414,21 +447,21 @@
                 nonDrivable: $nonDrivable,
                 pedestrian: $pedestrian
             };
-            Object.keys(ROAD_TYPES).forEach(roadTypeKey => {
+            Object.keys(ROAD_TYPE_SETTINGS).forEach(roadTypeKey => {
                 if (_settings.roadTypeButtons.includes(roadTypeKey)) {
-                    const roadType = ROAD_TYPES[roadTypeKey];
+                    const roadTypeSetting = ROAD_TYPE_SETTINGS[roadTypeKey];
                     const isDisabled = $dropDown[0].hasAttribute('disabled') && $dropDown[0].getAttribute('disabled') === 'true';
-                    if (!isDisabled && ((roadType.category === 'pedestrian' && isPed) || (roadType.category !== 'pedestrian' && !isPed))) {
-                        const $div = divs[roadType.category];
+                    if (!isDisabled && ((roadTypeSetting.category === 'pedestrian' && isPed) || (roadTypeSetting.category !== 'pedestrian' && !isPed))) {
+                        const $div = divs[roadTypeSetting.category];
                         $div.append(
                             $('<div>', {
                                 class: `btn cs-rt-button cs-rt-button-${roadTypeKey} btn-positive`,
-                                title: I18n.t('segment.road_types')[roadType.val]
+                                title: I18n.t('segment.road_types')[roadTypeSetting.id]
                             })
                                 .text(_trans.roadTypeButtons[roadTypeKey].text)
-                                .prop('checked', roadType.visible)
-                                .data('val', roadType.val)
-                                .click(function rtbClick() { onRoadTypeButtonClick($(this).data('val')); })
+                                .prop('checked', roadTypeSetting.visible)
+                                .data('rtId', roadTypeSetting.id)
+                                .click(function rtbClick() { onRoadTypeButtonClick($(this).data('rtId')); })
                         );
                     }
                 }
@@ -460,11 +493,11 @@
                     const useOldColors = _settings.useOldRoadColors;
                     await waitForElem('.road-type-chip-select wz-checkable-chip');
                     $('.road-type-chip-select wz-checkable-chip').addClass('cs-compact-button');
-                    Object.values(ROAD_TYPES).forEach(roadType => {
+                    Object.values(ROAD_TYPE_SETTINGS).forEach(roadType => {
                         const bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
-                        const rtChip = $(`.road-type-chip-select wz-checkable-chip[value=${roadType.val}]`);
+                        const rtChip = $(`.road-type-chip-select wz-checkable-chip[value=${roadType.id}]`);
                         if (rtChip.length !== 1) return;
-                        waitForShadowElem(`.road-type-chip-select wz-checkable-chip[value='${roadType.val}']`, ['div']).then(result => {
+                        waitForShadowElem(`.road-type-chip-select wz-checkable-chip[value='${roadType.id}']`, ['div']).then(result => {
                             const $elem = $(result.shadowElem);
                             const padding = $elem.hasClass('checked') ? '0px 7px' : '0px 8px';
                             $elem.css({ backgroundColor: bgColor, padding, color: 'black' });
@@ -648,25 +681,26 @@
                 }
             }
 
-            const sdkSeg = sdk.DataModel.Segments.getById({ segmentId: sdk.Editing.getSelection().ids[0] });
-
-            // Check for paths before deleting.
-            // SDK: FR submitted to add a way to check if object is deletable (path, JB, etc). The Alert text will need to be updated.
-            const segment = W.selectionManager.getSelectedDataModelObjects()[0];
-            if (segment.hasPaths()) {
-                WazeWrap.Alerts.error(SCRIPT_NAME, _trans.swapSegmentTypeError_Paths);
-                return;
-            }
+            const originalSegment = sdk.DataModel.Segments.getById({ segmentId: sdk.Editing.getSelection().ids[0] });
 
             // Copy the selected segment geometry and attributes, then delete it.
             // const oldPrimaryStreetID = segment.attributes.primaryStreetID;
             // const oldAltStreetIDs = segment.attributes.streetIDs.slice();
-            const newRoadType = isPedestrianTypeSegment(sdkSeg) ? 1 : 5;
-            sdk.DataModel.Segments.deleteSegment({ segmentId: sdkSeg.id });
+            const newRoadType = isPedestrianTypeSegment(originalSegment) ? 1 : 5;
+            try {
+                sdk.DataModel.Segments.deleteSegment({ segmentId: originalSegment.id });
+            } catch (ex) {
+                if (ex instanceof InvalidStateError) {
+                    if (segment.hasPaths()) {
+                        WazeWrap.Alerts.error(SCRIPT_NAME, 'Something prevents this segment from being deleted.');
+                        return;
+                    }
+                }
+            }
 
             // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
 
-            const newId = sdk.DataModel.Segments.addSegment({ geometry: sdkSeg.geometry, roadType: newRoadType });
+            const newId = sdk.DataModel.Segments.addSegment({ geometry: originalSegment.geometry, roadType: newRoadType });
             // SDK: update segment address when this is available
             // const feature = new Segment({
             //     geoJSONGeometry: newGeom,
@@ -697,8 +731,8 @@
         function buildRoadTypeButtonCss() {
             const lines = [];
             const useOldColors = _settings.useOldRoadColors;
-            Object.keys(ROAD_TYPES).forEach(roadTypeAbbr => {
-                const roadType = ROAD_TYPES[roadTypeAbbr];
+            Object.keys(ROAD_TYPE_SETTINGS).forEach(roadTypeAbbr => {
+                const roadType = ROAD_TYPE_SETTINGS[roadTypeAbbr];
                 const bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
                 let output = `.cs-rt-buttons-container .cs-rt-button-${roadTypeAbbr} {background-color:${
                     bgColor};box-shadow:0 2px ${shadeColor2(bgColor, -0.5)};border-color:${shadeColor2(bgColor, -0.15)};}`;
@@ -753,10 +787,10 @@
             $roadTypesDiv.append(
                 createSettingsCheckbox('csUseOldRoadColorsCheckBox', 'useOldRoadColors', _trans.prefs.useOldRoadColors)
             );
-            Object.keys(ROAD_TYPES).forEach(roadTypeAbbr => {
-                const roadType = ROAD_TYPES[roadTypeAbbr];
+            Object.keys(ROAD_TYPE_SETTINGS).forEach(roadTypeAbbr => {
+                const roadType = ROAD_TYPE_SETTINGS[roadTypeAbbr];
                 const id = `cs${roadTypeAbbr}CheckBox`;
-                const title = I18n.t('segment.road_types')[roadType.val];
+                const title = I18n.t('segment.road_types')[roadType.id];
                 $roadTypesDiv.append(
                     createSettingsCheckbox(id, 'roadType', title, null, null, null, {
                         'data-road-type': roadTypeAbbr
@@ -965,12 +999,11 @@
         function init() {
             logDebug('Initializing...');
             sdk = getWmeSdk({ scriptId: 'wmeClickSaver', scriptName: SCRIPT_NAME });
-            UpdateFeatureAddress = require('Waze/Action/UpdateFeatureAddress');
             MultiAction = require('Waze/Action/MultiAction');
 
             _trans = getTranslationObject();
-            Object.keys(ROAD_TYPES).forEach(rtName => {
-                ROAD_TYPES[rtName].text = _trans.roadTypeButtons[rtName].text;
+            Object.keys(ROAD_TYPE_SETTINGS).forEach(rtName => {
+                ROAD_TYPE_SETTINGS[rtName].text = _trans.roadTypeButtons[rtName].text;
             });
 
             document.addEventListener('paste', onPaste);
