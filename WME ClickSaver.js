@@ -12,20 +12,22 @@
 // @grant           GM_xmlhttpRequest
 // @grant           GM_addElement
 // @require         https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
+// @require         https://update.greasyfork.org/scripts/509664/WME%20Utils%20-%20Bootstrap.js
 // ==/UserScript==
 
 /* global W */
 /* global I18n */
 /* global WazeWrap */
-/* global getWmeSdk */
+/* global bootstrap */
 
 (function main() {
     'use strict';
 
     const UPDATE_MESSAGE = '';
-    const SCRIPT_NAME = GM_info.script.name;
-    const SCRIPT_VERSION = GM_info.script.version;
-    const DOWNLOAD_URL = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
+    const scriptName = GM_info.script.name;
+    const scriptId = 'wmeClickSaver';
+    const scriptVersion = GM_info.script.version;
+    const downloadUrl = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
     const FORUM_URL = 'https://www.waze.com/forum/viewtopic.php?f=819&t=199894';
     const TRANSLATIONS_URL = 'https://sheets.googleapis.com/v4/spreadsheets/1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/values/ClickSaver';
     const API_KEY = 'YTJWNVBVRkplbUZUZVVGMFl6aFVjMjVOTW0wNU5GaG5kVE40TUZoNWJVZEhWbU5rUjNacVdtdFlWUT09';
@@ -38,7 +40,7 @@
     let sdk;
 
     // This function is injected into the page.
-    function clicksaver(argsObject) {
+    async function clicksaver(argsObject) {
         /* eslint-disable object-curly-newline */
         const ROAD_TYPE_DROPDOWN_SELECTOR = 'wz-select[name="roadType"]';
         const ROAD_TYPE_CHIP_SELECTOR = 'wz-chip-select[class="road-type-chip-select"]';
@@ -156,7 +158,7 @@
         }
 
         function isSwapPedestrianPermitted() {
-            const { userInfo } = sdk.State;
+            const userInfo = sdk.State.getUserInfo();
             const rank = userInfo.rank + 1;
             return rank >= 4 || (rank === 3 && userInfo.isAreaManager);
         }
@@ -691,7 +693,7 @@
                 sdk.DataModel.Segments.deleteSegment({ segmentId: originalSegment.id });
             } catch (ex) {
                 if (ex instanceof sdk.Errors.InvalidStateError) {
-                    WazeWrap.Alerts.error(SCRIPT_NAME, 'Something prevents this segment from being deleted.');
+                    WazeWrap.Alerts.error(scriptName, 'Something prevents this segment from being deleted.');
                     return;
                 }
             }
@@ -1000,7 +1002,8 @@
 
         function init() {
             logDebug('Initializing...');
-            sdk = getWmeSdk({ scriptId: 'wmeClickSaver', scriptName: SCRIPT_NAME });
+
+            // SDK: Remove this MultiAction
             MultiAction = require('Waze/Action/MultiAction');
 
             _trans = getTranslationObject();
@@ -1012,7 +1015,7 @@
 
             // SDK: FR submitted for objectschanged event
             W.model.segments.on('objectschanged', onSegmentsChanged);
-            document.addEventListener('wme-selection-changed', () => errorHandler(updateControls));
+            sdk.Events.on('wme-selection-changed', () => errorHandler(updateControls));
 
             // check for changes in the edit-panel
             const observer = new MutationObserver(mutations => {
@@ -1067,18 +1070,19 @@
             }
             setTimeout(skipLoginDialog, 100, ++tries);
         }
+        skipLoginDialog();
 
-        function bootstrap() {
-            skipLoginDialog();
-            if (window.getWmeSdk) {
-                init();
-            } else {
-                document.addEventListener('wme-ready', init, { once: true });
+        sdk = await bootstrap({
+            scriptName,
+            scriptId,
+            scriptUpdateMonitor: {
+                scriptVersion,
+                downloadUrl
             }
-        }
+        });
 
-        bootstrap();
-    } // END clicksaver function (code to be injected)
+        init();
+    } // END clicksaver function (used to be injected, now just runs as a function)
 
     // function exists(...objects) {
     //     return objects.every(object => typeof object !== 'undefined' && object !== null);
@@ -1138,8 +1142,8 @@
             // the main code into the page.  If the spreadsheet call fails, the default English
             // translation is used.
             const args = {
-                scriptName: SCRIPT_NAME,
-                scriptVersion: SCRIPT_VERSION,
+                scriptName,
+                scriptVersion,
                 forumUrl: FORUM_URL
             };
             $.getJSON(`${TRANSLATIONS_URL}?${DEC(API_KEY)}`).then(res => {
@@ -1234,21 +1238,9 @@
         localStorage.setItem(EXTERNAL_SETTINGS_NAME, JSON.stringify(EXTERNAL_SETTINGS));
     }
 
-    function loadScriptUpdateMonitor() {
-        let updateMonitor;
-        try {
-            updateMonitor = new WazeWrap.Alerts.ScriptUpdateMonitor(SCRIPT_NAME, SCRIPT_VERSION, DOWNLOAD_URL, GM_xmlhttpRequest);
-            updateMonitor.start();
-        } catch (ex) {
-            // Report, but don't stop if ScriptUpdateMonitor fails.
-            console.error(`${SCRIPT_NAME}:`, ex);
-        }
-    }
-
     function sandboxBootstrap() {
         if (WazeWrap?.Ready) {
-            WazeWrap.Interface.ShowScriptUpdate(SCRIPT_NAME, SCRIPT_VERSION, UPDATE_MESSAGE, FORUM_URL);
-            loadScriptUpdateMonitor();
+            WazeWrap.Interface.ShowScriptUpdate(scriptName, scriptVersion, UPDATE_MESSAGE, FORUM_URL);
             sandboxLoadSettings();
         } else {
             setTimeout(sandboxBootstrap, 250);
