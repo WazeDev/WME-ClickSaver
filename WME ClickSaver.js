@@ -23,31 +23,30 @@
 (function main() {
     'use strict';
 
-    const UPDATE_MESSAGE = '';
+    const updateMessage = '';
     const scriptName = GM_info.script.name;
-    const scriptId = 'wmeClickSaver';
     const scriptVersion = GM_info.script.version;
     const downloadUrl = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
-    const FORUM_URL = 'https://www.waze.com/forum/viewtopic.php?f=819&t=199894';
-    const TRANSLATIONS_URL = 'https://sheets.googleapis.com/v4/spreadsheets/1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/values/ClickSaver';
-    const API_KEY = 'YTJWNVBVRkplbUZUZVVGMFl6aFVjMjVOTW0wNU5GaG5kVE40TUZoNWJVZEhWbU5rUjNacVdtdFlWUT09';
+    const forumUrl = 'https://www.waze.com/forum/viewtopic.php?f=819&t=199894';
+    const translationsUrl = 'https://sheets.googleapis.com/v4/spreadsheets/1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/values/ClickSaver';
+    const apiKey = 'YTJWNVBVRkplbUZUZVVGMFl6aFVjMjVOTW0wNU5GaG5kVE40TUZoNWJVZEhWbU5rUjNacVdtdFlWUT09';
     const DEC = s => atob(atob(s));
-    const EXTERNAL_SETTINGS = {
+    const externalSettings = {
         toggleTwoWaySegDrawingShortcut: null,
         copyCoordinatesShortcut: null
     };
-    const EXTERNAL_SETTINGS_NAME = 'clicksaver_settings_ext';
+    const externalSettingsName = 'clicksaver_settings_ext';
     let sdk;
 
     // This function is injected into the page.
     async function clicksaver(argsObject) {
         /* eslint-disable object-curly-newline */
-        const ROAD_TYPE_DROPDOWN_SELECTOR = 'wz-select[name="roadType"]';
-        const ROAD_TYPE_CHIP_SELECTOR = 'wz-chip-select[class="road-type-chip-select"]';
+        const roadTypeDropdownSelector = 'wz-select[name="roadType"]';
+        const roadTypeChipSelector = 'wz-chip-select[class="road-type-chip-select"]';
         // const PARKING_SPACES_DROPDOWN_SELECTOR = 'select[name="estimatedNumberOfSpots"]';
         // const PARKING_COST_DROPDOWN_SELECTOR = 'select[name="costType"]';
-        const SETTINGS_STORE_NAME = 'clicksaver_settings';
-        const DEFAULT_TRANSLATION = {
+        const settingsStoreName = 'clicksaver_settings';
+        const defaultTranslation = {
             roadTypeButtons: {
                 St: { text: 'St' },
                 PS: { text: 'PS' },
@@ -92,7 +91,7 @@
         };
 
         // Road types defined in the WME SDK documentation
-        const ROAD_TYPE = {
+        const wmeRoadType = {
             ALLEY: 22,
             FERRY: 15,
             FREEWAY: 3,
@@ -111,28 +110,28 @@
             WALKING_TRAIL: 5,
             WALKWAY: 9
         };
-        const ROAD_TYPE_SETTINGS = {
-            St: { id: ROAD_TYPE.STREET, wmeColor: '#ffffeb', svColor: '#ffffff', category: 'streets', visible: true },
-            PS: { id: ROAD_TYPE.PRIMARY_STREET, wmeColor: '#f0ea58', svColor: '#cba12e', category: 'streets', visible: true },
-            Pw: { id: ROAD_TYPE.ALLEY, wmeColor: '#64799a', svColor: '#64799a', category: 'streets', visible: false },
-            mH: { id: ROAD_TYPE.MINOR_HIGHWAY, wmeColor: '#69bf88', svColor: '#ece589', category: 'highways', visible: true },
-            MH: { id: ROAD_TYPE.MAJOR_HIGHWAY, wmeColor: '#45b8d1', svColor: '#c13040', category: 'highways', visible: true },
-            Fw: { id: ROAD_TYPE.FREEWAY, wmeColor: '#c577d2', svColor: '#387fb8', category: 'highways', visible: false },
-            Rmp: { id: ROAD_TYPE.RAMP, wmeColor: '#b3bfb3', svColor: '#58c53b', category: 'highways', visible: false },
-            OR: { id: ROAD_TYPE.OFF_ROAD, wmeColor: '#867342', svColor: '#82614a', category: 'otherDrivable', visible: false },
-            PLR: { id: ROAD_TYPE.PARKING_LOT_ROAD, wmeColor: '#ababab', svColor: '#2282ab', category: 'otherDrivable', visible: true },
-            PR: { id: ROAD_TYPE.PRIVATE_ROAD, wmeColor: '#beba6c', svColor: '#00ffb3', category: 'otherDrivable', visible: true },
-            Fer: { id: ROAD_TYPE.FERRY, wmeColor: '#d7d8f8', svColor: '#ff8000', category: 'otherDrivable', visible: false },
-            RR: { id: ROAD_TYPE.RAILROAD, wmeColor: '#c62925', svColor: '#ffffff', category: 'nonDrivable', visible: false },
-            RT: { id: ROAD_TYPE.RUNWAY_TAXIWAY, wmeColor: '#ffffff', svColor: '#00ff00', category: 'nonDrivable', visible: false },
-            WT: { id: ROAD_TYPE.WALKING_TRAIL, wmeColor: '#b0a790', svColor: '#00ff00', category: 'pedestrian', visible: false },
-            PB: { id: ROAD_TYPE.PEDESTRIAN_BOARDWALK, wmeColor: '#9a9a9a', svColor: '#0000ff', category: 'pedestrian', visible: false },
-            Sw: { id: ROAD_TYPE.STAIRWAY, wmeColor: '#999999', svColor: '#b700ff', category: 'pedestrian', visible: false }
+        const roadTypeSettings = {
+            St: { id: wmeRoadType.STREET, wmeColor: '#ffffeb', svColor: '#ffffff', category: 'streets', visible: true },
+            PS: { id: wmeRoadType.PRIMARY_STREET, wmeColor: '#f0ea58', svColor: '#cba12e', category: 'streets', visible: true },
+            Pw: { id: wmeRoadType.ALLEY, wmeColor: '#64799a', svColor: '#64799a', category: 'streets', visible: false },
+            mH: { id: wmeRoadType.MINOR_HIGHWAY, wmeColor: '#69bf88', svColor: '#ece589', category: 'highways', visible: true },
+            MH: { id: wmeRoadType.MAJOR_HIGHWAY, wmeColor: '#45b8d1', svColor: '#c13040', category: 'highways', visible: true },
+            Fw: { id: wmeRoadType.FREEWAY, wmeColor: '#c577d2', svColor: '#387fb8', category: 'highways', visible: false },
+            Rmp: { id: wmeRoadType.RAMP, wmeColor: '#b3bfb3', svColor: '#58c53b', category: 'highways', visible: false },
+            OR: { id: wmeRoadType.OFF_ROAD, wmeColor: '#867342', svColor: '#82614a', category: 'otherDrivable', visible: false },
+            PLR: { id: wmeRoadType.PARKING_LOT_ROAD, wmeColor: '#ababab', svColor: '#2282ab', category: 'otherDrivable', visible: true },
+            PR: { id: wmeRoadType.PRIVATE_ROAD, wmeColor: '#beba6c', svColor: '#00ffb3', category: 'otherDrivable', visible: true },
+            Fer: { id: wmeRoadType.FERRY, wmeColor: '#d7d8f8', svColor: '#ff8000', category: 'otherDrivable', visible: false },
+            RR: { id: wmeRoadType.RAILROAD, wmeColor: '#c62925', svColor: '#ffffff', category: 'nonDrivable', visible: false },
+            RT: { id: wmeRoadType.RUNWAY_TAXIWAY, wmeColor: '#ffffff', svColor: '#00ff00', category: 'nonDrivable', visible: false },
+            WT: { id: wmeRoadType.WALKING_TRAIL, wmeColor: '#b0a790', svColor: '#00ff00', category: 'pedestrian', visible: false },
+            PB: { id: wmeRoadType.PEDESTRIAN_BOARDWALK, wmeColor: '#9a9a9a', svColor: '#0000ff', category: 'pedestrian', visible: false },
+            Sw: { id: wmeRoadType.STAIRWAY, wmeColor: '#999999', svColor: '#b700ff', category: 'pedestrian', visible: false }
         };
 
         /* eslint-enable object-curly-newline */
         let _settings = {};
-        let _trans; // Translation object
+        let trans; // Translation object
 
         // Do not make these const values.  They may get assigned before require() is defined.  Trust me.  Don't do it.
         let MultiAction;
@@ -167,7 +166,7 @@
             $(`#${checkboxId}`).prop('checked', checked);
         }
         function loadSettingsFromStorage() {
-            const loadedSettings = $.parseJSON(localStorage.getItem(SETTINGS_STORE_NAME));
+            const loadedSettings = $.parseJSON(localStorage.getItem(settingsStoreName));
             const defaultSettings = {
                 lastVersion: null,
                 roadButtons: true,
@@ -199,7 +198,7 @@
 
             setChecked('csRoadTypeButtonsCheckBox', _settings.roadButtons);
             if (_settings.roadTypeButtons) {
-                Object.keys(ROAD_TYPE_SETTINGS).forEach(roadTypeAbbr1 => {
+                Object.keys(roadTypeSettings).forEach(roadTypeAbbr1 => {
                     setChecked(`cs${roadTypeAbbr1}CheckBox`, _settings.roadTypeButtons.indexOf(roadTypeAbbr1) !== -1);
                 });
             }
@@ -251,18 +250,18 @@
                     addCompactColors: _settings.addCompactColors
                 };
                 settings.roadTypeButtons = [];
-                Object.keys(ROAD_TYPE_SETTINGS).forEach(roadTypeAbbr => {
+                Object.keys(roadTypeSettings).forEach(roadTypeAbbr => {
                     if (_settings.roadTypeButtons.indexOf(roadTypeAbbr) !== -1) {
                         settings.roadTypeButtons.push(roadTypeAbbr);
                     }
                 });
-                localStorage.setItem(SETTINGS_STORE_NAME, JSON.stringify(settings));
+                localStorage.setItem(settingsStoreName, JSON.stringify(settings));
                 logDebug('Settings saved');
             }
         }
 
         function isPedestrianTypeSegment(segment) {
-            const pedRoadTypes = Object.values(ROAD_TYPE_SETTINGS)
+            const pedRoadTypes = Object.values(roadTypeSettings)
                 .filter(roadType => roadType.category === 'pedestrian')
                 .map(roadType => roadType.id);
             return pedRoadTypes.includes(segment.roadType);
@@ -414,15 +413,15 @@
                 });
             }
 
-            if (roadType === ROAD_TYPE_SETTINGS.PLR.id && isChecked('csClearNewPLRCheckBox')) {
+            if (roadType === roadTypeSettings.PLR.id && isChecked('csClearNewPLRCheckBox')) {
                 setStreetAndCity(isChecked('csSetNewPLRCityCheckBox'));
-            } else if (roadType === ROAD_TYPE_SETTINGS.PR.id && isChecked('csClearNewPRCheckBox')) {
+            } else if (roadType === roadTypeSettings.PR.id && isChecked('csClearNewPRCheckBox')) {
                 setStreetAndCity(isChecked('csSetNewPRCityCheckBox'));
-            } else if (roadType === ROAD_TYPE_SETTINGS.RR.id && isChecked('csClearNewRRCheckBox')) {
+            } else if (roadType === roadTypeSettings.RR.id && isChecked('csClearNewRRCheckBox')) {
                 setStreetAndCity(isChecked('csSetNewRRCityCheckBox'));
-            } else if (roadType === ROAD_TYPE_SETTINGS.PB && isChecked('csClearNewPBCheckBox')) {
+            } else if (roadType === roadTypeSettings.PB && isChecked('csClearNewPBCheckBox')) {
                 setStreetAndCity(isChecked('csSetNewPBCityCheckBox'));
-            } else if (roadType === ROAD_TYPE_SETTINGS.OR.id && isChecked('csClearNewORCheckBox')) {
+            } else if (roadType === roadTypeSettings.OR.id && isChecked('csClearNewORCheckBox')) {
                 setStreetAndCity(isChecked('csSetNewORCityCheckBox'));
             }
         }
@@ -433,7 +432,7 @@
             const sdkSeg = sdk.DataModel.Segments.getById({ segmentId });
             if (!sdkSeg) return;
             const isPed = isPedestrianTypeSegment(sdkSeg);
-            const $dropDown = $(ROAD_TYPE_DROPDOWN_SELECTOR);
+            const $dropDown = $(roadTypeDropdownSelector);
             $('#csRoadTypeButtonsContainer').remove();
             const $container = $('<div>', { id: 'csRoadTypeButtonsContainer', class: 'cs-rt-buttons-container', style: 'display: inline-table;' });
             const $street = $('<div>', { id: 'csStreetButtonContainer', class: 'cs-rt-buttons-group' });
@@ -448,9 +447,9 @@
                 nonDrivable: $nonDrivable,
                 pedestrian: $pedestrian
             };
-            Object.keys(ROAD_TYPE_SETTINGS).forEach(roadTypeKey => {
+            Object.keys(roadTypeSettings).forEach(roadTypeKey => {
                 if (_settings.roadTypeButtons.includes(roadTypeKey)) {
-                    const roadTypeSetting = ROAD_TYPE_SETTINGS[roadTypeKey];
+                    const roadTypeSetting = roadTypeSettings[roadTypeKey];
                     const isDisabled = $dropDown[0].hasAttribute('disabled') && $dropDown[0].getAttribute('disabled') === 'true';
                     if (!isDisabled && ((roadTypeSetting.category === 'pedestrian' && isPed) || (roadTypeSetting.category !== 'pedestrian' && !isPed))) {
                         const $div = divs[roadTypeSetting.category];
@@ -459,7 +458,7 @@
                                 class: `btn cs-rt-button cs-rt-button-${roadTypeKey} btn-positive`,
                                 title: I18n.t('segment.road_types')[roadTypeSetting.id]
                             })
-                                .text(_trans.roadTypeButtons[roadTypeKey].text)
+                                .text(trans.roadTypeButtons[roadTypeKey].text)
                                 .prop('checked', roadTypeSetting.visible)
                                 .data('rtId', roadTypeSetting.id)
                                 .click(function rtbClick() { onRoadTypeButtonClick($(this).data('rtId')); })
@@ -494,7 +493,7 @@
                     const useOldColors = _settings.useOldRoadColors;
                     await waitForElem('.road-type-chip-select wz-checkable-chip');
                     $('.road-type-chip-select wz-checkable-chip').addClass('cs-compact-button');
-                    Object.values(ROAD_TYPE_SETTINGS).forEach(roadType => {
+                    Object.values(roadTypeSettings).forEach(roadType => {
                         const bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
                         const rtChip = $(`.road-type-chip-select wz-checkable-chip[value=${roadType.id}]`);
                         if (rtChip.length !== 1) return;
@@ -635,7 +634,7 @@
                         style: 'float: right;text-transform: none;'
                             + 'font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif;color: #26bae8;'
                             + 'font-weight: normal;'
-                    }).text(_trans.addAltCityButtonText).click(onAddAltCityButtonClick)
+                    }).text(trans.addAltCityButtonText).click(onAddAltCityButtonClick)
                 );
             }
         }
@@ -655,7 +654,7 @@
                 });
                 $button.append('<i class="w-icon w-icon-streetview w-icon-lg"></i><i class="fa fa-arrows-h fa-lg" style="color: #e84545;vertical-align: top;"></i><i class="w-icon w-icon-car w-icon-lg"></i>')
                     .attr({
-                        title: _trans.prefs.showSwapDrivingWalkingButton_Title
+                        title: trans.prefs.showSwapDrivingWalkingButton_Title
                     });
                 $container.append($button);
 
@@ -677,7 +676,7 @@
             if (_settings.warnOnPedestrianTypeSwap) {
                 _settings.warnOnPedestrianTypeSwap = false;
                 saveSettingsToStorage();
-                if (!confirm(_trans.swapSegmentTypeWarning)) {
+                if (!confirm(trans.swapSegmentTypeWarning)) {
                     return;
                 }
             }
@@ -688,7 +687,7 @@
             const oldPrimaryStreetId = originalSegment.primaryStreetId;
             const oldAltStreetIds = originalSegment.alternateStreetIds;
 
-            const newRoadType = isPedestrianTypeSegment(originalSegment) ? ROAD_TYPE.STREET : ROAD_TYPE.WALKING_TRAIL;
+            const newRoadType = isPedestrianTypeSegment(originalSegment) ? wmeRoadType.STREET : wmeRoadType.WALKING_TRAIL;
             try {
                 sdk.DataModel.Segments.deleteSegment({ segmentId: originalSegment.id });
             } catch (ex) {
@@ -731,8 +730,8 @@
         function buildRoadTypeButtonCss() {
             const lines = [];
             const useOldColors = _settings.useOldRoadColors;
-            Object.keys(ROAD_TYPE_SETTINGS).forEach(roadTypeAbbr => {
-                const roadType = ROAD_TYPE_SETTINGS[roadTypeAbbr];
+            Object.keys(roadTypeSettings).forEach(roadTypeAbbr => {
+                const roadType = roadTypeSettings[roadTypeAbbr];
                 const bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
                 let output = `.cs-rt-buttons-container .cs-rt-button-${roadTypeAbbr} {background-color:${
                     bgColor};box-shadow:0 2px ${shadeColor2(bgColor, -0.5)};border-color:${shadeColor2(bgColor, -0.15)};}`;
@@ -785,10 +784,10 @@
         function initUserPanel() {
             const $roadTypesDiv = $('<div>', { class: 'csRoadTypeButtonsCheckBoxContainer' });
             $roadTypesDiv.append(
-                createSettingsCheckbox('csUseOldRoadColorsCheckBox', 'useOldRoadColors', _trans.prefs.useOldRoadColors)
+                createSettingsCheckbox('csUseOldRoadColorsCheckBox', 'useOldRoadColors', trans.prefs.useOldRoadColors)
             );
-            Object.keys(ROAD_TYPE_SETTINGS).forEach(roadTypeAbbr => {
-                const roadType = ROAD_TYPE_SETTINGS[roadTypeAbbr];
+            Object.keys(roadTypeSettings).forEach(roadTypeAbbr => {
+                const roadType = roadTypeSettings[roadTypeAbbr];
                 const id = `cs${roadTypeAbbr}CheckBox`;
                 const title = I18n.t('segment.road_types')[roadType.id];
                 $roadTypesDiv.append(
@@ -802,15 +801,15 @@
                         createSettingsCheckbox(
                             `csClearNew${roadTypeAbbr}CheckBox`,
                             `setNew${roadTypeAbbr}StreetToNone`,
-                            _trans.prefs.setStreetCityToNone,
-                            _trans.prefs.setStreetCityToNone_Title,
+                            trans.prefs.setStreetCityToNone,
+                            trans.prefs.setStreetCityToNone_Title,
                             { paddingLeft: '20px', marginRight: '4px' },
                             { fontStyle: 'italic' }
                         ),
                         createSettingsCheckbox(
                             `csSetNew${roadTypeAbbr}CityCheckBox`,
                             `setNew${roadTypeAbbr}City`,
-                            _trans.prefs.setCityToConnectedSegCity,
+                            trans.prefs.setCityToConnectedSegCity,
                             '',
                             { paddingLeft: '30px', marginRight: '4px' },
                             { fontStyle: 'italic' }
@@ -828,31 +827,31 @@
                     // TODO css
                     $('<div>', { style: 'margin-bottom:8px;' }).append(
                         $('<div>', { class: 'form-group' }).append(
-                            $('<label>', { class: 'cs-group-label' }).text(_trans.prefs.dropdownHelperGroup),
+                            $('<label>', { class: 'cs-group-label' }).text(trans.prefs.dropdownHelperGroup),
                             $('<div>').append(
                                 createSettingsCheckbox(
                                     'csRoadTypeButtonsCheckBox',
                                     'roadButtons',
-                                    _trans.prefs.roadTypeButtons
+                                    trans.prefs.roadTypeButtons
                                 )
                             ).append($roadTypesDiv),
                             createSettingsCheckbox(
                                 'csAddCompactColorsCheckBox',
                                 'addCompactColors',
-                                _trans.prefs.addCompactColors
+                                trans.prefs.addCompactColors
                             )
                         ),
-                        $('<label>', { class: 'cs-group-label' }).text(_trans.prefs.timeSaversGroup),
+                        $('<label>', { class: 'cs-group-label' }).text(trans.prefs.timeSaversGroup),
                         $('<div>', { style: 'margin-bottom:8px;' }).append(
                             createSettingsCheckbox(
                                 'csAddAltCityButtonCheckBox',
                                 'addAltCityButton',
-                                _trans.prefs.showAddAltCityButton
+                                trans.prefs.showAddAltCityButton
                             ),
                             isSwapPedestrianPermitted() ? createSettingsCheckbox(
                                 'csAddSwapPedestrianButtonCheckBox',
                                 'addSwapPedestrianButton',
-                                _trans.prefs.showSwapDrivingWalkingButton
+                                trans.prefs.showSwapDrivingWalkingButton
                             ) : ''
                         )
                     )
@@ -864,7 +863,7 @@
                 $('<div>', { style: 'margin-top:20px;font-size:10px;color:#999999;' }).append(
                     $('<div>').text(`v. ${argsObject.scriptVersion}${argsObject.scriptName.toLowerCase().includes('beta') ? ' beta' : ''}`),
                     $('<div>').append(
-                        $('<a>', { href: argsObject.forumUrl, target: '__blank' }).text(_trans.prefs.discussionForumLinkText)
+                        $('<a>', { href: argsObject.forumUrl, target: '__blank' }).text(trans.prefs.discussionForumLinkText)
                     )
                 )
             );
@@ -901,7 +900,7 @@
         }
 
         function updateControls() {
-            if ($(ROAD_TYPE_DROPDOWN_SELECTOR).length > 0) {
+            if ($(roadTypeDropdownSelector).length > 0) {
                 if (isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
             }
             addCompactRoadTypeColors();
@@ -975,7 +974,7 @@
 
         function getTranslationObject() {
             if (argsObject.useDefaultTranslation) {
-                return DEFAULT_TRANSLATION;
+                return defaultTranslation;
             }
             let locale = I18n.currentLocale().toLowerCase();
             if (!argsObject.translations.hasOwnProperty(locale)) {
@@ -1006,9 +1005,9 @@
             // SDK: Remove this MultiAction
             MultiAction = require('Waze/Action/MultiAction');
 
-            _trans = getTranslationObject();
-            Object.keys(ROAD_TYPE_SETTINGS).forEach(rtName => {
-                ROAD_TYPE_SETTINGS[rtName].text = _trans.roadTypeButtons[rtName].text;
+            trans = getTranslationObject();
+            Object.keys(roadTypeSettings).forEach(rtName => {
+                roadTypeSettings[rtName].text = trans.roadTypeButtons[rtName].text;
             });
 
             document.addEventListener('paste', onPaste);
@@ -1025,14 +1024,14 @@
 
                         if (addedNode.nodeType === Node.ELEMENT_NODE) {
                             // Checks to identify if this is a segment in regular display mode.
-                            if (addedNode.querySelector(ROAD_TYPE_DROPDOWN_SELECTOR)) {
+                            if (addedNode.querySelector(roadTypeDropdownSelector)) {
                                 if (isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
                                 if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
                                     addSwapPedestrianButton('regular');
                                 }
                             }
                             // Checks to identify if this is a segment in compact display mode.
-                            if (addedNode.querySelector(ROAD_TYPE_CHIP_SELECTOR)) {
+                            if (addedNode.querySelector(roadTypeChipSelector)) {
                                 if (isChecked('csRoadTypeButtonsCheckBox')) addCompactRoadTypeChangeEvents();
                                 if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
                                     addSwapPedestrianButton('compact');
@@ -1072,14 +1071,7 @@
         }
         skipLoginDialog();
 
-        sdk = await bootstrap({
-            scriptName,
-            scriptId,
-            scriptUpdateMonitor: {
-                scriptVersion,
-                downloadUrl
-            }
-        });
+        sdk = await bootstrap({ scriptUpdateMonitor: { downloadUrl } });
 
         init();
     } // END clicksaver function (used to be injected, now just runs as a function)
@@ -1144,9 +1136,9 @@
             const args = {
                 scriptName,
                 scriptVersion,
-                forumUrl: FORUM_URL
+                forumUrl
             };
-            $.getJSON(`${TRANSLATIONS_URL}?${DEC(API_KEY)}`).then(res => {
+            $.getJSON(`${translationsUrl}?${DEC(apiKey)}`).then(res => {
                 args.translations = convertTranslationsArrayToObject(res.values);
                 console.debug('ClickSaver:', 'Translations loaded.');
             }).fail(() => {
@@ -1186,7 +1178,7 @@
             'Toggle new segment two-way drawing',
             'clicksaver',
             'ClickSaver',
-            EXTERNAL_SETTINGS.toggleTwoWaySegDrawingShortcut,
+            externalSettings.toggleTwoWaySegDrawingShortcut,
             onToggleDrawNewRoadsAsTwoWayShortcut,
             null
         ).add();
@@ -1199,7 +1191,7 @@
             'Copy map center coordinates',
             'clicksaver',
             'ClickSaver',
-            EXTERNAL_SETTINGS.copyCoordinatesShortcut,
+            externalSettings.copyCoordinatesShortcut,
             onCopyCoordinatesShortcut,
             null
         ).add();
@@ -1207,9 +1199,9 @@
 
     function sandboxLoadSettings() {
         // SDK: Waiting to see if an empty shortcut can be created.
-        const loadedSettings = JSON.parse(localStorage.getItem(EXTERNAL_SETTINGS_NAME)) || {};
-        EXTERNAL_SETTINGS.toggleTwoWaySegDrawingShortcut = loadedSettings.toggleTwoWaySegDrawingShortcut || '';
-        EXTERNAL_SETTINGS.copyCoordinatesShortcut = loadedSettings.copyCoordinatesShortcut || '';
+        const loadedSettings = JSON.parse(localStorage.getItem(externalSettingsName)) || {};
+        externalSettings.toggleTwoWaySegDrawingShortcut = loadedSettings.toggleTwoWaySegDrawingShortcut || '';
+        externalSettings.copyCoordinatesShortcut = loadedSettings.copyCoordinatesShortcut || '';
         addToggleDrawNewRoadsAsTwoWayShortcut();
         addCopyCoordinatesShortcut();
         $(window).on('beforeunload', () => sandboxSaveSettings());
@@ -1233,14 +1225,14 @@
         // SDK: Waiting to see if an empty shortcut can be created.
         const shortcuts = sdk.Shortcuts.getAllShortcuts();
         console.log(shortcuts);
-        EXTERNAL_SETTINGS.toggleTwoWaySegDrawingShortcut = getShortcutKeys(W.accelerators.Actions.ToggleTwoWayNewSeg);
-        EXTERNAL_SETTINGS.copyCoordinatesShortcut = getShortcutKeys(W.accelerators.Actions.CopyCoordinates);
-        localStorage.setItem(EXTERNAL_SETTINGS_NAME, JSON.stringify(EXTERNAL_SETTINGS));
+        externalSettings.toggleTwoWaySegDrawingShortcut = getShortcutKeys(W.accelerators.Actions.ToggleTwoWayNewSeg);
+        externalSettings.copyCoordinatesShortcut = getShortcutKeys(W.accelerators.Actions.CopyCoordinates);
+        localStorage.setItem(externalSettingsName, JSON.stringify(externalSettings));
     }
 
     function sandboxBootstrap() {
         if (WazeWrap?.Ready) {
-            WazeWrap.Interface.ShowScriptUpdate(scriptName, scriptVersion, UPDATE_MESSAGE, FORUM_URL);
+            WazeWrap.Interface.ShowScriptUpdate(scriptName, scriptVersion, updateMessage, forumUrl);
             sandboxLoadSettings();
         } else {
             setTimeout(sandboxBootstrap, 250);
