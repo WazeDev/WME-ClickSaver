@@ -781,7 +781,7 @@
             return $container;
         }
 
-        function initUserPanel() {
+        async function initUserPanel() {
             const $roadTypesDiv = $('<div>', { class: 'csRoadTypeButtonsCheckBoxContainer' });
             $roadTypesDiv.append(
                 createSettingsCheckbox('csUseOldRoadColorsCheckBox', 'useOldRoadColors', trans.prefs.useOldRoadColors)
@@ -818,11 +818,7 @@
                 }
             });
 
-            const $tab = $('<li>', { title: argsObject.scriptName }).append(
-                $('<a>', { 'data-toggle': 'tab', href: '#sidepanel-clicksaver' }).append($('<span>').text('CS'))
-            );
-
-            const $panel = $('<div>', { class: 'tab-pane', id: 'sidepanel-clicksaver' }).append(
+            const $panel = $('<div>', { id: 'sidepanel-clicksaver' }).append(
                 $('<div>', { class: 'side-panel-section>' }).append(
                     // TODO css
                     $('<div>', { style: 'margin-bottom:8px;' }).append(
@@ -868,8 +864,11 @@
                 )
             );
 
-            $('#user-tabs > .nav-tabs').append($tab);
-            $('#user-info > .flex-parent > .tab-content').append($panel);
+            const { tabLabel, tabPane } = await sdk.Sidebar.registerScriptTab();
+            $(tabLabel).text('CS');
+            $(tabPane).append($panel);
+            // Decrease spacing around the tab contents.
+            $(tabPane).parent().css({ 'padding-top': '0px', 'padding-left': '8px' });
 
             // Add change events
             $('#csRoadTypeButtonsCheckBox').change(function onRoadTypeButtonCheckChanged() {
@@ -999,7 +998,7 @@
             addCompactRoadTypeColors();
         }
 
-        function init() {
+        async function init() {
             logDebug('Initializing...');
 
             // SDK: Remove this MultiAction
@@ -1053,7 +1052,7 @@
             });
 
             observer.observe(document.getElementById('edit-panel'), { childList: true, subtree: true });
-            initUserPanel();
+            await initUserPanel();
             loadSettingsFromStorage();
             injectCss();
             // updateControls(); // In case of PL w/ segments selected.
