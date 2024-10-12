@@ -625,10 +625,10 @@
 
                 // Insert swap button in the correct location based on display mode.
                 if (displayMode === 'compact') {
-                    const $label = $('#segment-edit-general > form > div.road-type-control.form-group > wz-label');
+                    const $label = $('#segment-edit-general > form > div > div.road-type-control > wz-label');
                     $label.css({ display: 'inline' }).append($container);
                 } else {
-                    const $label = $('#segment-edit-general > form > div.road-type-control.form-group > wz-label');
+                    const $label = $('#segment-edit-general > form > div[0] > wz-label');
                     $label.css({ display: 'inline' }).append($container);
                 }
                 // TODO css
