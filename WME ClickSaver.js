@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2024.08.28.000
+// @version         2024.10.26.000
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -639,7 +639,7 @@
             }
         }
 
-        function addSwapPedestrianButton(displayMode) { // Added displayMode argument to identify compact vs. regular mode.
+        function addSwapPedestrianButton() { // Added displayMode argument to identify compact vs. regular mode.
             const id = 'csSwapPedestrianContainer';
             $(`#${id}`).remove();
             const selection = sdk.Editing.getSelection();
@@ -659,14 +659,8 @@
                 $container.append($button);
 
                 // Insert swap button in the correct location based on display mode.
-                if (displayMode === 'compact') {
-                    const $label = $('#segment-edit-general > form > div > div.road-type-control > wz-label');
-                    $label.css({ display: 'inline' }).append($container);
-                } else {
-                    const $label = $('#segment-edit-general > form > div[0] > wz-label');
-                    $label.css({ display: 'inline' }).append($container);
-                }
-                // TODO css
+                const $label = $('#segment-edit-general > form > div > div.road-type-control > wz-label');
+                $label.css({ display: 'inline' }).append($container);
 
                 $('#csBtnSwapPedestrianRoadType').click(onSwapPedestrianButtonClick);
             }
@@ -903,6 +897,9 @@
                 if (isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
             }
             addCompactRoadTypeColors();
+            if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
+                addSwapPedestrianButton();
+            }
             // if ($(PARKING_SPACES_DROPDOWN_SELECTOR).length > 0 && isChecked('csParkingSpacesButtonsCheckBox')) {
             //     addParkingSpacesButtons(); // TODO - add option setting
             // }
@@ -1026,14 +1023,14 @@
                             if (addedNode.querySelector(roadTypeDropdownSelector)) {
                                 if (isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
                                 if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
-                                    addSwapPedestrianButton('regular');
+                                    addSwapPedestrianButton();
                                 }
                             }
                             // Checks to identify if this is a segment in compact display mode.
                             if (addedNode.querySelector(roadTypeChipSelector)) {
                                 if (isChecked('csRoadTypeButtonsCheckBox')) addCompactRoadTypeChangeEvents();
                                 if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
-                                    addSwapPedestrianButton('compact');
+                                    addSwapPedestrianButton();
                                 }
                             }
                             // if (addedNode.querySelector(PARKING_SPACES_DROPDOWN_SELECTOR) && isChecked('csParkingSpacesButtonsCheckBox')) {
