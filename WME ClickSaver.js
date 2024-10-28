@@ -1010,7 +1010,7 @@
 
             // SDK: FR submitted for objectschanged event
             W.model.segments.on('objectschanged', onSegmentsChanged);
-            sdk.Events.on('wme-selection-changed', () => errorHandler(updateControls));
+            sdk.Events.on({ eventName: 'wme-selection-changed', eventHandler: () => errorHandler(updateControls) });
 
             // check for changes in the edit-panel
             const observer = new MutationObserver(mutations => {
@@ -1052,7 +1052,7 @@
             await initUserPanel();
             loadSettingsFromStorage();
             injectCss();
-            // updateControls(); // In case of PL w/ segments selected.
+            updateControls(); // In case of PL w/ segments selected.
 
             logDebug('Initialized');
         }
