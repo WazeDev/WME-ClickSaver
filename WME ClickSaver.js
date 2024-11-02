@@ -13,12 +13,14 @@
 // @grant           GM_addElement
 // @require         https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @require         https://update.greasyfork.org/scripts/509664/WME%20Utils%20-%20Bootstrap.js
+// @require         https://davidsl4.github.io/WMEScripts/lib/wme-multiaction-sdk-hack.js
 // ==/UserScript==
 
 /* global W */
 /* global I18n */
 /* global WazeWrap */
 /* global bootstrap */
+/* global WS */
 
 (function main() {
     'use strict';
@@ -132,9 +134,6 @@
         /* eslint-enable object-curly-newline */
         let _settings = {};
         let trans; // Translation object
-
-        // Do not make these const values.  They may get assigned before require() is defined.  Trust me.  Don't do it.
-        let MultiAction;
 
         // function log(message) {
         //     console.log('ClickSaver:', message);
@@ -297,9 +296,7 @@
         function setStreetAndCity(setCity) {
             const selection = sdk.Editing.getSelection();
 
-            if (!selection) return;
-
-            selection.ids.forEach(segmentId => {
+            selection?.ids.forEach(segmentId => {
                 if (sdk.DataModel.Segments.getAddress({ segmentId }).isEmpty) {
                     const addr = getFirstConnectedSegmentAddress(segmentId);
                     if (addr) {
@@ -329,10 +326,6 @@
                     }
                 }
             });
-            // SDK: FR submitted to replace MultiAction
-            // if (actions.length) {
-            //     W.model.actionManager.add(new MultiAction(actions));
-            // }
         }
 
         class WaitForElementError extends Error { }
@@ -403,27 +396,26 @@
         function onRoadTypeButtonClick(roadType) {
             const selection = sdk.Editing.getSelection();
 
-            // SDK: Add a multiaction here if implemented in sdk
-            if (selection) {
-                selection.ids.forEach(segmentId => {
+            WS.SDKMultiActionHack.groupActions(() => {
+                selection?.ids.forEach(segmentId => {
                     // Check for same roadType is necessary to prevent an error.
                     if (sdk.DataModel.Segments.getById({ segmentId }).roadType !== roadType) {
                         sdk.DataModel.Segments.updateSegment({ segmentId, roadType });
                     }
                 });
-            }
 
-            if (roadType === roadTypeSettings.PLR.id && isChecked('csClearNewPLRCheckBox')) {
-                setStreetAndCity(isChecked('csSetNewPLRCityCheckBox'));
-            } else if (roadType === roadTypeSettings.PR.id && isChecked('csClearNewPRCheckBox')) {
-                setStreetAndCity(isChecked('csSetNewPRCityCheckBox'));
-            } else if (roadType === roadTypeSettings.RR.id && isChecked('csClearNewRRCheckBox')) {
-                setStreetAndCity(isChecked('csSetNewRRCityCheckBox'));
-            } else if (roadType === roadTypeSettings.PB && isChecked('csClearNewPBCheckBox')) {
-                setStreetAndCity(isChecked('csSetNewPBCityCheckBox'));
-            } else if (roadType === roadTypeSettings.OR.id && isChecked('csClearNewORCheckBox')) {
-                setStreetAndCity(isChecked('csSetNewORCityCheckBox'));
-            }
+                if (roadType === roadTypeSettings.PLR.id && isChecked('csClearNewPLRCheckBox')) {
+                    setStreetAndCity(isChecked('csSetNewPLRCityCheckBox'));
+                } else if (roadType === roadTypeSettings.PR.id && isChecked('csClearNewPRCheckBox')) {
+                    setStreetAndCity(isChecked('csSetNewPRCityCheckBox'));
+                } else if (roadType === roadTypeSettings.RR.id && isChecked('csClearNewRRCheckBox')) {
+                    setStreetAndCity(isChecked('csSetNewRRCityCheckBox'));
+                } else if (roadType === roadTypeSettings.PB && isChecked('csClearNewPBCheckBox')) {
+                    setStreetAndCity(isChecked('csSetNewPBCityCheckBox'));
+                } else if (roadType === roadTypeSettings.OR.id && isChecked('csClearNewORCheckBox')) {
+                    setStreetAndCity(isChecked('csSetNewORCityCheckBox'));
+                }
+            });
         }
 
         function addRoadTypeButtons() {
@@ -681,31 +673,29 @@
             const oldPrimaryStreetId = originalSegment.primaryStreetId;
             const oldAltStreetIds = originalSegment.alternateStreetIds;
 
-            const newRoadType = isPedestrianTypeSegment(originalSegment) ? wmeRoadType.STREET : wmeRoadType.WALKING_TRAIL;
-            try {
-                sdk.DataModel.Segments.deleteSegment({ segmentId: originalSegment.id });
-            } catch (ex) {
-                if (ex instanceof sdk.Errors.InvalidStateError) {
-                    WazeWrap.Alerts.error(scriptName, 'Something prevents this segment from being deleted.');
-                    return;
+            WS.SDKMultiActionHack.groupActions(() => {
+                const newRoadType = isPedestrianTypeSegment(originalSegment) ? wmeRoadType.STREET : wmeRoadType.WALKING_TRAIL;
+                try {
+                    sdk.DataModel.Segments.deleteSegment({ segmentId: originalSegment.id });
+                } catch (ex) {
+                    if (ex instanceof sdk.Errors.InvalidStateError) {
+                        WazeWrap.Alerts.error(scriptName, 'Something prevents this segment from being deleted.');
+                        return;
+                    }
                 }
-            }
 
-            // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
+                // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
 
-            const newSegmentId = sdk.DataModel.Segments.addSegment({ geometry: originalSegment.geometry, roadType: newRoadType });
+                const newSegmentId = sdk.DataModel.Segments.addSegment({ geometry: originalSegment.geometry, roadType: newRoadType });
 
-            sdk.DataModel.Segments.updateAddress({
-                segmentId: newSegmentId,
-                primaryStreetId: oldPrimaryStreetId,
-                alternateStreetIds: oldAltStreetIds
+                sdk.DataModel.Segments.updateAddress({
+                    segmentId: newSegmentId,
+                    primaryStreetId: oldPrimaryStreetId,
+                    alternateStreetIds: oldAltStreetIds
+                });
+
+                sdk.Editing.setSelection({ selection: { ids: [newSegmentId], objectType: 'segment' } });
             });
-
-            sdk.Editing.setSelection({ selection: { ids: [newSegmentId], objectType: 'segment' } });
-
-            // SDK: PH submitted to replace MultiAction
-            // const description = `Change segment type to ${newRoadType === 1 ? 'drivable' : 'pedestrian'}`;
-            // W.model.actionManager.add(new MultiAction(actions, { description }));
         }
 
         /* eslint-disable no-bitwise, no-mixed-operators */
@@ -997,9 +987,6 @@
 
         async function init() {
             logDebug('Initializing...');
-
-            // SDK: Remove this MultiAction
-            MultiAction = require('Waze/Action/MultiAction');
 
             trans = getTranslationObject();
             Object.keys(roadTypeSettings).forEach(rtName => {
