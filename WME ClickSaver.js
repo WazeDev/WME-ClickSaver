@@ -995,9 +995,15 @@
 
             document.addEventListener('paste', onPaste);
 
-            // SDK: FR submitted for objectschanged event
-            W.model.segments.on('objectschanged', onSegmentsChanged);
-            sdk.Events.on({ eventName: 'wme-selection-changed', eventHandler: () => errorHandler(updateControls) });
+            sdk.Events.trackDataModelEvents({ dataModelName: 'segments' });
+            sdk.Events.on({
+                eventName: 'wme-data-model-objects-changed',
+                eventHandler: () => errorHandler(onSegmentsChanged)
+            });
+            sdk.Events.on({
+                eventName: 'wme-selection-changed',
+                eventHandler: () => errorHandler(updateControls)
+            });
 
             // check for changes in the edit-panel
             const observer = new MutationObserver(mutations => {
