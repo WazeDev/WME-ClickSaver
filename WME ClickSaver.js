@@ -16,7 +16,6 @@
 // @require         https://davidsl4.github.io/WMEScripts/lib/wme-multiaction-sdk-hack.js
 // ==/UserScript==
 
-/* global W */
 /* global I18n */
 /* global WazeWrap */
 /* global bootstrap */
@@ -33,11 +32,6 @@
     const translationsUrl = 'https://sheets.googleapis.com/v4/spreadsheets/1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/values/ClickSaver';
     const apiKey = 'YTJWNVBVRkplbUZUZVVGMFl6aFVjMjVOTW0wNU5GaG5kVE40TUZoNWJVZEhWbU5rUjNacVdtdFlWUT09';
     const DEC = s => atob(atob(s));
-    const externalSettings = {
-        toggleTwoWaySegDrawingShortcut: null,
-        copyCoordinatesShortcut: null
-    };
-    const externalSettingsName = 'clicksaver_settings_ext';
     let sdk;
 
     // This function is injected into the page.
@@ -186,14 +180,10 @@
                 addSwapPedestrianButton: false,
                 useOldRoadColors: false,
                 warnOnPedestrianTypeSwap: true,
-                addCompactColors: true
+                addCompactColors: true,
+                shortcuts: {}
             };
-            _settings = loadedSettings || defaultSettings;
-            Object.keys(defaultSettings).forEach(prop => {
-                if (!_settings.hasOwnProperty(prop)) {
-                    _settings[prop] = defaultSettings[prop];
-                }
-            });
+            _settings = { ...defaultSettings, ...loadedSettings };
 
             setChecked('csRoadTypeButtonsCheckBox', _settings.roadButtons);
             if (_settings.roadTypeButtons) {
@@ -226,37 +216,39 @@
         }
 
         function saveSettingsToStorage() {
-            if (localStorage) {
-                const settings = {
-                    lastVersion: argsObject.scriptVersion,
-                    roadButtons: _settings.roadButtons,
-                    parkingCostButtons: _settings.parkingCostButtons,
-                    parkingSpacesButtons: _settings.parkingSpacesButtons,
-                    setNewPLRCity: _settings.setNewPLRCity,
-                    setNewPLRStreetToNone: _settings.setNewPLRStreetToNone,
-                    setNewPRCity: _settings.setNewPRCity,
-                    setNewPRStreetToNone: _settings.setNewPRStreetToNone,
-                    setNewRRCity: _settings.setNewRRCity,
-                    setNewRRStreetToNone: _settings.setNewRRStreetToNone,
-                    setNewPBCity: _settings.setNewPBCity,
-                    setNewPBStreetToNone: _settings.setNewPBStreetToNone,
-                    setNewORCity: _settings.setNewORCity,
-                    setNewORStreetToNone: _settings.setNewORStreetToNone,
-                    useOldRoadColors: _settings.useOldRoadColors,
-                    addAltCityButton: _settings.addAltCityButton,
-                    addSwapPedestrianButton: _settings.addSwapPedestrianButton,
-                    warnOnPedestrianTypeSwap: _settings.warnOnPedestrianTypeSwap,
-                    addCompactColors: _settings.addCompactColors
-                };
-                settings.roadTypeButtons = [];
-                Object.keys(roadTypeSettings).forEach(roadTypeAbbr => {
-                    if (_settings.roadTypeButtons.indexOf(roadTypeAbbr) !== -1) {
-                        settings.roadTypeButtons.push(roadTypeAbbr);
-                    }
-                });
-                localStorage.setItem(settingsStoreName, JSON.stringify(settings));
-                logDebug('Settings saved');
-            }
+            const settings = {
+                lastVersion: argsObject.scriptVersion,
+                roadButtons: _settings.roadButtons,
+                parkingCostButtons: _settings.parkingCostButtons,
+                parkingSpacesButtons: _settings.parkingSpacesButtons,
+                setNewPLRCity: _settings.setNewPLRCity,
+                setNewPLRStreetToNone: _settings.setNewPLRStreetToNone,
+                setNewPRCity: _settings.setNewPRCity,
+                setNewPRStreetToNone: _settings.setNewPRStreetToNone,
+                setNewRRCity: _settings.setNewRRCity,
+                setNewRRStreetToNone: _settings.setNewRRStreetToNone,
+                setNewPBCity: _settings.setNewPBCity,
+                setNewPBStreetToNone: _settings.setNewPBStreetToNone,
+                setNewORCity: _settings.setNewORCity,
+                setNewORStreetToNone: _settings.setNewORStreetToNone,
+                useOldRoadColors: _settings.useOldRoadColors,
+                addAltCityButton: _settings.addAltCityButton,
+                addSwapPedestrianButton: _settings.addSwapPedestrianButton,
+                warnOnPedestrianTypeSwap: _settings.warnOnPedestrianTypeSwap,
+                addCompactColors: _settings.addCompactColors,
+                shortcuts: {}
+            };
+            sdk.Shortcuts.getAllShortcuts().forEach(shortcut => {
+                settings.shortcuts[shortcut.shortcutId] = shortcut.shortcutKeys;
+            });
+            settings.roadTypeButtons = [];
+            Object.keys(roadTypeSettings).forEach(roadTypeAbbr => {
+                if (_settings.roadTypeButtons.indexOf(roadTypeAbbr) !== -1) {
+                    settings.roadTypeButtons.push(roadTypeAbbr);
+                }
+            });
+            localStorage.setItem(settingsStoreName, JSON.stringify(settings));
+            logDebug('Settings saved');
         }
 
         function isPedestrianTypeSegment(segment) {
@@ -985,6 +977,38 @@
             addCompactRoadTypeColors();
         }
 
+        async function onCopyCoordinatesShortcut() {
+            try {
+                const center = sdk.Map.getMapCenter();
+                const output = `${center.lat.toFixed(5)}, ${center.lon.toFixed(5)}`;
+                await navigator.clipboard.writeText(output);
+                WazeWrap.Alerts.info('WME ClickSaver', `Map center coordinate copied to clipboard:\n${output}`);
+                // console.debug('Map coordinates copied to clipboard:', center);
+            } catch (err) {
+                console.error('Failed to copy map center coordinates to clipboard: ', err);
+            }
+        }
+
+        function onToggleDrawNewRoadsAsTwoWayShortcut() {
+            const options = sdk.Settings.getUserSettings();
+            options.isCreateRoadsAsTwoWay = !options.isCreateRoadsAsTwoWay;
+            sdk.Settings.setUserSettings(options);
+            WazeWrap.Alerts.info('WME ClickSaver', `New segments will be drawn as ${options.isCreateRoadsAsTwoWay ? 'two-way' : 'one-way'}.`);
+        }
+
+        function createShortcut(shortcutId, description, callback) {
+            let shortcutKeys = _settings.shortcuts?.[shortcutId] ?? null;
+            if (shortcutKeys && sdk.Shortcuts.areShortcutKeysInUse({ shortcutKeys })) {
+                shortcutKeys = null;
+            }
+            sdk.Shortcuts.createShortcut({
+                shortcutId,
+                shortcutKeys,
+                description,
+                callback
+            });
+        }
+
         async function init() {
             logDebug('Initializing...');
 
@@ -1044,6 +1068,9 @@
             observer.observe(document.getElementById('edit-panel'), { childList: true, subtree: true });
             await initUserPanel();
             loadSettingsFromStorage();
+            createShortcut('toggleTwoWaySegDrawingShortcut', 'Toggle new segment two-way drawing', onToggleDrawNewRoadsAsTwoWayShortcut);
+            createShortcut('copyCoordinatesShortcut', 'Copy map center coordinates', onCopyCoordinatesShortcut);
+            window.addEventListener('beforeunload', saveSettingsToStorage, false);
             injectCss();
             updateControls(); // In case of PL w/ segments selected.
 
@@ -1143,86 +1170,9 @@
         }
     }
 
-    async function onCopyCoordinatesShortcut() {
-        try {
-            const center = sdk.Map.getMapCenter();
-            await navigator.clipboard.writeText(`${center.lat.toFixed(5)}, ${center.lon.toFixed(5)}`);
-            console.debug('Map coordinates copied to clipboard:', center);
-        } catch (err) {
-            console.error('Failed to copy map center coordinates to clipboard: ', err);
-        }
-    }
-
-    function onToggleDrawNewRoadsAsTwoWayShortcut() {
-        const options = sdk.Settings.getUserSettings();
-        options.isCreateRoadsAsTwoWay = !options.isCreateRoadsAsTwoWay;
-        sdk.Settings.setUserSettings(options);
-        // WazeWrap.Alerts.info('WME ClickSaver', `New segments will be drawn as ${options.isCreateRoadsAsTwoWay ? 'two-way' : 'one-way'}.`);
-    }
-
-    function addToggleDrawNewRoadsAsTwoWayShortcut() {
-        // SDK: Waiting to see if an empty shortcut can be created.
-        new WazeWrap.Interface.Shortcut(
-            'ToggleTwoWayNewSeg',
-            'Toggle new segment two-way drawing',
-            'clicksaver',
-            'ClickSaver',
-            externalSettings.toggleTwoWaySegDrawingShortcut,
-            onToggleDrawNewRoadsAsTwoWayShortcut,
-            null
-        ).add();
-    }
-
-    function addCopyCoordinatesShortcut() {
-        // SDK: Waiting to see if an empty shortcut can be created.
-        new WazeWrap.Interface.Shortcut(
-            'CopyCoordinates',
-            'Copy map center coordinates',
-            'clicksaver',
-            'ClickSaver',
-            externalSettings.copyCoordinatesShortcut,
-            onCopyCoordinatesShortcut,
-            null
-        ).add();
-    }
-
-    function sandboxLoadSettings() {
-        // SDK: Waiting to see if an empty shortcut can be created.
-        const loadedSettings = JSON.parse(localStorage.getItem(externalSettingsName)) || {};
-        externalSettings.toggleTwoWaySegDrawingShortcut = loadedSettings.toggleTwoWaySegDrawingShortcut || '';
-        externalSettings.copyCoordinatesShortcut = loadedSettings.copyCoordinatesShortcut || '';
-        addToggleDrawNewRoadsAsTwoWayShortcut();
-        addCopyCoordinatesShortcut();
-        $(window).on('beforeunload', () => sandboxSaveSettings());
-    }
-
-    // SDK: This can probably be deleted after the new Shortcuts are added.
-    function getShortcutKeys(shortcutAction) {
-        let keys = '';
-        const { shortcut } = shortcutAction;
-        if (shortcut) {
-            if (shortcut.altKey) keys += 'A';
-            if (shortcut.shiftKey) keys += 'S';
-            if (shortcut.ctrlKey) keys += 'C';
-            if (keys.length) keys += '+';
-            if (shortcut.keyCode) keys += shortcut.keyCode;
-        }
-        return keys;
-    }
-
-    function sandboxSaveSettings() {
-        // SDK: Waiting to see if an empty shortcut can be created.
-        const shortcuts = sdk.Shortcuts.getAllShortcuts();
-        console.log(shortcuts);
-        externalSettings.toggleTwoWaySegDrawingShortcut = getShortcutKeys(W.accelerators.Actions.ToggleTwoWayNewSeg);
-        externalSettings.copyCoordinatesShortcut = getShortcutKeys(W.accelerators.Actions.CopyCoordinates);
-        localStorage.setItem(externalSettingsName, JSON.stringify(externalSettings));
-    }
-
     function sandboxBootstrap() {
         if (WazeWrap?.Ready) {
             WazeWrap.Interface.ShowScriptUpdate(scriptName, scriptVersion, updateMessage, forumUrl);
-            sandboxLoadSettings();
         } else {
             setTimeout(sandboxBootstrap, 250);
         }
