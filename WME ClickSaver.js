@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2024.10.26.000
+// @version         2025.01.27.000
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -24,7 +24,7 @@
 (function main() {
     'use strict';
 
-    const updateMessage = '';
+    const updateMessage = 'Updated to use the new WME SDK. You will need to update keyboard shortcuts if you use them:<br/>- toggle 1-way/2-way segment drawing<br/>- copy map center coordinates';
     const scriptName = GM_info.script.name;
     const scriptVersion = GM_info.script.version;
     const downloadUrl = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
