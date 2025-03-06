@@ -757,6 +757,17 @@
             return $container;
         }
 
+        function createSettingsDropdown(id, options, divCss, labelCss) {
+            const $container = $('<div>', { class: 'controls-container' });
+            const $select = $('<select>', { id }).appendTo($container);
+            options.forEach(option => {
+                $('<option>', { value: option.value }).text(option.text).appendTo($select);
+            });
+            if (divCss) $container.css(divCss);
+            if (labelCss) $select.css(labelCss);
+            return $container;
+        }
+
         async function initUserPanel() {
             const $roadTypesDiv = $('<div>', { class: 'csRoadTypeButtonsCheckBoxContainer' });
             $roadTypesDiv.append(
@@ -771,23 +782,23 @@
                         'data-road-type': roadTypeAbbr
                     })
                 );
-                if (['PLR', 'PR', 'RR', 'PB', 'OR'].includes(roadTypeAbbr)) { // added RR & PB by jm6087
+                if (['PLR', 'PR', 'RR', 'PB', 'OR'].includes(roadTypeAbbr)) {
                     $roadTypesDiv.append(
-                        // TODO css
                         createSettingsCheckbox(
-                            `csClearNew${roadTypeAbbr}CheckBox`,
-                            `setNew${roadTypeAbbr}StreetToNone`,
-                            trans.prefs.setStreetCityToNone,
+                            `csSetStreetAndCity${roadTypeAbbr}CheckBox`,
+                            `setStreetAndCity${roadTypeAbbr}`,
+                            'Set street to none and set city to',
                             trans.prefs.setStreetCityToNone_Title,
                             { paddingLeft: '20px', marginRight: '4px' },
                             { fontStyle: 'italic' }
                         ),
-                        createSettingsCheckbox(
-                            `csSetNew${roadTypeAbbr}CityCheckBox`,
-                            `setNew${roadTypeAbbr}City`,
-                            trans.prefs.setCityToConnectedSegCity,
-                            '',
-                            { paddingLeft: '30px', marginRight: '4px' },
+                        createSettingsDropdown(
+                            `csSetCityDropdown${roadTypeAbbr}`,
+                            [
+                                { value: 'none', text: 'none' },
+                                { value: 'connected', text: 'connected seg\'s city' }
+                            ],
+                            { paddingLeft: '50px', marginRight: '4px' },
                             { fontStyle: 'italic' }
                         )
                     );
