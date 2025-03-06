@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2025.01.27.000
+// @version         2025.03.06.000
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -13,13 +13,13 @@
 // @grant           GM_addElement
 // @require         https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @require         https://update.greasyfork.org/scripts/509664/WME%20Utils%20-%20Bootstrap.js
-// @require         https://davidsl4.github.io/WMEScripts/lib/wme-multiaction-sdk-hack.js
 // ==/UserScript==
 
 /* global I18n */
 /* global WazeWrap */
 /* global bootstrap */
-/* global WS */
+
+/* eslint-disable max-classes-per-file */
 
 (function main() {
     'use strict';
@@ -310,7 +310,7 @@
                         };
                         let newPrimaryStreetId = sdk.DataModel.Streets.getStreet(newStreetProperties)?.id;
                         if (newPrimaryStreetId == null) {
-                            newPrimaryStreetId = sdk.Data.Streets.addStreet(newStreetProperties);
+                            newPrimaryStreetId = sdk.DataModel.Streets.addStreet(newStreetProperties).id;
                         }
 
                         // Update the segment with the new street
@@ -1183,4 +1183,162 @@
 
     // Start the "sandboxed" code.
     sandboxBootstrap();
+
+    // ***********************************************************************
+    // MultiAction hack code written by r0den, slightly modified by mapomatic
+    // This can be removed if/when the SDK supports MultiAction natively.
+    // ***********************************************************************
+    const WS = {};
+
+    // eslint-disable-next-line func-names
+    WS.SDKMultiActionHack = (function() {
+        function getUnsafeWindow() {
+            return 'unsafeWindow' in window ? window.unsafeWindow : window;
+        }
+
+        class Interceptor {
+            constructor(target, methodName, interceptor) {
+                this._target = target;
+                this._methodName = methodName;
+                this._interceptor = interceptor;
+                this._isEnabled = false;
+
+                this.managedInterceptor = (...args) => (this._isEnabled
+                    ? this._interceptor(((...args1) => this.invokeOriginal(...args1)), ...args)
+                    : this.invokeOriginal(...args));
+
+                this.initialize();
+            }
+
+            initialize() {
+                this._originalMethod = this._target[this._methodName];
+                this._target[this._methodName] = this.managedInterceptor;
+            }
+
+            invokeOriginal(...args) {
+                return this._originalMethod.apply(this._target, args);
+            }
+
+            enable() {
+                this._isEnabled = true;
+            }
+
+            disable() {
+                this._isEnabled = false;
+            }
+        }
+
+        function getMultiAction(actions) {
+            // eslint-disable-next-line func-names
+            const MultiAction = (function() {
+                try {
+                    return getUnsafeWindow().require('Waze/Action/MultiAction');
+                } catch (error) {
+                    return null;
+                }
+            })();
+
+            if (!MultiAction) throw new Error('Unable to retrieve MultiAction');
+
+            return new MultiAction(actions);
+        }
+
+        class TransactionManager {
+            constructor(actionManager) {
+                this._actionManager = actionManager;
+                this._actionsInTransaction = [];
+                this._undoableActionsInTransaction = [];
+                this._hasActiveTransaction = false;
+
+                this._interceptor = new Interceptor(actionManager, 'add', (invokeOriginal, action) => {
+                    if (!this.isTransactionOpen) return invokeOriginal(action);
+
+                    if (action.undoSupported()) {
+                        let result;
+                        let executed = false;
+
+                        new Interceptor(action, 'doAction', (invokeOriginal1, ...args) => (executed ? result : ((executed = true), (result = invokeOriginal1(...args))))).enable();
+
+                        new Interceptor(action, 'undoAction', (invokeOriginal1, ...args) => {
+                            const undoResult = invokeOriginal1(...args);
+                            executed = false;
+                            result = undefined;
+                            return undoResult;
+                        }).enable();
+
+                        action.doAction(this._actionManager.dataModel);
+                        this._undoableActionsInTransaction.push(action);
+                    }
+
+                    this._actionsInTransaction.push(action);
+                    return true;
+                });
+
+                this._interceptor.enable();
+            }
+
+            closeTransaction() {
+                this._hasActiveTransaction = false;
+                return this.getTransactionActions();
+            }
+
+            openTransaction() {
+                this._actionsInTransaction = [];
+                this._undoableActionsInTransaction = [];
+                this._hasActiveTransaction = true;
+            }
+
+            get isTransactionOpen() {
+                return this._hasActiveTransaction;
+            }
+
+            beginTransaction() {
+                this.openTransaction();
+            }
+
+            getTransactionActions() {
+                return this._actionsInTransaction;
+            }
+
+            commitTransaction(description) {
+                const actions = this.closeTransaction();
+                const multiAction = getMultiAction(actions);
+
+                if (multiAction) {
+                    if (description) multiAction._description = description;
+                    this._interceptor.invokeOriginal(multiAction);
+                } else {
+                    actions.forEach(action => this._interceptor.invokeOriginal(action));
+                }
+            }
+
+            cancelTransaction() {
+                this._undoableActionsInTransaction.forEach(action => action.undoAction(this._actionManager.dataModel));
+                this.closeTransaction();
+            }
+        }
+
+        const unsafeWin = getUnsafeWindow();
+        let transactionManager;
+
+        unsafeWin.SDK_INITIALIZED.then(() => {
+            transactionManager = new TransactionManager(unsafeWin.W.model.actionManager);
+        });
+
+        return {
+            beginTransaction: () => transactionManager.beginTransaction(),
+            commitTransaction: description => transactionManager.commitTransaction(description),
+            cancelTransaction: () => transactionManager.cancelTransaction(),
+            groupActions(actionFn, description) {
+                transactionManager.beginTransaction();
+                try {
+                    actionFn();
+                    transactionManager.commitTransaction(description);
+                } catch (error) {
+                    transactionManager.cancelTransaction();
+                    throw error;
+                }
+            }
+        };
+    })();
 })();
