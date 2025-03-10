@@ -593,17 +593,9 @@
         // }
 
         function addAddAltCityButton() {
-            const selection = sdk.Editing.getSelection();
-            if (!selection) return;
-
             // Only show the button if every segment has the same primary city and street.
-            if (selection.ids.length > 1) {
-                const firstStreetId = sdk.DataModel.Segments.getAddress({ segmentId: selection.ids[0] })?.street?.id;
-                if (!selection.ids
-                    .map(segmentId => sdk.DataModel.Segments.getAddress({ segmentId }))
-                    .every(addr => addr.street?.id === firstStreetId)) {
-                    return;
-                }
+            if (!selectedPrimaryStreetsAreEqual()) {
+                return;
             }
 
             const id = 'csAddAltCityButton';
@@ -620,20 +612,11 @@
             }
         }
 
-        function getSelectedSegments() {
-            const selection = sdk.Editing.getSelection();
-            if (selection?.objectType !== 'segment') {
-                return;
-            }
-            return selection;
-        }
-
         async function addSwitchPrimaryNameButton() {
             if (!isChecked('csAddSwitchPrimaryNameCheckBox')) {
                 return;
             }
-            const selection = getSelectedSegments();
-            if (!selection) {
+            if (!selectedPrimaryStreetsAreEqual() || !selectedAltStreetsAreEqual()) {
                 return;
             }
 
@@ -641,7 +624,15 @@
 
             $('span.alt-street-preview').each(function () {
                 const id = 'csAddSwitchPrimaryName';
-                const switchingIconExists = $(this).find(`#${id}`).length > 0;
+                const altStreetId = Number($(this).attr('data-id'));
+                const switchingIconElement = $(this).find(`#${id}`);
+
+                if (streetEqualsPrimaryStreetName(altStreetId)) {
+                    switchingIconElement.remove();
+                    return;
+                }
+
+                const switchingIconExists = switchingIconElement.length > 0;
                 if (switchingIconExists) {
                     return;
                 }
@@ -656,7 +647,7 @@
         }
 
         function onSwitchStreetNamesClick() {
-            const selectedSegments = getSelectedSegments().ids;
+            const selectedSegments = getSelectedSegments();
             const currentPrimaryStreet = sdk.DataModel.Segments.getAddress({segmentId: selectedSegments[0]});
             const currentAltStreets = currentPrimaryStreet.altStreets.map(street => street.street);
             const selectedStreetId = Number($(this).parent().attr('data-id'));
@@ -677,12 +668,6 @@
                     alternateStreetIds: newAltStreetsIds
                 }))
             });
-            return;
-        }
-
-        function getOrCreateStreet(streetName, cityId) {
-            return sdk.DataModel.Streets.getStreet({ streetName: streetName, cityId: cityId })
-                ?? sdk.DataModel.Streets.addStreet({ streetName: streetName, cityId: cityId })
         }
 
         function addSwapPedestrianButton() { // Added displayMode argument to identify compact vs. regular mode.
@@ -750,6 +735,56 @@
 
                 sdk.Editing.setSelection({ selection: { ids: [newSegmentId], objectType: 'segment' } });
             });
+        }
+
+        function getSelectedSegments() {
+            const selection = sdk.Editing.getSelection();
+            if (selection?.objectType !== 'segment') {
+                return;
+            }
+            return selection.ids;
+        }
+
+        function selectedPrimaryStreetsAreEqual() {
+            const selection = getSelectedSegments();
+            if (!selection) {
+                return false;
+            }
+            if (selection.length === 1) {
+                return true;
+            }
+
+            const firstStreetId = sdk.DataModel.Segments.getAddress({segmentId: selection[0]})?.street?.id;
+            return selection
+                .map(segmentId => sdk.DataModel.Segments.getAddress({segmentId}))
+                .every(addr => addr.street?.id === firstStreetId)
+        }
+
+        function selectedAltStreetsAreEqual() {
+            const selection = getSelectedSegments();
+            if (!selection) {
+                return false;
+            }
+            const addresses = selection.map(segmentId => sdk.DataModel.Segments.getAddress({segmentId}))
+                .map(street => street.altStreets.map(altStreet => altStreet.street.id))
+                .map(addresses => new Set(addresses));
+
+            const firstAltAddresses = addresses[0];
+            return addresses
+                .every(address => address.size === firstAltAddresses.size && Array.from(address).every(value => firstAltAddresses.has(value)));
+        }
+
+        function getOrCreateStreet(streetName, cityId) {
+            return sdk.DataModel.Streets.getStreet({ streetName: streetName, cityId: cityId })
+                ?? sdk.DataModel.Streets.addStreet({ streetName: streetName, cityId: cityId })
+        }
+
+        function streetEqualsPrimaryStreetName(altStreetId) {
+            const selection = getSelectedSegments();
+            const primaryStreetName = selection
+                .map(segmentId => sdk.DataModel.Segments.getAddress({segmentId}))[0].street?.name;
+            const selectedStreetName = sdk.DataModel.Streets.getById({streetId: altStreetId})?.name;
+            return primaryStreetName === selectedStreetName;
         }
 
         /* eslint-disable no-bitwise, no-mixed-operators */
