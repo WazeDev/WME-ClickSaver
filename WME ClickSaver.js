@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2025.03.06.000
+// @version         2025.03.11.000
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -24,7 +24,7 @@
 (function main() {
     'use strict';
 
-    const updateMessage = 'Updated to use the new WME SDK. You will need to update keyboard shortcuts if you use them:<br/>- toggle 1-way/2-way segment drawing<br/>- copy map center coordinates';
+    const updateMessage = '<b>-- New --</b><br/>"Swap primary and alt street name" buttons<br/>(thanks to LihtsaltMats!).<br/><br/>Enable the option in script settings. Click the up arrow next to the alt street name you want to swap.<br/><br/>';
     const scriptName = GM_info.script.name;
     const scriptVersion = GM_info.script.version;
     const downloadUrl = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
@@ -622,7 +622,8 @@
 
             await waitForElem('.alt-streets-control');
 
-            $('span.alt-street-preview').each(function () {
+            // eslint-disable-next-line func-names
+            $('span.alt-street-preview').each(function() {
                 const id = 'csAddSwitchPrimaryName';
                 const altStreetId = Number($(this).attr('data-id'));
                 const switchingIconElement = $(this).find(`#${id}`);
@@ -637,7 +638,7 @@
                     return;
                 }
                 const switchStreetNameButton = $('<i>', {
-                    id: id,
+                    id,
                     class: 'w-icon w-icon-arrow-up alt-edit-button'
                 });
 
@@ -648,25 +649,25 @@
 
         function onSwitchStreetNamesClick() {
             const selectedSegments = getSelectedSegments();
-            const currentPrimaryStreet = sdk.DataModel.Segments.getAddress({segmentId: selectedSegments[0]});
+            const currentPrimaryStreet = sdk.DataModel.Segments.getAddress({ segmentId: selectedSegments[0] });
             const currentAltStreets = currentPrimaryStreet.altStreets.map(street => street.street);
             const selectedStreetId = Number($(this).parent().attr('data-id'));
             const newPrimary = currentAltStreets
                 .find(street => street.id === selectedStreetId);
 
             WS.SDKMultiActionHack.groupActions(() => {
-                const newPrimaryStreet = getOrCreateStreet(newPrimary.name, currentPrimaryStreet.city.id)
-                const primaryToAltStreet = getOrCreateStreet(currentPrimaryStreet.street.name, newPrimary.cityId)
+                const newPrimaryStreet = getOrCreateStreet(newPrimary.name, currentPrimaryStreet.city.id);
+                const primaryToAltStreet = getOrCreateStreet(currentPrimaryStreet.street.name, newPrimary.cityId);
 
                 const newAltStreetsIds = currentAltStreets
                     .map(alt => alt.id)
                     .filter(id => id !== selectedStreetId);
                 newAltStreetsIds.push(primaryToAltStreet.id);
                 selectedSegments.forEach(segmentId => sdk.DataModel.Segments.updateAddress({
-                    segmentId: segmentId,
+                    segmentId,
                     primaryStreetId: newPrimaryStreet.id,
                     alternateStreetIds: newAltStreetsIds
-                }))
+                }));
             });
         }
 
@@ -740,7 +741,7 @@
         function getSelectedSegments() {
             const selection = sdk.Editing.getSelection();
             if (selection?.objectType !== 'segment') {
-                return;
+                return null;
             }
             return selection.ids;
         }
@@ -754,10 +755,10 @@
                 return true;
             }
 
-            const firstStreetId = sdk.DataModel.Segments.getAddress({segmentId: selection[0]})?.street?.id;
+            const firstStreetId = sdk.DataModel.Segments.getAddress({ segmentId: selection[0] })?.street?.id;
             return selection
-                .map(segmentId => sdk.DataModel.Segments.getAddress({segmentId}))
-                .every(addr => addr.street?.id === firstStreetId)
+                .map(segmentId => sdk.DataModel.Segments.getAddress({ segmentId }))
+                .every(addr => addr.street?.id === firstStreetId);
         }
 
         function selectedAltStreetsAreEqual() {
@@ -765,9 +766,9 @@
             if (!selection) {
                 return false;
             }
-            const addresses = selection.map(segmentId => sdk.DataModel.Segments.getAddress({segmentId}))
+            const addresses = selection.map(segmentId => sdk.DataModel.Segments.getAddress({ segmentId }))
                 .map(street => street.altStreets.map(altStreet => altStreet.street.id))
-                .map(addresses => new Set(addresses));
+                .map(addr => new Set(addr));
 
             const firstAltAddresses = addresses[0];
             return addresses
@@ -775,15 +776,15 @@
         }
 
         function getOrCreateStreet(streetName, cityId) {
-            return sdk.DataModel.Streets.getStreet({ streetName: streetName, cityId: cityId })
-                ?? sdk.DataModel.Streets.addStreet({ streetName: streetName, cityId: cityId })
+            return sdk.DataModel.Streets.getStreet({ streetName, cityId })
+                ?? sdk.DataModel.Streets.addStreet({ streetName, cityId });
         }
 
         function streetEqualsPrimaryStreetName(altStreetId) {
             const selection = getSelectedSegments();
             const primaryStreetName = selection
-                .map(segmentId => sdk.DataModel.Segments.getAddress({segmentId}))[0].street?.name;
-            const selectedStreetName = sdk.DataModel.Streets.getById({streetId: altStreetId})?.name;
+                .map(segmentId => sdk.DataModel.Segments.getAddress({ segmentId }))[0].street?.name;
+            const selectedStreetName = sdk.DataModel.Streets.getById({ streetId: altStreetId })?.name;
             return primaryStreetName === selectedStreetName;
         }
 
@@ -1166,8 +1167,9 @@
                             }
                             if (addedNode.querySelector('.alt-streets') && isChecked('csAddSwitchPrimaryNameCheckBox')) {
                                 // Cancel button doesn't change the datamodel so re-add the switch arrow on cancel click
-                                addedNode.addEventListener("click", function (event) {
-                                    if (event.target.classList.contains("alt-address-cancel-button")) {
+                                // eslint-disable-next-line func-names
+                                addedNode.addEventListener('click', event => {
+                                    if (event.target.classList.contains('alt-address-cancel-button')) {
                                         addSwitchPrimaryNameButton();
                                     }
                                 });
