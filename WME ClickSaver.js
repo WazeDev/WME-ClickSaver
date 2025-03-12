@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2025.03.12.004
+// @version         2025.03.12.005
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -13,7 +13,6 @@
 // @grant           GM_addElement
 // @require         https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @require         https://update.greasyfork.org/scripts/509664/WME%20Utils%20-%20Bootstrap.js
-// @require         https://update.greasyfork.org/scripts/529634/1552315/WME%20MultiActionHack.js
 // ==/UserScript==
 
 /* global I18n */
