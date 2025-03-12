@@ -308,7 +308,7 @@
                         }
 
                         // Process the street
-                        const newPrimaryStreetId = getOrCreateStreet(newCityId, '').id;
+                        const newPrimaryStreetId = getOrCreateStreet('', newCityId).id;
 
                         // Update the segment with the new street
                         sdk.DataModel.Segments.updateAddress({ segmentId, primaryStreetId: newPrimaryStreetId });
