@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2025.03.12.003
+// @version         2025.03.12.004
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -386,7 +386,8 @@
         function onRoadTypeButtonClick(roadType) {
             const selection = sdk.Editing.getSelection();
 
-            WS.SDKMultiActionHack.groupActions(() => {
+            // Temporarily remove this while bugs are worked out.
+            // WS.SDKMultiActionHack.groupActions(() => {
                 selection?.ids.forEach(segmentId => {
                     // Check for same roadType is necessary to prevent an error.
                     if (sdk.DataModel.Segments.getById({ segmentId }).roadType !== roadType) {
@@ -405,7 +406,7 @@
                 } else if (roadType === roadTypeSettings.OR.id && isChecked('csClearNewORCheckBox')) {
                     setStreetAndCity(isChecked('csSetNewORCityCheckBox'));
                 }
-            });
+            // });
         }
 
         function addRoadTypeButtons() {
@@ -656,7 +657,7 @@
             const newPrimary = currentAltStreets
                 .find(street => street.id === selectedStreetId);
 
-            WS.SDKMultiActionHack.groupActions(() => {
+            // WS.SDKMultiActionHack.groupActions(() => {
                 const newPrimaryStreet = getOrCreateStreet(newPrimary.name, currentPrimaryStreet.city.id);
                 const primaryToAltStreet = getOrCreateStreet(currentPrimaryStreet.street.name, newPrimary.cityId);
 
@@ -669,7 +670,7 @@
                     primaryStreetId: newPrimaryStreet.id,
                     alternateStreetIds: newAltStreetsIds
                 }));
-            });
+            // });
         }
 
         function addSwapPedestrianButton() { // Added displayMode argument to identify compact vs. regular mode.
@@ -714,7 +715,7 @@
             const oldPrimaryStreetId = originalSegment.primaryStreetId;
             const oldAltStreetIds = originalSegment.alternateStreetIds;
 
-            WS.SDKMultiActionHack.groupActions(() => {
+            // WS.SDKMultiActionHack.groupActions(() => {
                 const newRoadType = isPedestrianTypeSegment(originalSegment) ? wmeRoadType.STREET : wmeRoadType.WALKING_TRAIL;
                 try {
                     sdk.DataModel.Segments.deleteSegment({ segmentId: originalSegment.id });
@@ -736,7 +737,7 @@
                 });
 
                 sdk.Editing.setSelection({ selection: { ids: [newSegmentId], objectType: 'segment' } });
-            });
+            // });
         }
 
         function getSelectedSegments() {
