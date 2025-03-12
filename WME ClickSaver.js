@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2025.03.12.000
+// @version         2025.03.12.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -308,14 +308,7 @@
                         }
 
                         // Process the street
-                        const newStreetProperties = {
-                            cityId: newCityId,
-                            streetName: ''
-                        };
-                        let newPrimaryStreetId = sdk.DataModel.Streets.getStreet(newStreetProperties)?.id;
-                        if (newPrimaryStreetId == null) {
-                            newPrimaryStreetId = sdk.DataModel.Streets.addStreet(newStreetProperties).id;
-                        }
+                        const newPrimaryStreetId = getOrCreateStreet('', newCityId).id;
 
                         // Update the segment with the new street
                         sdk.DataModel.Segments.updateAddress({ segmentId, primaryStreetId: newPrimaryStreetId });
