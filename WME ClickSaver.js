@@ -1087,7 +1087,7 @@
                 const center = sdk.Map.getMapCenter();
                 const output = `${center.lat.toFixed(5)}, ${center.lon.toFixed(5)}`;
                 await navigator.clipboard.writeText(output);
-                WazeWrap.Alerts.info('WME ClickSaver', `Map center coordinate copied to clipboard:\n${output}`);
+                WazeWrap.Alerts.info('WME ClickSaver', `Map center coordinate copied to clipboard:\n${output}`, false, false, 3);
                 // console.debug('Map coordinates copied to clipboard:', center);
             } catch (err) {
                 console.error('Failed to copy map center coordinates to clipboard: ', err);
@@ -1098,7 +1098,7 @@
             const options = sdk.Settings.getUserSettings();
             options.isCreateRoadsAsTwoWay = !options.isCreateRoadsAsTwoWay;
             sdk.Settings.setUserSettings(options);
-            WazeWrap.Alerts.info('WME ClickSaver', `New segments will be drawn as ${options.isCreateRoadsAsTwoWay ? 'two-way' : 'one-way'}.`);
+            WazeWrap.Alerts.info('WME ClickSaver', `New segments will be drawn as ${options.isCreateRoadsAsTwoWay ? 'two-way' : 'one-way'}.`, false, false, 3);
         }
 
         function createShortcut(shortcutId, description, callback) {
