@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2025.03.06.000
+// @version         2025.03.11.000
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -24,7 +24,7 @@
 (function main() {
     'use strict';
 
-    const updateMessage = 'Updated to use the new WME SDK. You will need to update keyboard shortcuts if you use them:<br/>- toggle 1-way/2-way segment drawing<br/>- copy map center coordinates';
+    const updateMessage = '<b>-- New --</b><br/>"Swap primary and alt street name" buttons<br/>(thanks to LihtsaltMats!).<br/><br/>Enable the option in script settings. Click the up arrow next to the alt street name you want to swap.<br/><br/>';
     const scriptName = GM_info.script.name;
     const scriptVersion = GM_info.script.version;
     const downloadUrl = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
@@ -78,6 +78,7 @@
                 showSwapDrivingWalkingButton: 'Show "Swap driving<->walking segment type" button',
                 // eslint-disable-next-line camelcase
                 showSwapDrivingWalkingButton_Title: 'Swap between driving-type and walking-type segments. WARNING! This will DELETE and recreate the segment. Nodes may need to be reconnected.',
+                showSwitchStreetNamesButton: 'Show swap primary and alternative street name button',
                 addCompactColors: 'Add colors to compact mode road type buttons'
             },
             swapSegmentTypeWarning: 'This will DELETE the segment and recreate it. Any speed data will be lost, and nodes will need to be reconnected. This message will only be displayed once. Continue?',
@@ -181,6 +182,7 @@
                 useOldRoadColors: false,
                 warnOnPedestrianTypeSwap: true,
                 addCompactColors: true,
+                addSwitchPrimaryNameButton: false,
                 shortcuts: {}
             };
             _settings = { ...defaultSettings, ...loadedSettings };
@@ -213,6 +215,7 @@
             setChecked('csAddAltCityButtonCheckBox', _settings.addAltCityButton);
             setChecked('csAddSwapPedestrianButtonCheckBox', _settings.addSwapPedestrianButton);
             setChecked('csAddCompactColorsCheckBox', _settings.addCompactColors);
+            setChecked('csAddSwitchPrimaryNameCheckBox', _settings.addSwitchPrimaryNameButton);
         }
 
         function saveSettingsToStorage() {
@@ -236,6 +239,7 @@
                 addSwapPedestrianButton: _settings.addSwapPedestrianButton,
                 warnOnPedestrianTypeSwap: _settings.warnOnPedestrianTypeSwap,
                 addCompactColors: _settings.addCompactColors,
+                addSwitchPrimaryNameButton: _settings.addSwitchPrimaryNameButton,
                 shortcuts: {}
             };
             sdk.Shortcuts.getAllShortcuts().forEach(shortcut => {
@@ -304,14 +308,7 @@
                         }
 
                         // Process the street
-                        const newStreetProperties = {
-                            cityId: newCityId,
-                            streetName: ''
-                        };
-                        let newPrimaryStreetId = sdk.DataModel.Streets.getStreet(newStreetProperties)?.id;
-                        if (newPrimaryStreetId == null) {
-                            newPrimaryStreetId = sdk.DataModel.Streets.addStreet(newStreetProperties).id;
-                        }
+                        const newPrimaryStreetId = getOrCreateStreet(newCityId, '').id;
 
                         // Update the segment with the new street
                         sdk.DataModel.Segments.updateAddress({ segmentId, primaryStreetId: newPrimaryStreetId });
@@ -596,17 +593,9 @@
         // }
 
         function addAddAltCityButton() {
-            const selection = sdk.Editing.getSelection();
-            if (!selection) return;
-
             // Only show the button if every segment has the same primary city and street.
-            if (selection.ids.length > 1) {
-                const firstStreetId = sdk.DataModel.Segments.getAddress({ segmentId: selection.ids[0] })?.street?.id;
-                if (!selection.ids
-                    .map(segmentId => sdk.DataModel.Segments.getAddress({ segmentId }))
-                    .every(addr => addr.street?.id === firstStreetId)) {
-                    return;
-                }
+            if (!selectedPrimaryStreetsAreEqual()) {
+                return;
             }
 
             const id = 'csAddAltCityButton';
@@ -621,6 +610,65 @@
                     }).text(trans.addAltCityButtonText).click(onAddAltCityButtonClick)
                 );
             }
+        }
+
+        async function addSwitchPrimaryNameButton() {
+            if (!isChecked('csAddSwitchPrimaryNameCheckBox')) {
+                return;
+            }
+            if (!selectedPrimaryStreetsAreEqual() || !selectedAltStreetsAreEqual()) {
+                return;
+            }
+
+            await waitForElem('.alt-streets-control');
+
+            // eslint-disable-next-line func-names
+            $('span.alt-street-preview').each(function() {
+                const id = 'csAddSwitchPrimaryName';
+                const altStreetId = Number($(this).attr('data-id'));
+                const switchingIconElement = $(this).find(`#${id}`);
+
+                if (streetEqualsPrimaryStreetName(altStreetId)) {
+                    switchingIconElement.remove();
+                    return;
+                }
+
+                const switchingIconExists = switchingIconElement.length > 0;
+                if (switchingIconExists) {
+                    return;
+                }
+                const switchStreetNameButton = $('<i>', {
+                    id,
+                    class: 'w-icon w-icon-arrow-up alt-edit-button'
+                });
+
+                $(this).append(switchStreetNameButton);
+                switchStreetNameButton.click(onSwitchStreetNamesClick);
+            });
+        }
+
+        function onSwitchStreetNamesClick() {
+            const selectedSegments = getSelectedSegments();
+            const currentPrimaryStreet = sdk.DataModel.Segments.getAddress({ segmentId: selectedSegments[0] });
+            const currentAltStreets = currentPrimaryStreet.altStreets.map(street => street.street);
+            const selectedStreetId = Number($(this).parent().attr('data-id'));
+            const newPrimary = currentAltStreets
+                .find(street => street.id === selectedStreetId);
+
+            WS.SDKMultiActionHack.groupActions(() => {
+                const newPrimaryStreet = getOrCreateStreet(newPrimary.name, currentPrimaryStreet.city.id);
+                const primaryToAltStreet = getOrCreateStreet(currentPrimaryStreet.street.name, newPrimary.cityId);
+
+                const newAltStreetsIds = currentAltStreets
+                    .map(alt => alt.id)
+                    .filter(id => id !== selectedStreetId);
+                newAltStreetsIds.push(primaryToAltStreet.id);
+                selectedSegments.forEach(segmentId => sdk.DataModel.Segments.updateAddress({
+                    segmentId,
+                    primaryStreetId: newPrimaryStreet.id,
+                    alternateStreetIds: newAltStreetsIds
+                }));
+            });
         }
 
         function addSwapPedestrianButton() { // Added displayMode argument to identify compact vs. regular mode.
@@ -688,6 +736,56 @@
 
                 sdk.Editing.setSelection({ selection: { ids: [newSegmentId], objectType: 'segment' } });
             });
+        }
+
+        function getSelectedSegments() {
+            const selection = sdk.Editing.getSelection();
+            if (selection?.objectType !== 'segment') {
+                return null;
+            }
+            return selection.ids;
+        }
+
+        function selectedPrimaryStreetsAreEqual() {
+            const selection = getSelectedSegments();
+            if (!selection) {
+                return false;
+            }
+            if (selection.length === 1) {
+                return true;
+            }
+
+            const firstStreetId = sdk.DataModel.Segments.getAddress({ segmentId: selection[0] })?.street?.id;
+            return selection
+                .map(segmentId => sdk.DataModel.Segments.getAddress({ segmentId }))
+                .every(addr => addr.street?.id === firstStreetId);
+        }
+
+        function selectedAltStreetsAreEqual() {
+            const selection = getSelectedSegments();
+            if (!selection) {
+                return false;
+            }
+            const addresses = selection.map(segmentId => sdk.DataModel.Segments.getAddress({ segmentId }))
+                .map(street => street.altStreets.map(altStreet => altStreet.street.id))
+                .map(addr => new Set(addr));
+
+            const firstAltAddresses = addresses[0];
+            return addresses
+                .every(address => address.size === firstAltAddresses.size && Array.from(address).every(value => firstAltAddresses.has(value)));
+        }
+
+        function getOrCreateStreet(streetName, cityId) {
+            return sdk.DataModel.Streets.getStreet({ streetName, cityId })
+                ?? sdk.DataModel.Streets.addStreet({ streetName, cityId });
+        }
+
+        function streetEqualsPrimaryStreetName(altStreetId) {
+            const selection = getSelectedSegments();
+            const primaryStreetName = selection
+                .map(segmentId => sdk.DataModel.Segments.getAddress({ segmentId }))[0].street?.name;
+            const selectedStreetName = sdk.DataModel.Streets.getById({ streetId: altStreetId })?.name;
+            return primaryStreetName === selectedStreetName;
         }
 
         /* eslint-disable no-bitwise, no-mixed-operators */
@@ -824,7 +922,12 @@
                                 'csAddSwapPedestrianButtonCheckBox',
                                 'addSwapPedestrianButton',
                                 trans.prefs.showSwapDrivingWalkingButton
-                            ) : ''
+                            ) : '',
+                            createSettingsCheckbox(
+                                'csAddSwitchPrimaryNameCheckBox',
+                                'addSwitchPrimaryNameButton',
+                                trans.prefs.showSwitchStreetNamesButton
+                            )
                         )
                     )
                 )
@@ -970,11 +1073,13 @@
         }
 
         /**
-         * This event handler is necessary to adjust the styling of the selected
-         * compact road type chip when the user changes it.
+         * This event handler is needed in the following scenarios:
+         * 1. When the user changes the selected compact road type chip to adjust its styling.
+         * 2. When the switch alternative name button is clicked.
          */
         function onSegmentsChanged() {
             addCompactRoadTypeColors();
+            addSwitchPrimaryNameButton();
         }
 
         async function onCopyCoordinatesShortcut() {
@@ -1059,6 +1164,16 @@
                             // }
                             if (addedNode.querySelector('.side-panel-section') && isChecked('csAddAltCityButtonCheckBox')) {
                                 addAddAltCityButton();
+                            }
+                            if (addedNode.querySelector('.alt-streets') && isChecked('csAddSwitchPrimaryNameCheckBox')) {
+                                // Cancel button doesn't change the datamodel so re-add the switch arrow on cancel click
+                                // eslint-disable-next-line func-names
+                                addedNode.addEventListener('click', event => {
+                                    if (event.target.classList.contains('alt-address-cancel-button')) {
+                                        addSwitchPrimaryNameButton();
+                                    }
+                                });
+                                addSwitchPrimaryNameButton();
                             }
                         }
                     }
