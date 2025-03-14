@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2025.03.12.005
+// @version         2025.03.14.000
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -1088,7 +1088,7 @@
                 const center = sdk.Map.getMapCenter();
                 const output = `${center.lat.toFixed(5)}, ${center.lon.toFixed(5)}`;
                 await navigator.clipboard.writeText(output);
-                WazeWrap.Alerts.info('WME ClickSaver', `Map center coordinate copied to clipboard:\n${output}`, false, false, 3);
+                WazeWrap.Alerts.info('WME ClickSaver', `Map center coordinate copied to clipboard:\n${output}`, false, false, 2000);
                 // console.debug('Map coordinates copied to clipboard:', center);
             } catch (err) {
                 console.error('Failed to copy map center coordinates to clipboard: ', err);
@@ -1099,7 +1099,7 @@
             const options = sdk.Settings.getUserSettings();
             options.isCreateRoadsAsTwoWay = !options.isCreateRoadsAsTwoWay;
             sdk.Settings.setUserSettings(options);
-            WazeWrap.Alerts.info('WME ClickSaver', `New segments will be drawn as ${options.isCreateRoadsAsTwoWay ? 'two-way' : 'one-way'}.`, false, false, 3);
+            WazeWrap.Alerts.info('WME ClickSaver', `New segments will be drawn as <b>${options.isCreateRoadsAsTwoWay ? 'two-way' : 'one-way'}</b>.`, false, false, 2000);
         }
 
         function createShortcut(shortcutId, description, callback) {
