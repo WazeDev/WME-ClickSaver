@@ -1133,15 +1133,15 @@
                 .map(segment => segment.roadType);
 
             const checkedRoadTypes = new Set(
-                Object.values(roadTypeSettings)
-                    .filter(setting => setting.visible)
+                _settings.roadTypeButtons
+                    .map(roadType => roadTypeSettings[roadType])
                     .map(setting => setting.id)
                     .concat(selectedRoadTypes)
                     .map(id => id.toString())
             );
 
             // eslint-disable-next-line func-names
-            $('wz-chip-select.road-type-chip-select wz-checkable-chip').each(function() {
+            $('wz-chip-select.road-type-chip-select wz-checkable-chip').each(function () {
                 const buttonValue = $(this).attr('value');
                 if (buttonValue === 'MIXED') {
                     return;
