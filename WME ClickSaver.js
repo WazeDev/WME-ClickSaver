@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2025.03.14.001
+// @version         2025.03.14.002
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -1141,7 +1141,7 @@
             );
 
             // eslint-disable-next-line func-names
-            $('wz-chip-select.road-type-chip-select wz-checkable-chip').each(function () {
+            $('wz-chip-select.road-type-chip-select wz-checkable-chip').each(function() {
                 const buttonValue = $(this).attr('value');
                 if (buttonValue === 'MIXED') {
                     return;
