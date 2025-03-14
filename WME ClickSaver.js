@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2025.03.14.001
+// @version         2025.03.14.002
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -1133,8 +1133,8 @@
                 .map(segment => segment.roadType);
 
             const checkedRoadTypes = new Set(
-                Object.values(roadTypeSettings)
-                    .filter(setting => setting.visible)
+                _settings.roadTypeButtons
+                    .map(roadType => roadTypeSettings[roadType])
                     .map(setting => setting.id)
                     .concat(selectedRoadTypes)
                     .map(id => id.toString())
