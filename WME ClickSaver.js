@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2025.03.14.000
+// @version         2025.03.14.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -24,7 +24,7 @@
 (function main() {
     'use strict';
 
-    const updateMessage = '';
+    const updateMessage = 'New: Option to hide road type buttons in Compact mode (thanks to LihtsaltMats!)';
     const scriptName = GM_info.script.name;
     const scriptVersion = GM_info.script.version;
     const downloadUrl = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
@@ -80,7 +80,7 @@
                 showSwapDrivingWalkingButton_Title: 'Swap between driving-type and walking-type segments. WARNING! This will DELETE and recreate the segment. Nodes may need to be reconnected.',
                 showSwitchStreetNamesButton: 'Show swap primary and alternative street name button',
                 addCompactColors: 'Add colors to compact mode road type buttons',
-                hideUncheckedRoadTypeButtons: 'Hide unchecked road type buttons in compact mode',
+                hideUncheckedRoadTypeButtons: 'Hide unchecked road type buttons in compact mode'
             },
             swapSegmentTypeWarning: 'This will DELETE the segment and recreate it. Any speed data will be lost, and nodes will need to be reconnected. This message will only be displayed once. Continue?',
             // eslint-disable-next-line camelcase
@@ -1134,13 +1134,14 @@
 
             const checkedRoadTypes = new Set(
                 Object.values(roadTypeSettings)
-                .filter(setting => setting.visible)
-                .map(setting => setting.id)
-                .concat(selectedRoadTypes)
-                .map(id => id.toString())
+                    .filter(setting => setting.visible)
+                    .map(setting => setting.id)
+                    .concat(selectedRoadTypes)
+                    .map(id => id.toString())
             );
 
-            $('wz-chip-select.road-type-chip-select wz-checkable-chip').each(function () {
+            // eslint-disable-next-line func-names
+            $('wz-chip-select.road-type-chip-select wz-checkable-chip').each(function() {
                 const buttonValue = $(this).attr('value');
                 if (buttonValue === 'MIXED') {
                     return;
