@@ -191,7 +191,12 @@
             setChecked('csRoadTypeButtonsCheckBox', _settings.roadButtons);
             if (_settings.roadTypeButtons) {
                 Object.keys(roadTypeSettings).forEach(roadTypeAbbr1 => {
-                    setChecked(`cs${roadTypeAbbr1}CheckBox`, _settings.roadTypeButtons.indexOf(roadTypeAbbr1) !== -1);
+                    const checked = _settings.roadTypeButtons.indexOf(roadTypeAbbr1) !== -1;
+                    const selector = `cs${roadTypeAbbr1}CheckBox`
+                    setChecked(selector, checked);
+                    if (!checked) {
+                        $(`#${selector}`).siblings('.csRadioButtonContainer').hide();
+                    }
                 });
             }
 
@@ -202,16 +207,16 @@
             }
             // setChecked('csParkingSpacesButtonsCheckBox', _settings.parkingSpacesButtons);
             // setChecked('csParkingCostButtonsCheckBox', _settings.parkingCostButtons);
-            setChecked('csSetNewPLRCityCheckBox', _settings.setNewPLRCity);
-            setChecked('csClearNewPLRCheckBox', _settings.setNewPLRStreetToNone);
-            setChecked('csSetNewPRCityCheckBox', _settings.setNewPRCity);
-            setChecked('csClearNewPRCheckBox', _settings.setNewPRStreetToNone);
-            setChecked('csSetNewRRCityCheckBox', _settings.setNewRRCity);
-            setChecked('csClearNewRRCheckBox', _settings.setNewRRStreetToNone); // added by jm6087
-            setChecked('csSetNewPBCityCheckBox', _settings.setNewPBCity);
-            setChecked('csClearNewPBCheckBox', _settings.setNewPBStreetToNone); // added by jm6087
-            setChecked('csSetNewORCityCheckBox', _settings.setNewORCity);
-            setChecked('csClearNewORCheckBox', _settings.setNewORStreetToNone);
+            setChecked('csClearNewPLRRadioButton', _settings.setNewPLRStreetToNone);
+            setChecked('csSetNewPLRCityRadioButton', _settings.setNewPLRCity);
+            setChecked('csClearNewPRRadioButton', _settings.setNewPRStreetToNone);
+            setChecked('csSetNewPRCityRadioButton', _settings.setNewPRCity);
+            setChecked('csClearNewRRRadioButton', _settings.setNewRRStreetToNone); // added by jm6087
+            setChecked('csSetNewRRCityRadioButton', _settings.setNewRRCity);
+            setChecked('csClearNewPBRadioButton', _settings.setNewPBStreetToNone); // added by jm6087
+            setChecked('csSetNewPBCityRadioButton', _settings.setNewPBCity);
+            setChecked('csClearNewORRadioButton', _settings.setNewORStreetToNone);
+            setChecked('csSetNewORCityRadioButton', _settings.setNewORCity);
             setChecked('csUseOldRoadColorsCheckBox', _settings.useOldRoadColors);
             setChecked('csAddAltCityButtonCheckBox', _settings.addAltCityButton);
             setChecked('csAddSwapPedestrianButtonCheckBox', _settings.addSwapPedestrianButton);
@@ -307,7 +312,7 @@
                         };
                         let newCityId = sdk.DataModel.Cities.getCity(newCityProperties)?.id;
                         if (newCityId == null) {
-                            newCityId = sdk.DataModel.Cities.addCity(newCityProperties);
+                            newCityId = sdk.DataModel.Cities.addCity(newCityProperties).id;
                         }
 
                         // Process the street
@@ -397,16 +402,16 @@
                 }
             });
 
-            if (roadType === roadTypeSettings.PLR.id && isChecked('csClearNewPLRCheckBox')) {
-                setStreetAndCity(isChecked('csSetNewPLRCityCheckBox'));
-            } else if (roadType === roadTypeSettings.PR.id && isChecked('csClearNewPRCheckBox')) {
-                setStreetAndCity(isChecked('csSetNewPRCityCheckBox'));
-            } else if (roadType === roadTypeSettings.RR.id && isChecked('csClearNewRRCheckBox')) {
-                setStreetAndCity(isChecked('csSetNewRRCityCheckBox'));
-            } else if (roadType === roadTypeSettings.PB && isChecked('csClearNewPBCheckBox')) {
-                setStreetAndCity(isChecked('csSetNewPBCityCheckBox'));
-            } else if (roadType === roadTypeSettings.OR.id && isChecked('csClearNewORCheckBox')) {
-                setStreetAndCity(isChecked('csSetNewORCityCheckBox'));
+            if (roadType === roadTypeSettings.PLR.id) {
+                setStreetAndCity(isChecked('csSetNewPLRCityRadioButton'));
+            } else if (roadType === roadTypeSettings.PR.id) {
+                setStreetAndCity(isChecked('csSetNewPRCityRadioButton'));
+            } else if (roadType === roadTypeSettings.RR.id) {
+                setStreetAndCity(isChecked('csSetNewRRCityRadioButton'));
+            } else if (roadType === roadTypeSettings.PB) {
+                setStreetAndCity(isChecked('csSetNewPBCityRadioButton'));
+            } else if (roadType === roadTypeSettings.OR.id) {
+                setStreetAndCity(isChecked('csSetNewORCityRadioButton'));
             }
             // });
         }
@@ -845,9 +850,21 @@
         }
 
         function createSettingsCheckbox(id, settingName, labelText, titleText, divCss, labelCss, optionalAttributes) {
+            return createSettingsInput('checkbox', id, settingName, labelText, titleText, divCss, labelCss, null, optionalAttributes);
+        }
+
+        function createSettingsRadioButton(id, settingName, labelText, titleText, divCss, labelCss, groupName, optionalAttributes) {
+            return createSettingsInput('radio', id, settingName, labelText, titleText, divCss, labelCss, groupName, optionalAttributes);
+        }
+
+        function createSettingsInput(type, id, settingName, labelText, titleText, divCss, labelCss, groupName, optionalAttributes) {
             const $container = $('<div>', { class: 'controls-container' });
             const $input = $('<input>', {
-                type: 'checkbox', class: 'csSettingsCheckBox', name: id, id, 'data-setting-name': settingName
+                type: type,
+                class: 'csSettingsControl',
+                name: type === 'radio' ? groupName : id,
+                id,
+                'data-setting-name': settingName
             }).appendTo($container);
             const $label = $('<label>', { for: id }).text(labelText).appendTo($container);
             // TODO css
@@ -868,31 +885,34 @@
                 const roadType = roadTypeSettings[roadTypeAbbr];
                 const id = `cs${roadTypeAbbr}CheckBox`;
                 const title = I18n.t('segment.road_types')[roadType.id];
-                $roadTypesDiv.append(
-                    createSettingsCheckbox(id, 'roadType', title, null, null, null, {
-                        'data-road-type': roadTypeAbbr
-                    })
-                );
+                const $roadTypeContainer = createSettingsCheckbox(id, 'roadType', title, null, null, null, {
+                    'data-road-type': roadTypeAbbr
+                });
+                $roadTypesDiv.append($roadTypeContainer);
                 if (['PLR', 'PR', 'RR', 'PB', 'OR'].includes(roadTypeAbbr)) { // added RR & PB by jm6087
-                    $roadTypesDiv.append(
+                    const $radioButtonContainer = $('<div>', { class: 'csRadioButtonContainer' });
+                    $radioButtonContainer.append(
                         // TODO css
-                        createSettingsCheckbox(
-                            `csClearNew${roadTypeAbbr}CheckBox`,
+                        createSettingsRadioButton(
+                            `csClearNew${roadTypeAbbr}RadioButton`,
                             `setNew${roadTypeAbbr}StreetToNone`,
                             trans.prefs.setStreetCityToNone,
                             trans.prefs.setStreetCityToNone_Title,
                             { paddingLeft: '20px', marginRight: '4px' },
-                            { fontStyle: 'italic' }
+                            { fontStyle: 'italic' },
+                            `cs${roadTypeAbbr}SettingGroup`
                         ),
-                        createSettingsCheckbox(
-                            `csSetNew${roadTypeAbbr}CityCheckBox`,
+                        createSettingsRadioButton(
+                            `csSetNew${roadTypeAbbr}CityRadioButton`,
                             `setNew${roadTypeAbbr}City`,
                             trans.prefs.setCityToConnectedSegCity,
                             '',
-                            { paddingLeft: '30px', marginRight: '4px' },
-                            { fontStyle: 'italic' }
+                            { paddingLeft: '20px', marginRight: '4px' },
+                            { fontStyle: 'italic' },
+                            `cs${roadTypeAbbr}SettingGroup`
                         )
                     );
+                    $roadTypeContainer.append($radioButtonContainer);
                 }
             });
 
@@ -967,9 +987,16 @@
                 }
                 saveSettingsToStorage();
             });
-            $('.csSettingsCheckBox').change(function onSettingsCheckChanged() {
+            $('.csSettingsControl').change(function onSettingsCheckChanged() {
                 const { checked } = this;
                 const settingName = $(this).data('setting-name');
+
+                if (!checked) {
+                    $(this).siblings('.csRadioButtonContainer').hide();
+                } else {
+                    $(this).siblings('.csRadioButtonContainer').show();
+                }
+
                 if (settingName === 'roadType') {
                     const roadType = $(this).data('road-type');
                     const array = _settings.roadTypeButtons;
@@ -980,7 +1007,18 @@
                         array.splice(index, 1);
                     }
                 } else {
-                    _settings[settingName] = checked;
+                    const roadTypeAbbr = $(this).parent().parent().siblings().attr('data-road-type');
+                    if (settingName.includes('setNew')) {
+                        _settings[settingName] = checked;
+
+                        if (settingName.endsWith('StreetToNone')) {
+                            _settings[`setNew${roadTypeAbbr}City`] = !checked;
+                        } else {
+                            _settings[`setNew${roadTypeAbbr}StreetToNone`] = !checked;
+                        }
+                    } else {
+                        _settings[settingName] = checked;
+                    }
                 }
                 saveSettingsToStorage();
             });
