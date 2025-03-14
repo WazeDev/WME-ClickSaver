@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2025.03.14.000
+// @version         2025.03.14.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -24,7 +24,7 @@
 (function main() {
     'use strict';
 
-    const updateMessage = '';
+    const updateMessage = 'New: Option to hide road type buttons in Compact mode (thanks to LihtsaltMats!)';
     const scriptName = GM_info.script.name;
     const scriptVersion = GM_info.script.version;
     const downloadUrl = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
@@ -79,7 +79,8 @@
                 // eslint-disable-next-line camelcase
                 showSwapDrivingWalkingButton_Title: 'Swap between driving-type and walking-type segments. WARNING! This will DELETE and recreate the segment. Nodes may need to be reconnected.',
                 showSwitchStreetNamesButton: 'Show swap primary and alternative street name button',
-                addCompactColors: 'Add colors to compact mode road type buttons'
+                addCompactColors: 'Add colors to compact mode road type buttons',
+                hideUncheckedRoadTypeButtons: 'Hide unchecked road type buttons in compact mode'
             },
             swapSegmentTypeWarning: 'This will DELETE the segment and recreate it. Any speed data will be lost, and nodes will need to be reconnected. This message will only be displayed once. Continue?',
             // eslint-disable-next-line camelcase
@@ -216,6 +217,7 @@
             setChecked('csAddSwapPedestrianButtonCheckBox', _settings.addSwapPedestrianButton);
             setChecked('csAddCompactColorsCheckBox', _settings.addCompactColors);
             setChecked('csAddSwitchPrimaryNameCheckBox', _settings.addSwitchPrimaryNameButton);
+            setChecked('csHideUncheckedRoadTypeButtonsCheckBox', _settings.hideUncheckedRoadTypeButtons);
         }
 
         function saveSettingsToStorage() {
@@ -240,6 +242,7 @@
                 warnOnPedestrianTypeSwap: _settings.warnOnPedestrianTypeSwap,
                 addCompactColors: _settings.addCompactColors,
                 addSwitchPrimaryNameButton: _settings.addSwitchPrimaryNameButton,
+                hideUncheckedRoadTypeButtons: _settings.hideUncheckedRoadTypeButtons,
                 shortcuts: {}
             };
             sdk.Shortcuts.getAllShortcuts().forEach(shortcut => {
@@ -387,24 +390,24 @@
 
             // Temporarily remove this while bugs are worked out.
             // WS.SDKMultiActionHack.groupActions(() => {
-                selection?.ids.forEach(segmentId => {
-                    // Check for same roadType is necessary to prevent an error.
-                    if (sdk.DataModel.Segments.getById({ segmentId }).roadType !== roadType) {
-                        sdk.DataModel.Segments.updateSegment({ segmentId, roadType });
-                    }
-                });
-
-                if (roadType === roadTypeSettings.PLR.id && isChecked('csClearNewPLRCheckBox')) {
-                    setStreetAndCity(isChecked('csSetNewPLRCityCheckBox'));
-                } else if (roadType === roadTypeSettings.PR.id && isChecked('csClearNewPRCheckBox')) {
-                    setStreetAndCity(isChecked('csSetNewPRCityCheckBox'));
-                } else if (roadType === roadTypeSettings.RR.id && isChecked('csClearNewRRCheckBox')) {
-                    setStreetAndCity(isChecked('csSetNewRRCityCheckBox'));
-                } else if (roadType === roadTypeSettings.PB && isChecked('csClearNewPBCheckBox')) {
-                    setStreetAndCity(isChecked('csSetNewPBCityCheckBox'));
-                } else if (roadType === roadTypeSettings.OR.id && isChecked('csClearNewORCheckBox')) {
-                    setStreetAndCity(isChecked('csSetNewORCityCheckBox'));
+            selection?.ids.forEach(segmentId => {
+                // Check for same roadType is necessary to prevent an error.
+                if (sdk.DataModel.Segments.getById({ segmentId }).roadType !== roadType) {
+                    sdk.DataModel.Segments.updateSegment({ segmentId, roadType });
                 }
+            });
+
+            if (roadType === roadTypeSettings.PLR.id && isChecked('csClearNewPLRCheckBox')) {
+                setStreetAndCity(isChecked('csSetNewPLRCityCheckBox'));
+            } else if (roadType === roadTypeSettings.PR.id && isChecked('csClearNewPRCheckBox')) {
+                setStreetAndCity(isChecked('csSetNewPRCityCheckBox'));
+            } else if (roadType === roadTypeSettings.RR.id && isChecked('csClearNewRRCheckBox')) {
+                setStreetAndCity(isChecked('csSetNewRRCityCheckBox'));
+            } else if (roadType === roadTypeSettings.PB && isChecked('csClearNewPBCheckBox')) {
+                setStreetAndCity(isChecked('csSetNewPBCityCheckBox'));
+            } else if (roadType === roadTypeSettings.OR.id && isChecked('csClearNewORCheckBox')) {
+                setStreetAndCity(isChecked('csSetNewORCityCheckBox'));
+            }
             // });
         }
 
@@ -657,18 +660,18 @@
                 .find(street => street.id === selectedStreetId);
 
             // WS.SDKMultiActionHack.groupActions(() => {
-                const newPrimaryStreet = getOrCreateStreet(newPrimary.name, currentPrimaryStreet.city.id);
-                const primaryToAltStreet = getOrCreateStreet(currentPrimaryStreet.street.name, newPrimary.cityId);
+            const newPrimaryStreet = getOrCreateStreet(newPrimary.name, currentPrimaryStreet.city.id);
+            const primaryToAltStreet = getOrCreateStreet(currentPrimaryStreet.street.name, newPrimary.cityId);
 
-                const newAltStreetsIds = currentAltStreets
-                    .map(alt => alt.id)
-                    .filter(id => id !== selectedStreetId);
-                newAltStreetsIds.push(primaryToAltStreet.id);
-                selectedSegments.forEach(segmentId => sdk.DataModel.Segments.updateAddress({
-                    segmentId,
-                    primaryStreetId: newPrimaryStreet.id,
-                    alternateStreetIds: newAltStreetsIds
-                }));
+            const newAltStreetsIds = currentAltStreets
+                .map(alt => alt.id)
+                .filter(id => id !== selectedStreetId);
+            newAltStreetsIds.push(primaryToAltStreet.id);
+            selectedSegments.forEach(segmentId => sdk.DataModel.Segments.updateAddress({
+                segmentId,
+                primaryStreetId: newPrimaryStreet.id,
+                alternateStreetIds: newAltStreetsIds
+            }));
             // });
         }
 
@@ -715,27 +718,27 @@
             const oldAltStreetIds = originalSegment.alternateStreetIds;
 
             // WS.SDKMultiActionHack.groupActions(() => {
-                const newRoadType = isPedestrianTypeSegment(originalSegment) ? wmeRoadType.STREET : wmeRoadType.WALKING_TRAIL;
-                try {
-                    sdk.DataModel.Segments.deleteSegment({ segmentId: originalSegment.id });
-                } catch (ex) {
-                    if (ex instanceof sdk.Errors.InvalidStateError) {
-                        WazeWrap.Alerts.error(scriptName, 'Something prevents this segment from being deleted.');
-                        return;
-                    }
+            const newRoadType = isPedestrianTypeSegment(originalSegment) ? wmeRoadType.STREET : wmeRoadType.WALKING_TRAIL;
+            try {
+                sdk.DataModel.Segments.deleteSegment({ segmentId: originalSegment.id });
+            } catch (ex) {
+                if (ex instanceof sdk.Errors.InvalidStateError) {
+                    WazeWrap.Alerts.error(scriptName, 'Something prevents this segment from being deleted.');
+                    return;
                 }
+            }
 
-                // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
+            // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
 
-                const newSegmentId = sdk.DataModel.Segments.addSegment({ geometry: originalSegment.geometry, roadType: newRoadType });
+            const newSegmentId = sdk.DataModel.Segments.addSegment({ geometry: originalSegment.geometry, roadType: newRoadType });
 
-                sdk.DataModel.Segments.updateAddress({
-                    segmentId: newSegmentId,
-                    primaryStreetId: oldPrimaryStreetId,
-                    alternateStreetIds: oldAltStreetIds
-                });
+            sdk.DataModel.Segments.updateAddress({
+                segmentId: newSegmentId,
+                primaryStreetId: oldPrimaryStreetId,
+                alternateStreetIds: oldAltStreetIds
+            });
 
-                sdk.Editing.setSelection({ selection: { ids: [newSegmentId], objectType: 'segment' } });
+            sdk.Editing.setSelection({ selection: { ids: [newSegmentId], objectType: 'segment' } });
             // });
         }
 
@@ -910,6 +913,11 @@
                                 'csAddCompactColorsCheckBox',
                                 'addCompactColors',
                                 trans.prefs.addCompactColors
+                            ),
+                            createSettingsCheckbox(
+                                'csHideUncheckedRoadTypeButtonsCheckBox',
+                                'hideUncheckedRoadTypeButtons',
+                                trans.prefs.hideUncheckedRoadTypeButtons
                             )
                         ),
                         $('<label>', { class: 'cs-group-label' }).text(trans.prefs.timeSaversGroup),
@@ -1115,6 +1123,35 @@
             });
         }
 
+        function hideUncheckedRoadTypeButtons() {
+            const selection = getSelectedSegments();
+            if (!selection) {
+                return;
+            }
+            const selectedRoadTypes = selection
+                .map(segmentId => sdk.DataModel.Segments.getById({ segmentId }))
+                .map(segment => segment.roadType);
+
+            const checkedRoadTypes = new Set(
+                Object.values(roadTypeSettings)
+                    .filter(setting => setting.visible)
+                    .map(setting => setting.id)
+                    .concat(selectedRoadTypes)
+                    .map(id => id.toString())
+            );
+
+            // eslint-disable-next-line func-names
+            $('wz-chip-select.road-type-chip-select wz-checkable-chip').each(function() {
+                const buttonValue = $(this).attr('value');
+                if (buttonValue === 'MIXED') {
+                    return;
+                }
+                if (!checkedRoadTypes.has(buttonValue)) {
+                    $(this).parent().parent().remove();
+                }
+            });
+        }
+
         async function init() {
             logDebug('Initializing...');
 
@@ -1151,9 +1188,14 @@
                             }
                             // Checks to identify if this is a segment in compact display mode.
                             if (addedNode.querySelector(roadTypeChipSelector)) {
-                                if (isChecked('csRoadTypeButtonsCheckBox')) addCompactRoadTypeChangeEvents();
+                                if (isChecked('csRoadTypeButtonsCheckBox')) {
+                                    addCompactRoadTypeChangeEvents();
+                                }
                                 if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
                                     addSwapPedestrianButton();
+                                }
+                                if (isChecked('csHideUncheckedRoadTypeButtonsCheckBox')) {
+                                    hideUncheckedRoadTypeButtons();
                                 }
                             }
                             // if (addedNode.querySelector(PARKING_SPACES_DROPDOWN_SELECTOR) && isChecked('csParkingSpacesButtonsCheckBox')) {
