@@ -65,6 +65,7 @@
                 dropdownHelperGroup: 'DROPDOWN HELPERS',
                 roadTypeButtons: 'Add road type buttons',
                 useOldRoadColors: 'Use old road colors (requires refresh)',
+                setCityToDefault: 'Keep default value',
                 setStreetCityToNone: 'Set Street/City to None (new seg\'s only)',
                 // eslint-disable-next-line camelcase
                 setStreetCityToNone_Title: 'NOTE: Only works if connected directly or indirectly'
@@ -86,6 +87,12 @@
             // eslint-disable-next-line camelcase
             swapSegmentTypeError_Paths: 'Paths must be removed from segment before changing between driving and pedestrian road type.',
             addAltCityButtonText: 'Add alt city'
+        };
+
+        const roadTypeDropdownOption = {
+            DEFAULT: 'DEFAULT',
+            NONE: 'NONE',
+            CONNECTED_CITY: 'CONNECTED_CITY'
         };
 
         // Road types defined in the WME SDK documentation
@@ -168,34 +175,30 @@
                 roadTypeButtons: ['St', 'PS', 'mH', 'MH', 'Fw', 'Rmp', 'PLR', 'PR', 'PB'],
                 parkingCostButtons: true,
                 parkingSpacesButtons: true,
-                setNewPLRStreetToNone: true,
-                setNewPLRCity: true,
-                setNewPRStreetToNone: false,
-                setNewPRCity: false,
-                setNewRRStreetToNone: true, // added by jm6087
-                setNewRRCity: false, // added by jm6087
-                setNewPBStreetToNone: true, // added by jm6087
-                setNewPBCity: true, // added by jm6087
-                setNewORStreetToNone: false,
-                setNewORCity: false,
+                setNewPLRCity: roadTypeDropdownOption.DEFAULT,
+                setNewPRCity: roadTypeDropdownOption.DEFAULT,
+                setNewRRCity: roadTypeDropdownOption.DEFAULT,
+                setNewPBCity: roadTypeDropdownOption.DEFAULT,
+                setNewORCity: roadTypeDropdownOption.DEFAULT,
                 addAltCityButton: true,
                 addSwapPedestrianButton: false,
                 useOldRoadColors: false,
                 warnOnPedestrianTypeSwap: true,
                 addCompactColors: true,
                 addSwitchPrimaryNameButton: false,
+                hideUncheckedRoadTypeButtons: false,
                 shortcuts: {}
             };
             _settings = { ...defaultSettings, ...loadedSettings };
 
             setChecked('csRoadTypeButtonsCheckBox', _settings.roadButtons);
             if (_settings.roadTypeButtons) {
-                Object.keys(roadTypeSettings).forEach(roadTypeAbbr1 => {
-                    const checked = _settings.roadTypeButtons.indexOf(roadTypeAbbr1) !== -1;
-                    const selector = `cs${roadTypeAbbr1}CheckBox`
+                Object.keys(roadTypeSettings).forEach(roadTypeAbbr => {
+                    const checked = _settings.roadTypeButtons.indexOf(roadTypeAbbr) !== -1;
+                    const selector = `cs${roadTypeAbbr}CheckBox`;
                     setChecked(selector, checked);
                     if (!checked) {
-                        $(`#${selector}`).siblings('.csRadioButtonContainer').hide();
+                        $(`#${selector}`).siblings('.csDropdownContainer').hide();
                     }
                 });
             }
@@ -207,22 +210,21 @@
             }
             // setChecked('csParkingSpacesButtonsCheckBox', _settings.parkingSpacesButtons);
             // setChecked('csParkingCostButtonsCheckBox', _settings.parkingCostButtons);
-            setChecked('csClearNewPLRRadioButton', _settings.setNewPLRStreetToNone);
-            setChecked('csSetNewPLRCityRadioButton', _settings.setNewPLRCity);
-            setChecked('csClearNewPRRadioButton', _settings.setNewPRStreetToNone);
-            setChecked('csSetNewPRCityRadioButton', _settings.setNewPRCity);
-            setChecked('csClearNewRRRadioButton', _settings.setNewRRStreetToNone); // added by jm6087
-            setChecked('csSetNewRRCityRadioButton', _settings.setNewRRCity);
-            setChecked('csClearNewPBRadioButton', _settings.setNewPBStreetToNone); // added by jm6087
-            setChecked('csSetNewPBCityRadioButton', _settings.setNewPBCity);
-            setChecked('csClearNewORRadioButton', _settings.setNewORStreetToNone);
-            setChecked('csSetNewORCityRadioButton', _settings.setNewORCity);
+            setDropdownValue('csSetPLRCityDropdown', _settings.setNewPLRCity);
+            setDropdownValue('csSetPRCityDropdown', _settings.setNewPRCity);
+            setDropdownValue('csSetRRCityDropdown', _settings.setNewRRCity);
+            setDropdownValue('csSetPBCityDropdown', _settings.setNewPBCity);
+            setDropdownValue('csSetORCityDropdown', _settings.setNewORCity);
             setChecked('csUseOldRoadColorsCheckBox', _settings.useOldRoadColors);
             setChecked('csAddAltCityButtonCheckBox', _settings.addAltCityButton);
             setChecked('csAddSwapPedestrianButtonCheckBox', _settings.addSwapPedestrianButton);
             setChecked('csAddCompactColorsCheckBox', _settings.addCompactColors);
             setChecked('csAddSwitchPrimaryNameCheckBox', _settings.addSwitchPrimaryNameButton);
             setChecked('csHideUncheckedRoadTypeButtonsCheckBox', _settings.hideUncheckedRoadTypeButtons);
+        }
+
+        function setDropdownValue(dropdownId, value) {
+            $(`#${dropdownId}`).val(value);
         }
 
         function saveSettingsToStorage() {
@@ -232,15 +234,10 @@
                 parkingCostButtons: _settings.parkingCostButtons,
                 parkingSpacesButtons: _settings.parkingSpacesButtons,
                 setNewPLRCity: _settings.setNewPLRCity,
-                setNewPLRStreetToNone: _settings.setNewPLRStreetToNone,
                 setNewPRCity: _settings.setNewPRCity,
-                setNewPRStreetToNone: _settings.setNewPRStreetToNone,
                 setNewRRCity: _settings.setNewRRCity,
-                setNewRRStreetToNone: _settings.setNewRRStreetToNone,
                 setNewPBCity: _settings.setNewPBCity,
-                setNewPBStreetToNone: _settings.setNewPBStreetToNone,
                 setNewORCity: _settings.setNewORCity,
-                setNewORStreetToNone: _settings.setNewORStreetToNone,
                 useOldRoadColors: _settings.useOldRoadColors,
                 addAltCityButton: _settings.addAltCityButton,
                 addSwapPedestrianButton: _settings.addSwapPedestrianButton,
@@ -402,17 +399,19 @@
                 }
             });
 
-            if (roadType === roadTypeSettings.PLR.id) {
-                setStreetAndCity(isChecked('csSetNewPLRCityRadioButton'));
-            } else if (roadType === roadTypeSettings.PR.id) {
-                setStreetAndCity(isChecked('csSetNewPRCityRadioButton'));
-            } else if (roadType === roadTypeSettings.RR.id) {
-                setStreetAndCity(isChecked('csSetNewRRCityRadioButton'));
-            } else if (roadType === roadTypeSettings.PB) {
-                setStreetAndCity(isChecked('csSetNewPBCityRadioButton'));
-            } else if (roadType === roadTypeSettings.OR.id) {
-                setStreetAndCity(isChecked('csSetNewORCityRadioButton'));
+            const roadTypeSettingsMap = {
+                [roadTypeSettings.PLR.id]: _settings.setNewPLRCity,
+                [roadTypeSettings.PR.id]: _settings.setNewPRCity,
+                [roadTypeSettings.RR.id]: _settings.setNewRRCity,
+                [roadTypeSettings.PB.id]: _settings.setNewPBCity,
+                [roadTypeSettings.OR.id]: _settings.setNewORCity,
+            };
+            const setting = roadTypeSettingsMap[roadType];
+
+            if (!setting || setting === roadTypeDropdownOption.DEFAULT) {
+                return;
             }
+            setStreetAndCity(setting === roadTypeDropdownOption.CONNECTED_CITY);
             // });
         }
 
@@ -849,20 +848,34 @@
             $(`<style type="text/css">${css}</style>`).appendTo('head');
         }
 
+        function createSettingsDropdown(id, settingName, titleText, divCss, options, optionalAttributes) {
+            const $container = $('<div>', { class: 'controls-container' });
+            const $select = $('<select>', {
+                class: 'csSettingsControl',
+                id,
+                'data-setting-name': settingName
+            }).appendTo($container);
+            // TODO css
+            if (divCss) $container.css(divCss);
+            // TODO css
+            if (titleText) $container.attr({ title: titleText });
+            if (optionalAttributes) $select.attr(optionalAttributes);
+            options.forEach(option => {
+                $select.append($('<option>', {
+                    value: option.value,
+                    text: option.text
+                }));
+            });
+
+            return $container;
+        }
+
         function createSettingsCheckbox(id, settingName, labelText, titleText, divCss, labelCss, optionalAttributes) {
-            return createSettingsInput('checkbox', id, settingName, labelText, titleText, divCss, labelCss, null, optionalAttributes);
-        }
-
-        function createSettingsRadioButton(id, settingName, labelText, titleText, divCss, labelCss, groupName, optionalAttributes) {
-            return createSettingsInput('radio', id, settingName, labelText, titleText, divCss, labelCss, groupName, optionalAttributes);
-        }
-
-        function createSettingsInput(type, id, settingName, labelText, titleText, divCss, labelCss, groupName, optionalAttributes) {
             const $container = $('<div>', { class: 'controls-container' });
             const $input = $('<input>', {
-                type: type,
+                type: 'checkbox',
                 class: 'csSettingsControl',
-                name: type === 'radio' ? groupName : id,
+                name: id,
                 id,
                 'data-setting-name': settingName
             }).appendTo($container);
@@ -890,29 +903,23 @@
                 });
                 $roadTypesDiv.append($roadTypeContainer);
                 if (['PLR', 'PR', 'RR', 'PB', 'OR'].includes(roadTypeAbbr)) { // added RR & PB by jm6087
-                    const $radioButtonContainer = $('<div>', { class: 'csRadioButtonContainer' });
-                    $radioButtonContainer.append(
+                    const $dropdownContainer = $('<div>', { class: 'csDropdownContainer' });
+                    const options = [
+                        { value: roadTypeDropdownOption.DEFAULT, text: trans.prefs.setCityToDefault },
+                        { value: roadTypeDropdownOption.NONE, text: trans.prefs.setStreetCityToNone },
+                        { value: roadTypeDropdownOption.CONNECTED_CITY, text: trans.prefs.setCityToConnectedSegCity }
+                    ];
+                    $dropdownContainer.append(
                         // TODO css
-                        createSettingsRadioButton(
-                            `csClearNew${roadTypeAbbr}RadioButton`,
-                            `setNew${roadTypeAbbr}StreetToNone`,
-                            trans.prefs.setStreetCityToNone,
-                            trans.prefs.setStreetCityToNone_Title,
-                            { paddingLeft: '20px', marginRight: '4px' },
-                            { fontStyle: 'italic' },
-                            `cs${roadTypeAbbr}SettingGroup`
-                        ),
-                        createSettingsRadioButton(
-                            `csSetNew${roadTypeAbbr}CityRadioButton`,
+                        createSettingsDropdown(
+                            `csSet${roadTypeAbbr}CityDropdown`,
                             `setNew${roadTypeAbbr}City`,
-                            trans.prefs.setCityToConnectedSegCity,
                             '',
                             { paddingLeft: '20px', marginRight: '4px' },
-                            { fontStyle: 'italic' },
-                            `cs${roadTypeAbbr}SettingGroup`
+                            options
                         )
                     );
-                    $roadTypeContainer.append($radioButtonContainer);
+                    $roadTypeContainer.append($dropdownContainer);
                 }
             });
 
@@ -989,16 +996,12 @@
             });
             $('.csSettingsControl').change(function onSettingsCheckChanged() {
                 const { checked } = this;
-                const settingName = $(this).data('setting-name');
-
-                if (!checked) {
-                    $(this).siblings('.csRadioButtonContainer').hide();
-                } else {
-                    $(this).siblings('.csRadioButtonContainer').show();
-                }
+                const $this = $(this);
+                const settingName = $this.data('setting-name');
+                $this.siblings('.csDropdownContainer').toggle(checked);
 
                 if (settingName === 'roadType') {
-                    const roadType = $(this).data('road-type');
+                    const roadType = $this.data('road-type');
                     const array = _settings.roadTypeButtons;
                     const index = array.indexOf(roadType);
                     if (checked && index === -1) {
@@ -1007,15 +1010,8 @@
                         array.splice(index, 1);
                     }
                 } else {
-                    const roadTypeAbbr = $(this).parent().parent().siblings().attr('data-road-type');
-                    if (settingName.includes('setNew')) {
-                        _settings[settingName] = checked;
-
-                        if (settingName.endsWith('StreetToNone')) {
-                            _settings[`setNew${roadTypeAbbr}City`] = !checked;
-                        } else {
-                            _settings[`setNew${roadTypeAbbr}StreetToNone`] = !checked;
-                        }
+                    if (settingName.includes('setNew') && settingName.includes('City')) {
+                        _settings[settingName] = $this.val();
                     } else {
                         _settings[settingName] = checked;
                     }
