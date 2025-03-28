@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2025.03.14.002
+// @version         2025.03.28.000
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -24,7 +24,7 @@
 (function main() {
     'use strict';
 
-    const updateMessage = 'New: Option to hide road type buttons in Compact mode (thanks to LihtsaltMats!)';
+    const updateMessage = '';
     const scriptName = GM_info.script.name;
     const scriptVersion = GM_info.script.version;
     const downloadUrl = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
@@ -412,11 +412,13 @@
         }
 
         function addRoadTypeButtons() {
-            const segmentId = sdk.Editing.getSelection()?.ids[0];
+            const selection = sdk.Editing.getSelection();
+            if (selection?.objectType !== 'segment') return;
+            const segmentId = selection.ids[0];
             if (segmentId == null) return;
-            const sdkSeg = sdk.DataModel.Segments.getById({ segmentId });
-            if (!sdkSeg) return;
-            const isPed = isPedestrianTypeSegment(sdkSeg);
+            const segment = sdk.DataModel.Segments.getById({ segmentId });
+            if (!segment) return;
+            const isPed = isPedestrianTypeSegment(segment);
             const $dropDown = $(roadTypeDropdownSelector);
             $('#csRoadTypeButtonsContainer').remove();
             const $container = $('<div>', { id: 'csRoadTypeButtonsContainer', class: 'cs-rt-buttons-container', style: 'display: inline-table;' });
