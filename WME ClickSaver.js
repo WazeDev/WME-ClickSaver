@@ -399,20 +399,21 @@
                 }
             });
 
-            const roadTypeSettingsMap = {
-                [roadTypeSettings.PLR.id]: _settings.setNewPLRCity,
-                [roadTypeSettings.PR.id]: _settings.setNewPRCity,
-                [roadTypeSettings.RR.id]: _settings.setNewRRCity,
-                [roadTypeSettings.PB.id]: _settings.setNewPBCity,
-                [roadTypeSettings.OR.id]: _settings.setNewORCity,
-            };
-            const setting = roadTypeSettingsMap[roadType];
+            if (_settings.roadTypeButtons.map(rtb => roadTypeSettings[rtb].id).includes(roadType)) {
+                const roadTypeSettingsMap = {
+                    [roadTypeSettings.PLR.id]: _settings.setNewPLRCity,
+                    [roadTypeSettings.PR.id]: _settings.setNewPRCity,
+                    [roadTypeSettings.RR.id]: _settings.setNewRRCity,
+                    [roadTypeSettings.PB.id]: _settings.setNewPBCity,
+                    [roadTypeSettings.OR.id]: _settings.setNewORCity
+                };
+                const setting = roadTypeSettingsMap[roadType];
 
-            if (!setting || setting === roadTypeDropdownOption.DEFAULT) {
-                return;
+                if (!setting || setting === roadTypeDropdownOption.DEFAULT) {
+                    return;
+                }
+                setStreetAndCity(setting === roadTypeDropdownOption.CONNECTED_CITY);
             }
-            setStreetAndCity(setting === roadTypeDropdownOption.CONNECTED_CITY);
-            // });
         }
 
         function addRoadTypeButtons() {
@@ -853,6 +854,8 @@
             const $select = $('<select>', {
                 class: 'csSettingsControl',
                 id,
+                // TODO css
+                style: 'font-size: 12px; border-color: #cbcbcb;border-radius: 10px',
                 'data-setting-name': settingName
             }).appendTo($container);
             // TODO css
@@ -1009,12 +1012,10 @@
                     } else if (!checked && index !== -1) {
                         array.splice(index, 1);
                     }
+                } else if (settingName.includes('setNew') && settingName.includes('City')) {
+                    _settings[settingName] = $this.val();
                 } else {
-                    if (settingName.includes('setNew') && settingName.includes('City')) {
-                        _settings[settingName] = $this.val();
-                    } else {
-                        _settings[settingName] = checked;
-                    }
+                    _settings[settingName] = checked;
                 }
                 saveSettingsToStorage();
             });
