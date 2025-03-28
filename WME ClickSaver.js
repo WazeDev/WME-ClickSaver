@@ -855,7 +855,7 @@
                 class: 'csSettingsControl',
                 id,
                 // TODO css
-                style: 'font-size: 12px; border-color: #cbcbcb;border-radius: 10px',
+                style: 'font-size: 12px; border-color: #cbcbcb;border-radius: 10px; white-space: nowrap; width: 100%; text-overflow: ellipsis;',
                 'data-setting-name': settingName
             }).appendTo($container);
             // TODO css
