@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2025.03.14.002
+// @version         2025.03.28.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -24,7 +24,7 @@
 (function main() {
     'use strict';
 
-    const updateMessage = 'New: Option to hide road type buttons in Compact mode (thanks to LihtsaltMats!)';
+    const updateMessage = '<b>New</b><br>• Changed "Set street/city to..." script options from checkboxes to simpler dropdowns (thanks to LihtsaltMats!)<br><br>NOTE: you will need to set these options again.<br><br>';
     const scriptName = GM_info.script.name;
     const scriptVersion = GM_info.script.version;
     const downloadUrl = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
