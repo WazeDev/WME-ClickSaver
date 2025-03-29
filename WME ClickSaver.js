@@ -417,11 +417,13 @@
         }
 
         function addRoadTypeButtons() {
-            const segmentId = sdk.Editing.getSelection()?.ids[0];
+            const selection = sdk.Editing.getSelection();
+            if (selection?.objectType !== 'segment') return;
+            const segmentId = selection.ids[0];
             if (segmentId == null) return;
-            const sdkSeg = sdk.DataModel.Segments.getById({ segmentId });
-            if (!sdkSeg) return;
-            const isPed = isPedestrianTypeSegment(sdkSeg);
+            const segment = sdk.DataModel.Segments.getById({ segmentId });
+            if (!segment) return;
+            const isPed = isPedestrianTypeSegment(segment);
             const $dropDown = $(roadTypeDropdownSelector);
             $('#csRoadTypeButtonsContainer').remove();
             const $container = $('<div>', { id: 'csRoadTypeButtonsContainer', class: 'cs-rt-buttons-container', style: 'display: inline-table;' });
