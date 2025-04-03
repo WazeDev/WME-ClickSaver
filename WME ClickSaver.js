@@ -610,16 +610,23 @@
             }
 
             const id = 'csAddAltCityButton';
-            if ($(`#${id}`).length === 0) {
-                $('div.address-edit').prev('wz-label').append(
-                    $('<a>', {
-                        href: '#',
-                        // TODO css
-                        style: 'float: right;text-transform: none;'
-                            + 'font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif;color: #26bae8;'
-                            + 'font-weight: normal;'
-                    }).text(trans.addAltCityButtonText).click(onAddAltCityButtonClick)
-                );
+            if (!$(id).length) {
+                const $addressEdit = $('div.address-edit');
+                const $wzLabel = $addressEdit.prev('wz-label');
+                const $container = $('<div>', { style: 'display: flex; place-content: flex-end' });
+                const $button = $('<a>', {
+                    href: '#',
+                    style: 'text-transform: none; font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif; color: #26bae8; font-weight: normal; white-space: nowrap;'
+                }).text(trans.addAltCityButtonText).click(onAddAltCityButtonClick);
+
+                if ($wzLabel.css('display') === 'none') {
+                    $container.css('padding-bottom', '4px');
+                } else {
+                    $container.append($wzLabel);
+                }
+
+                $container.append($button);
+                $addressEdit.before($container);
             }
         }
 
