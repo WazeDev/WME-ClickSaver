@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2025.03.28.001
+// @version         2025.04.04.000
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -24,7 +24,7 @@
 (function main() {
     'use strict';
 
-    const updateMessage = '<b>New</b><br>• Changed "Set street/city to..." script options from checkboxes to simpler dropdowns (thanks to LihtsaltMats!)<br><br>NOTE: you will need to set these options again.<br><br>';
+    const updateMessage = '';
     const scriptName = GM_info.script.name;
     const scriptVersion = GM_info.script.version;
     const downloadUrl = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
@@ -610,16 +610,23 @@
             }
 
             const id = 'csAddAltCityButton';
-            if ($(`#${id}`).length === 0) {
-                $('div.address-edit').prev('wz-label').append(
-                    $('<a>', {
-                        href: '#',
-                        // TODO css
-                        style: 'float: right;text-transform: none;'
-                            + 'font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif;color: #26bae8;'
-                            + 'font-weight: normal;'
-                    }).text(trans.addAltCityButtonText).click(onAddAltCityButtonClick)
-                );
+            if (!$(id).length) {
+                const $addressEdit = $('div.address-edit');
+                const $wzLabel = $addressEdit.prev('wz-label');
+                const $container = $('<div>', { style: 'display: flex; place-content: flex-end' });
+                const $button = $('<a>', {
+                    href: '#',
+                    style: 'text-transform: none; font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif; color: #26bae8; font-weight: normal; white-space: nowrap;'
+                }).text(trans.addAltCityButtonText).click(onAddAltCityButtonClick);
+
+                if ($wzLabel.css('display') === 'none') {
+                    $container.css('padding-bottom', '4px');
+                } else {
+                    $container.append($wzLabel);
+                }
+
+                $container.append($button);
+                $addressEdit.before($container);
             }
         }
 
