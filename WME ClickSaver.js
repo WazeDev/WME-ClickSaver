@@ -81,12 +81,20 @@
                 showSwapDrivingWalkingButton_Title: 'Swap between driving-type and walking-type segments. WARNING! This will DELETE and recreate the segment. Nodes may need to be reconnected.',
                 showSwitchStreetNamesButton: 'Show swap primary and alternative street name button',
                 addCompactColors: 'Add colors to compact mode road type buttons',
-                hideUncheckedRoadTypeButtons: 'Hide unchecked road type buttons in compact mode'
+                hideUncheckedRoadTypeButtons: 'Hide unchecked road type buttons in compact mode',
+                enableAddressRemovalButton: 'Enable address removal button',
+                addressRemovalButtonTooltipText: 'Select at least one, choosing both will combine the buttons',
+                showRemoveStreetNameButton: 'Show "Remove street" button',
+                removeStreetNameTooltipText: 'If you have different cities selected and you remove the street name, the street name will displayed as "No common street".',
+                showRemoveCityNameButton: 'Show "Remove city" button'
             },
             swapSegmentTypeWarning: 'This will DELETE the segment and recreate it. Any speed data will be lost, and nodes will need to be reconnected. This message will only be displayed once. Continue?',
             // eslint-disable-next-line camelcase
             swapSegmentTypeError_Paths: 'Paths must be removed from segment before changing between driving and pedestrian road type.',
-            addAltCityButtonText: 'Add alt city'
+            addAltCityButtonText: 'Add alt city',
+            removeStreetNameButtonText: 'Remove street',
+            removeCityNameButtonText: 'Remove city',
+            removeStreetAndCityNameButtonText: 'Remove street+city'
         };
 
         const roadTypeDropdownOption = {
@@ -187,6 +195,9 @@
                 addCompactColors: true,
                 addSwitchPrimaryNameButton: false,
                 hideUncheckedRoadTypeButtons: false,
+                addRemoveAddressButton: false,
+                removeStreetName: false,
+                removeCityName: false,
                 shortcuts: {}
             };
             _settings = { ...defaultSettings, ...loadedSettings };
@@ -203,11 +214,9 @@
                 });
             }
 
-            if (_settings.roadButtons) {
-                $('.csRoadTypeButtonsCheckBoxContainer').show();
-            } else {
-                $('.csRoadTypeButtonsCheckBoxContainer').hide();
-            }
+            $('.csRoadTypeButtonsCheckBoxContainer').toggle(_settings.roadButtons);
+            $('.csAddRemoveAddressButtonCheckBoxContainer').toggle(_settings.addRemoveAddressButton);
+
             // setChecked('csParkingSpacesButtonsCheckBox', _settings.parkingSpacesButtons);
             // setChecked('csParkingCostButtonsCheckBox', _settings.parkingCostButtons);
             setDropdownValue('csSetPLRCityDropdown', _settings.setNewPLRCity);
@@ -221,6 +230,9 @@
             setChecked('csAddCompactColorsCheckBox', _settings.addCompactColors);
             setChecked('csAddSwitchPrimaryNameCheckBox', _settings.addSwitchPrimaryNameButton);
             setChecked('csHideUncheckedRoadTypeButtonsCheckBox', _settings.hideUncheckedRoadTypeButtons);
+            setChecked('csAddRemoveAddressButtonCheckBox', _settings.addRemoveAddressButton);
+            setChecked('csRemoveStreetNameCheckBox', _settings.removeStreetName);
+            setChecked('csRemoveCityNameCheckBox', _settings.removeCityName);
         }
 
         function setDropdownValue(dropdownId, value) {
@@ -245,6 +257,9 @@
                 addCompactColors: _settings.addCompactColors,
                 addSwitchPrimaryNameButton: _settings.addSwitchPrimaryNameButton,
                 hideUncheckedRoadTypeButtons: _settings.hideUncheckedRoadTypeButtons,
+                addRemoveAddressButton: _settings.addRemoveAddressButton,
+                removeStreetName: _settings.removeStreetName,
+                removeCityName: _settings.removeCityName,
                 shortcuts: {}
             };
             sdk.Shortcuts.getAllShortcuts().forEach(shortcut => {
@@ -610,24 +625,13 @@
             }
 
             const id = 'csAddAltCityButton';
-            if (!$(id).length) {
-                const $addressEdit = $('div.address-edit');
-                const $wzLabel = $addressEdit.prev('wz-label');
-                const $container = $('<div>', { style: 'display: flex; place-content: flex-end' });
-                const $button = $('<a>', {
-                    href: '#',
-                    style: 'text-transform: none; font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif; color: #26bae8; font-weight: normal; white-space: nowrap;'
-                }).text(trans.addAltCityButtonText).click(onAddAltCityButtonClick);
+            const $button = $('<a>', {
+                id: id,
+                href: '#',
+                style: 'text-transform: none; font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif; color: #26bae8; font-weight: normal; white-space: nowrap;'
+            }).text(trans.addAltCityButtonText).click(onAddAltCityButtonClick);
 
-                if ($wzLabel.css('display') === 'none') {
-                    $container.css('padding-bottom', '4px');
-                } else {
-                    $container.append($wzLabel);
-                }
-
-                $container.append($button);
-                $addressEdit.before($container);
-            }
+            $('#csAddressButtonContainer').append($button);
         }
 
         async function addSwitchPrimaryNameButton() {
@@ -687,6 +691,58 @@
                 alternateStreetIds: newAltStreetsIds
             }));
             // });
+        }
+
+        function addRemoveAddressButton() {
+            if (!isChecked('csRemoveStreetNameCheckBox') && !isChecked('csRemoveCityNameCheckBox')) {
+                return;
+            }
+
+            const id = 'csRemoveStreetNameButton';
+            const translation = getRemoveAddressButtonTranslation();
+            const $button = $('<a>', {
+                id: id,
+                href: '#',
+                style: 'text-transform: none; font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif; color: #26bae8; font-weight: normal; white-space: nowrap;'
+            }).text(translation).click(onRemoveAddressButton);
+
+            $('#csAddressButtonContainer').append($button);
+        }
+
+        function getRemoveAddressButtonTranslation() {
+            if (isChecked('csRemoveStreetNameCheckBox') && isChecked('csRemoveCityNameCheckBox')) {
+                return trans.removeStreetAndCityNameButtonText;
+            }
+            if (isChecked('csRemoveCityNameCheckBox')) {
+                return trans.removeCityNameButtonText;
+            }
+            if (isChecked('csRemoveStreetNameCheckBox')) {
+                return trans.removeStreetNameButtonText;
+            }
+        }
+
+        async function onRemoveAddressButton() {
+            const selectedSegmentIds = getSelectedSegments();
+            if (!selectedSegmentIds) {
+                return;
+            }
+            const emptyCityId = getOrCreateEmptyCity().id;
+            selectedSegmentIds
+                .forEach(segmentId => {
+                    const address = sdk.DataModel.Segments.getAddress({ segmentId })
+                    const streetName = isChecked('csRemoveStreetNameCheckBox') ? '' : address.street?.name ?? '';
+                    const cityId = isChecked('csRemoveCityNameCheckBox') ? emptyCityId : address.city?.id ?? '';
+                    const newStreetId = getOrCreateStreet(streetName, cityId).id;
+                    sdk.DataModel.Segments.updateAddress({
+                        segmentId,
+                        primaryStreetId: newStreetId
+                    })
+                })
+        }
+
+        function getOrCreateEmptyCity() {
+            return sdk.DataModel.Cities.getAll().find(city => city.isEmpty)
+                ?? sdk.DataModel.Cities.addCity({ cityName: '' });
         }
 
         function addSwapPedestrianButton() { // Added displayMode argument to identify compact vs. regular mode.
@@ -891,6 +947,9 @@
                 id,
                 'data-setting-name': settingName
             }).appendTo($container);
+            if (titleText) {
+                labelText = labelText + '*';
+            }
             const $label = $('<label>', { for: id }).text(labelText).appendTo($container);
             // TODO css
             if (divCss) $container.css(divCss);
@@ -935,6 +994,22 @@
                 }
             });
 
+            const $streetDetailDiv = $('<div>', {class: 'csAddRemoveAddressButtonCheckBoxContainer'})
+                .append(createSettingsCheckbox(
+                        'csRemoveStreetNameCheckBox',
+                        'removeStreetName',
+                        trans.prefs.showRemoveStreetNameButton,
+                        trans.prefs.removeStreetNameTooltipText,
+                        { paddingLeft: '20px' }
+                    ),
+                    createSettingsCheckbox(
+                        'csRemoveCityNameCheckBox',
+                        'removeCityName',
+                        trans.prefs.showRemoveCityNameButton,
+                        '',
+                        { paddingLeft: '20px' }
+                    ));
+
             const $panel = $('<div>', { id: 'sidepanel-clicksaver' }).append(
                 $('<div>', { class: 'side-panel-section>' }).append(
                     // TODO css
@@ -966,6 +1041,12 @@
                                 'addAltCityButton',
                                 trans.prefs.showAddAltCityButton
                             ),
+                            createSettingsCheckbox(
+                                'csAddRemoveAddressButtonCheckBox',
+                                'addRemoveAddressButton',
+                                trans.prefs.enableAddressRemovalButton,
+                                trans.prefs.addressRemovalButtonTooltipText
+                            ).append($streetDetailDiv),
                             isSwapPedestrianPermitted() ? createSettingsCheckbox(
                                 'csAddSwapPedestrianButtonCheckBox',
                                 'addSwapPedestrianButton',
@@ -999,11 +1080,11 @@
 
             // Add change events
             $('#csRoadTypeButtonsCheckBox').change(function onRoadTypeButtonCheckChanged() {
-                if (this.checked) {
-                    $('.csRoadTypeButtonsCheckBoxContainer').show();
-                } else {
-                    $('.csRoadTypeButtonsCheckBoxContainer').hide();
-                }
+                $('.csRoadTypeButtonsCheckBoxContainer').toggle(this.checked);
+                saveSettingsToStorage();
+            });
+            $('#csAddRemoveAddressButtonCheckBox').change(function onStreetDetailsButtonCheckChanged() {
+                $('.csAddRemoveAddressButtonCheckBoxContainer').toggle(this.checked);
                 saveSettingsToStorage();
             });
             $('.csSettingsControl').change(function onSettingsCheckChanged() {
@@ -1249,8 +1330,15 @@
                             //     && isChecked('csParkingCostButtonsCheckBox')) {
                             //     addParkingCostButtons();
                             // }
-                            if (addedNode.querySelector('.side-panel-section') && isChecked('csAddAltCityButtonCheckBox')) {
-                                addAddAltCityButton();
+                            if (addedNode.querySelector('.side-panel-section') 
+                                && (isChecked('csAddAltCityButtonCheckBox') || isChecked('csAddRemoveAddressButtonCheckBox'))) {
+                                createSharedAddressButtonContainer()
+                                if (isChecked('csAddRemoveAddressButtonCheckBox')) {
+                                    addRemoveAddressButton();
+                                }
+                                if (isChecked('csAddAltCityButtonCheckBox')) {
+                                    addAddAltCityButton();
+                                }
                             }
                             if (addedNode.querySelector('.alt-streets') && isChecked('csAddSwitchPrimaryNameCheckBox')) {
                                 // Cancel button doesn't change the datamodel so re-add the switch arrow on cancel click
@@ -1277,6 +1365,23 @@
             updateControls(); // In case of PL w/ segments selected.
 
             logDebug('Initialized');
+        }
+
+        function createSharedAddressButtonContainer() {
+            const $addressEdit = $('div.address-edit');
+            const $wzLabel = $addressEdit.prev('wz-label');
+            const $container = $('<div>', {
+                style: 'display: flex; gap: 0.5em; place-content: flex-end;',
+                id: 'csAddressButtonContainer'
+            });
+
+            if ($wzLabel.css('display') === 'none') {
+                $container.css('padding-bottom', '4px');
+            } else {
+                $container.append($wzLabel);
+            }
+
+            $addressEdit.before($container);
         }
 
         function skipLoginDialog(tries = 0) {
