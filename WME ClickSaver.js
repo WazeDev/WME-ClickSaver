@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2025.04.04.000
+// @version         2025.04.13.000
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -85,7 +85,7 @@
                 enableAddressRemovalButton: 'Enable address removal button',
                 addressRemovalButtonTooltipText: 'Select at least one, choosing both will combine the buttons',
                 showRemoveStreetNameButton: 'Show "Remove street" button',
-                removeStreetNameTooltipText: 'If you have different cities selected and you remove the street name, the street name will displayed as "No common street".',
+                removeStreetNameTooltipText: 'If you have different cities selected and you remove the street name, the street name will display as "No common street".',
                 showRemoveCityNameButton: 'Show "Remove city" button'
             },
             swapSegmentTypeWarning: 'This will DELETE the segment and recreate it. Any speed data will be lost, and nodes will need to be reconnected. This message will only be displayed once. Continue?',
@@ -624,12 +624,9 @@
                 return;
             }
 
-            const id = 'csAddAltCityButton';
-            const $button = $('<a>', {
-                id: id,
-                href: '#',
-                style: 'text-transform: none; font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif; color: #26bae8; font-weight: normal; white-space: nowrap;'
-            }).text(trans.addAltCityButtonText).click(onAddAltCityButtonClick);
+            const $button = $('<wz-button>').text(trans.addAltCityButtonText).click(onAddAltCityButtonClick);
+            $button[0].size = 'sm';
+            $button[0].color = 'text';
 
             $('#csAddressButtonContainer').append($button);
         }
@@ -698,13 +695,10 @@
                 return;
             }
 
-            const id = 'csRemoveStreetNameButton';
             const translation = getRemoveAddressButtonTranslation();
-            const $button = $('<a>', {
-                id: id,
-                href: '#',
-                style: 'text-transform: none; font-family: "Helvetica Neue", Helvetica, "Open Sans", sans-serif; color: #26bae8; font-weight: normal; white-space: nowrap;'
-            }).text(translation).click(onRemoveAddressButton);
+            const $button = $('<wz-button>').text(translation).click(onRemoveAddressButton);
+            $button[0].size = 'sm';
+            $button[0].color = 'text';
 
             $('#csAddressButtonContainer').append($button);
         }
@@ -719,6 +713,7 @@
             if (isChecked('csRemoveStreetNameCheckBox')) {
                 return trans.removeStreetNameButtonText;
             }
+            return '';
         }
 
         async function onRemoveAddressButton() {
@@ -729,15 +724,15 @@
             const emptyCityId = getOrCreateEmptyCity().id;
             selectedSegmentIds
                 .forEach(segmentId => {
-                    const address = sdk.DataModel.Segments.getAddress({ segmentId })
+                    const address = sdk.DataModel.Segments.getAddress({ segmentId });
                     const streetName = isChecked('csRemoveStreetNameCheckBox') ? '' : address.street?.name ?? '';
                     const cityId = isChecked('csRemoveCityNameCheckBox') ? emptyCityId : address.city?.id ?? '';
                     const newStreetId = getOrCreateStreet(streetName, cityId).id;
                     sdk.DataModel.Segments.updateAddress({
                         segmentId,
                         primaryStreetId: newStreetId
-                    })
-                })
+                    });
+                });
         }
 
         function getOrCreateEmptyCity() {
@@ -948,7 +943,7 @@
                 'data-setting-name': settingName
             }).appendTo($container);
             if (titleText) {
-                labelText = labelText + '*';
+                labelText += '*';
             }
             const $label = $('<label>', { for: id }).text(labelText).appendTo($container);
             // TODO css
@@ -994,21 +989,22 @@
                 }
             });
 
-            const $streetDetailDiv = $('<div>', {class: 'csAddRemoveAddressButtonCheckBoxContainer'})
-                .append(createSettingsCheckbox(
-                        'csRemoveStreetNameCheckBox',
-                        'removeStreetName',
-                        trans.prefs.showRemoveStreetNameButton,
-                        trans.prefs.removeStreetNameTooltipText,
-                        { paddingLeft: '20px' }
-                    ),
-                    createSettingsCheckbox(
-                        'csRemoveCityNameCheckBox',
-                        'removeCityName',
-                        trans.prefs.showRemoveCityNameButton,
-                        '',
-                        { paddingLeft: '20px' }
-                    ));
+            const $streetDetailDiv = $('<div>', { class: 'csAddRemoveAddressButtonCheckBoxContainer' }).append(
+                createSettingsCheckbox(
+                    'csRemoveStreetNameCheckBox',
+                    'removeStreetName',
+                    trans.prefs.showRemoveStreetNameButton,
+                    trans.prefs.removeStreetNameTooltipText,
+                    { paddingLeft: '20px' }
+                ),
+                createSettingsCheckbox(
+                    'csRemoveCityNameCheckBox',
+                    'removeCityName',
+                    trans.prefs.showRemoveCityNameButton,
+                    '',
+                    { paddingLeft: '20px' }
+                )
+            );
 
             const $panel = $('<div>', { id: 'sidepanel-clicksaver' }).append(
                 $('<div>', { class: 'side-panel-section>' }).append(
@@ -1330,9 +1326,9 @@
                             //     && isChecked('csParkingCostButtonsCheckBox')) {
                             //     addParkingCostButtons();
                             // }
-                            if (addedNode.querySelector('.side-panel-section') 
+                            if (addedNode.querySelector('.side-panel-section')
                                 && (isChecked('csAddAltCityButtonCheckBox') || isChecked('csAddRemoveAddressButtonCheckBox'))) {
-                                createSharedAddressButtonContainer()
+                                createSharedAddressButtonContainer();
                                 if (isChecked('csAddRemoveAddressButtonCheckBox')) {
                                     addRemoveAddressButton();
                                 }
