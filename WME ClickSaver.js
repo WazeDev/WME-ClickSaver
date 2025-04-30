@@ -94,7 +94,8 @@
             addAltCityButtonText: 'Add alt city',
             removeStreetNameButtonText: 'Remove street',
             removeCityNameButtonText: 'Remove city',
-            removeStreetAndCityNameButtonText: 'Remove street+city'
+            removeStreetAndCityNameButtonText: 'Remove street+city',
+            segmentHasStreetNameAndHouseNumbers: 'Cannot remove street name from a segment with house numbers'
         };
 
         const roadTypeDropdownOption = {
@@ -624,9 +625,13 @@
                 return;
             }
 
-            const $button = $('<wz-button>').text(trans.addAltCityButtonText).click(onAddAltCityButtonClick);
-            $button[0].size = 'sm';
-            $button[0].color = 'text';
+            const $button = $('<wz-button>')
+                .text(trans.addAltCityButtonText)
+                .click(onAddAltCityButtonClick)
+                .attr({
+                    size: 'sm',
+                    color: 'text'
+                });
 
             $('#csAddressButtonContainer').append($button);
         }
@@ -696,11 +701,35 @@
             }
 
             const translation = getRemoveAddressButtonTranslation();
-            const $button = $('<wz-button>').text(translation).click(onRemoveAddressButton);
-            $button[0].size = 'sm';
-            $button[0].color = 'text';
+            const hasHouseNumbers = segmentWithStreetNameHasHouseNumbers();
+            const $button = $('<wz-button>')
+                .text(translation)
+                .click(onRemoveAddressButton)
+                .attr({
+                    size: 'sm',
+                    color: 'text',
+                    disabled: hasHouseNumbers,
+                    title: hasHouseNumbers ? trans.segmentHasStreetNameAndHouseNumbers : ''
+                });
 
             $('#csAddressButtonContainer').append($button);
+        }
+
+        function segmentWithStreetNameHasHouseNumbers() {
+            const selectedSegmentIds = getSelectedSegments();
+            if (!selectedSegmentIds) {
+                return false;
+            }
+
+            const isStreetNameChecked = isChecked('csRemoveStreetNameCheckBox');
+            if (!isStreetNameChecked) {
+                return false;
+            }
+
+            return selectedSegmentIds.some(segmentId => {
+                const segment = sdk.DataModel.Segments.getById({ segmentId });
+                return segment.hasHouseNumbers;
+            });
         }
 
         function getRemoveAddressButtonTranslation() {
@@ -722,12 +751,16 @@
                 return;
             }
             const emptyCityId = getOrCreateEmptyCity().id;
+            const isStreetNameChecked = isChecked('csRemoveStreetNameCheckBox');
+            const isCityNameChecked = isChecked('csRemoveCityNameCheckBox');
+
             selectedSegmentIds
                 .forEach(segmentId => {
                     const address = sdk.DataModel.Segments.getAddress({ segmentId });
-                    const streetName = isChecked('csRemoveStreetNameCheckBox') ? '' : address.street?.name ?? '';
-                    const cityId = isChecked('csRemoveCityNameCheckBox') ? emptyCityId : address.city?.id ?? '';
+                    const streetName = isStreetNameChecked ? '' : address.street?.name ?? '';
+                    const cityId = isCityNameChecked ? emptyCityId : address.city?.id ?? '';
                     const newStreetId = getOrCreateStreet(streetName, cityId).id;
+
                     sdk.DataModel.Segments.updateAddress({
                         segmentId,
                         primaryStreetId: newStreetId
