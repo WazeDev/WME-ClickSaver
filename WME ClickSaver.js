@@ -24,7 +24,7 @@
 (function main() {
     'use strict';
 
-    const updateMessage = 'New: option to display a button to remove segment address (street, city, or street+city)';
+    const updateMessage = '';
     const scriptName = GM_info.script.name;
     const scriptVersion = GM_info.script.version;
     const downloadUrl = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
