@@ -79,7 +79,8 @@
                 showSwapDrivingWalkingButton: 'Show "Swap driving<->walking segment type" button',
                 // eslint-disable-next-line camelcase
                 showSwapDrivingWalkingButton_Title: 'Swap between driving-type and walking-type segments. WARNING! This will DELETE and recreate the segment. Nodes may need to be reconnected.',
-                showSwitchStreetNamesButton: 'Show swap primary and alternative street name button',
+                showSwapStreetNamesButton: 'Show swap primary and alternative street name button',
+                swapWholeAddress: 'Include city name when swapping street names',
                 addCompactColors: 'Add colors to compact mode road type buttons',
                 hideUncheckedRoadTypeButtons: 'Hide unchecked road type buttons in compact mode',
                 enableAddressRemovalButton: 'Enable address removal button',
@@ -194,7 +195,8 @@
                 useOldRoadColors: false,
                 warnOnPedestrianTypeSwap: true,
                 addCompactColors: true,
-                addSwitchPrimaryNameButton: false,
+                addSwapPrimaryNameButton: false,
+                swapWholeAddress: false,
                 hideUncheckedRoadTypeButtons: false,
                 addRemoveAddressButton: false,
                 removeStreetName: false,
@@ -217,6 +219,7 @@
 
             $('.csRoadTypeButtonsCheckBoxContainer').toggle(_settings.roadButtons);
             $('.csAddRemoveAddressButtonCheckBoxContainer').toggle(_settings.addRemoveAddressButton);
+            $('.csAddSwapPrimaryNameCheckBoxContainer').toggle(_settings.addSwapPrimaryNameButton);
 
             // setChecked('csParkingSpacesButtonsCheckBox', _settings.parkingSpacesButtons);
             // setChecked('csParkingCostButtonsCheckBox', _settings.parkingCostButtons);
@@ -229,7 +232,8 @@
             setChecked('csAddAltCityButtonCheckBox', _settings.addAltCityButton);
             setChecked('csAddSwapPedestrianButtonCheckBox', _settings.addSwapPedestrianButton);
             setChecked('csAddCompactColorsCheckBox', _settings.addCompactColors);
-            setChecked('csAddSwitchPrimaryNameCheckBox', _settings.addSwitchPrimaryNameButton);
+            setChecked('csAddSwapPrimaryNameCheckBox', _settings.addSwapPrimaryNameButton);
+            setChecked('csSwapWholeAddressCheckBox', _settings.swapWholeAddress);
             setChecked('csHideUncheckedRoadTypeButtonsCheckBox', _settings.hideUncheckedRoadTypeButtons);
             setChecked('csAddRemoveAddressButtonCheckBox', _settings.addRemoveAddressButton);
             setChecked('csRemoveStreetNameCheckBox', _settings.removeStreetName);
@@ -256,7 +260,8 @@
                 addSwapPedestrianButton: _settings.addSwapPedestrianButton,
                 warnOnPedestrianTypeSwap: _settings.warnOnPedestrianTypeSwap,
                 addCompactColors: _settings.addCompactColors,
-                addSwitchPrimaryNameButton: _settings.addSwitchPrimaryNameButton,
+                addSwapPrimaryNameButton: _settings.addSwapPrimaryNameButton,
+                swapWholeAddress: _settings.swapWholeAddress,
                 hideUncheckedRoadTypeButtons: _settings.hideUncheckedRoadTypeButtons,
                 addRemoveAddressButton: _settings.addRemoveAddressButton,
                 removeStreetName: _settings.removeStreetName,
@@ -636,8 +641,8 @@
             $('#csAddressButtonContainer').append($button);
         }
 
-        async function addSwitchPrimaryNameButton() {
-            if (!isChecked('csAddSwitchPrimaryNameCheckBox')) {
+        async function addSwapPrimaryNameButton() {
+            if (!isChecked('csAddSwapPrimaryNameCheckBox')) {
                 return;
             }
             if (!selectedPrimaryStreetsAreEqual() || !selectedAltStreetsAreEqual()) {
@@ -648,30 +653,30 @@
 
             // eslint-disable-next-line func-names
             $('span.alt-street-preview').each(function() {
-                const id = 'csAddSwitchPrimaryName';
+                const id = 'csAddSwapPrimaryName';
                 const altStreetId = Number($(this).attr('data-id'));
-                const switchingIconElement = $(this).find(`#${id}`);
+                const swappingIconElement = $(this).find(`#${id}`);
 
                 if (streetEqualsPrimaryStreetName(altStreetId)) {
-                    switchingIconElement.remove();
+                    swappingIconElement.remove();
                     return;
                 }
 
-                const switchingIconExists = switchingIconElement.length > 0;
-                if (switchingIconExists) {
+                const swappingIconExists = swappingIconElement.length > 0;
+                if (swappingIconExists) {
                     return;
                 }
-                const switchStreetNameButton = $('<i>', {
+                const swapStreetNameButton = $('<i>', {
                     id,
                     class: 'w-icon w-icon-arrow-up alt-edit-button'
                 });
 
-                $(this).append(switchStreetNameButton);
-                switchStreetNameButton.click(onSwitchStreetNamesClick);
+                $(this).append(swapStreetNameButton);
+                swapStreetNameButton.click(onSwapStreetNamesClick);
             });
         }
 
-        function onSwitchStreetNamesClick() {
+        function onSwapStreetNamesClick() {
             const selectedSegments = getSelectedSegments();
             const currentPrimaryStreet = sdk.DataModel.Segments.getAddress({ segmentId: selectedSegments[0] });
             const currentAltStreets = currentPrimaryStreet.altStreets.map(street => street.street);
@@ -680,13 +685,22 @@
                 .find(street => street.id === selectedStreetId);
 
             // WS.SDKMultiActionHack.groupActions(() => {
-            const newPrimaryStreet = getOrCreateStreet(newPrimary.name, currentPrimaryStreet.city.id);
-            const primaryToAltStreet = getOrCreateStreet(currentPrimaryStreet.street.name, newPrimary.cityId);
+            const changeWithCityName = isChecked('csSwapWholeAddressCheckBox');
 
-            const newAltStreetsIds = currentAltStreets
-                .map(alt => alt.id)
-                .filter(id => id !== selectedStreetId);
-            newAltStreetsIds.push(primaryToAltStreet.id);
+            const newPrimaryStreet = getOrCreateStreet(
+                newPrimary.name,
+                changeWithCityName ? newPrimary.cityId : currentPrimaryStreet.city.id
+            );
+            const primaryToAltStreet = getOrCreateStreet(
+                currentPrimaryStreet.street.name,
+                changeWithCityName ? currentPrimaryStreet.city.id : newPrimary.cityId
+            );
+
+            const newAltStreetsIds = [
+                ...currentAltStreets.map(alt => alt.id)
+                    .filter(id => id !== selectedStreetId),
+                primaryToAltStreet.id
+            ];
             selectedSegments.forEach(segmentId => sdk.DataModel.Segments.updateAddress({
                 segmentId,
                 primaryStreetId: newPrimaryStreet.id,
@@ -1039,6 +1053,16 @@
                 )
             );
 
+            const $swapStreetDetailsDiv = $('<div>', { class: 'csAddSwapPrimaryNameCheckBoxContainer' }).append(
+                createSettingsCheckbox(
+                    'csSwapWholeAddressCheckBox',
+                    'swapWholeAddress',
+                    trans.prefs.swapWholeAddress,
+                    '',
+                    { paddingLeft: '20px' }
+                )
+            );
+
             const $panel = $('<div>', { id: 'sidepanel-clicksaver' }).append(
                 $('<div>', { class: 'side-panel-section>' }).append(
                     // TODO css
@@ -1082,10 +1106,10 @@
                                 trans.prefs.showSwapDrivingWalkingButton
                             ) : '',
                             createSettingsCheckbox(
-                                'csAddSwitchPrimaryNameCheckBox',
-                                'addSwitchPrimaryNameButton',
-                                trans.prefs.showSwitchStreetNamesButton
-                            )
+                                'csAddSwapPrimaryNameCheckBox',
+                                'addSwapPrimaryNameButton',
+                                trans.prefs.showSwapStreetNamesButton
+                            ).append($swapStreetDetailsDiv)
                         )
                     )
                 )
@@ -1108,14 +1132,11 @@
             $(tabPane).parent().css({ 'padding-top': '0px', 'padding-left': '8px' });
 
             // Add change events
-            $('#csRoadTypeButtonsCheckBox').change(function onRoadTypeButtonCheckChanged() {
-                $('.csRoadTypeButtonsCheckBoxContainer').toggle(this.checked);
-                saveSettingsToStorage();
-            });
-            $('#csAddRemoveAddressButtonCheckBox').change(function onStreetDetailsButtonCheckChanged() {
-                $('.csAddRemoveAddressButtonCheckBoxContainer').toggle(this.checked);
-                saveSettingsToStorage();
-            });
+            // Simple checkbox hierarchy
+            setupCheckboxChangeHandler('#csRoadTypeButtonsCheckBox', '.csRoadTypeButtonsCheckBoxContainer');
+            setupCheckboxChangeHandler('#csAddRemoveAddressButtonCheckBox', '.csAddRemoveAddressButtonCheckBoxContainer');
+            setupCheckboxChangeHandler('#csAddSwapPrimaryNameCheckBox', '.csAddSwapPrimaryNameCheckBoxContainer');
+
             $('.csSettingsControl').change(function onSettingsCheckChanged() {
                 const { checked } = this;
                 const $this = $(this);
@@ -1136,6 +1157,13 @@
                 } else {
                     _settings[settingName] = checked;
                 }
+                saveSettingsToStorage();
+            });
+        }
+
+        function setupCheckboxChangeHandler(checkboxSelector, containerSelector) {
+            $(checkboxSelector).change(function() {
+                $(containerSelector).toggle(this.checked);
                 saveSettingsToStorage();
             });
         }
@@ -1238,11 +1266,11 @@
         /**
          * This event handler is needed in the following scenarios:
          * 1. When the user changes the selected compact road type chip to adjust its styling.
-         * 2. When the switch alternative name button is clicked.
+         * 2. When the swap alternative name button is clicked.
          */
         function onSegmentsChanged() {
             addCompactRoadTypeColors();
-            addSwitchPrimaryNameButton();
+            addSwapPrimaryNameButton();
         }
 
         async function onCopyCoordinatesShortcut() {
@@ -1369,15 +1397,15 @@
                                     addAddAltCityButton();
                                 }
                             }
-                            if (addedNode.querySelector('.alt-streets') && isChecked('csAddSwitchPrimaryNameCheckBox')) {
-                                // Cancel button doesn't change the datamodel so re-add the switch arrow on cancel click
+                            if (addedNode.querySelector('.alt-streets') && isChecked('csAddSwapPrimaryNameCheckBox')) {
+                                // Cancel button doesn't change the datamodel so re-add the swap arrow on cancel click
                                 // eslint-disable-next-line func-names
                                 addedNode.addEventListener('click', event => {
                                     if (event.target.classList.contains('alt-address-cancel-button')) {
-                                        addSwitchPrimaryNameButton();
+                                        addSwapPrimaryNameButton();
                                     }
                                 });
-                                addSwitchPrimaryNameButton();
+                                addSwapPrimaryNameButton();
                             }
                         }
                     }
