@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2025.07.03.000
+// @version         2025.07.11.000
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -24,7 +24,7 @@
 (function main() {
     'use strict';
 
-    const updateMessage = '';
+    const updateMessage = 'Keep the address element contained in the selection view';
     const scriptName = GM_info.script.name;
     const scriptVersion = GM_info.script.version;
     const downloadUrl = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
@@ -1425,7 +1425,7 @@
         }
 
         function createSharedAddressButtonContainer() {
-            const $addressEdit = $('div.address-edit');
+            const $addressEdit = $('#segment-edit-general > div.address-edit');
             const $wzLabel = $addressEdit.prev('wz-label');
             const $container = $('<div>', {
                 style: 'display: flex; gap: 0.5em; place-content: flex-end;',
