@@ -1,1550 +1,1192 @@
+
 // ==UserScript==
-// @name            WME ClickSaver
-// @namespace       https://greasyfork.org/users/45389
-// @version         2025.10.09.001
-// @description     Various UI changes to make editing faster and easier.
+// @name            Waze Edit Count Monitor
+// @namespace       https://greasyfork.org/en/users/45389-mapomatic
+// @version         2024.10.28.002
+// @description     Displays your daily edit count in the WME toolbar.  Warns if you might be throttled. Extended with additional statistics including session time and map tracking.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
+// @require         https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
+// @require         https://update.greasyfork.org/scripts/509664/WME%20Utils%20-%20Bootstrap.js
 // @license         GNU GPLv3
-// @connect         sheets.googleapis.com
-// @connect         greasyfork.org
 // @contributionURL https://github.com/WazeDev/Thank-The-Authors
 // @grant           GM_xmlhttpRequest
 // @grant           GM_addElement
-// @require         https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
-// @require         https://update.greasyfork.org/scripts/509664/WME%20Utils%20-%20Bootstrap.js
+// @grant           GM_addStyle
+// @connect         www.waze.com
+// @connect         greasyfork.org
+// @downloadURL https://update.greasyfork.org/scripts/40313/Waze%20Edit%20Count%20Monitor.user.js
+// @updateURL https://update.greasyfork.org/scripts/40313/Waze%20Edit%20Count%20Monitor.meta.js
 // ==/UserScript==
 
-/* global I18n */
-/* global WazeWrap */
 /* global bootstrap */
 
-/* eslint-disable max-classes-per-file */
-
-(function main() {
+(async function main() {
     'use strict';
 
-    const updateMessage = 'Compatibility fixes, thank you fuji2086';
-    const scriptName = GM_info.script.name;
-    const scriptVersion = GM_info.script.version;
-    const downloadUrl = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
-    const forumUrl = 'https://www.waze.com/forum/viewtopic.php?f=819&t=199894';
-    const translationsUrl = 'https://sheets.googleapis.com/v4/spreadsheets/1ZlE9yhNncP9iZrPzFFa-FCtYuK58wNOEcmKqng4sH1M/values/ClickSaver';
-    const apiKey = 'YTJWNVBVRkplbUZUZVVGMFl6aFVjMjVOTW0wNU5GaG5kVE40TUZoNWJVZEhWbU5rUjNacVdtdFlWUT09';
-    const DEC = s => atob(atob(s));
-    let sdk;
+    const downloadUrl = 'https://greasyfork.org/scripts/40313-waze-edit-count-monitor/code/Waze%20Edit%20Count%20Monitor.user.js';
+    const sdk = await bootstrap({ scriptUpdateMonitor: { downloadUrl } });
 
-    // This function is injected into the page.
-    async function clicksaver(argsObject) {
-        /* eslint-disable object-curly-newline */
-        const roadTypeDropdownSelector = 'div[class="road-type-select"]';
-        const roadTypeChipSelector = 'wz-chip-select[class="road-type-chip-select"]';
-        // const PARKING_SPACES_DROPDOWN_SELECTOR = 'select[name="estimatedNumberOfSpots"]';
-        // const PARKING_COST_DROPDOWN_SELECTOR = 'select[name="costType"]';
-        const settingsStoreName = 'clicksaver_settings';
-        const defaultTranslation = {
-            roadTypeButtons: {
-                St: { text: 'St' },
-                PS: { text: 'PS' },
-                mH: { text: 'mH' },
-                MH: { text: 'MH' },
-                Fw: { text: 'Fw' },
-                Rmp: { text: 'Rmp' },
-                OR: { text: 'OR' },
-                PLR: { text: 'PLR' },
-                PR: { text: 'PR' },
-                Fer: { text: 'Fer' },
-                WT: { text: 'WT' },
-                PB: { text: 'PB' },
-                Sw: { text: 'Sw' },
-                RR: { text: 'RR' },
-                RT: { text: 'RT' },
-                Pw: { text: 'Pw' }
-            },
-            prefs: {
-                dropdownHelperGroup: 'DROPDOWN HELPERS',
-                roadTypeButtons: 'Add road type buttons',
-                useOldRoadColors: 'Use old road colors (requires refresh)',
-                setCityToDefault: 'Keep default value',
-                setStreetCityToNone: 'Set Street/City to None (new seg\'s only)',
-                // eslint-disable-next-line camelcase
-                setStreetCityToNone_Title: 'NOTE: Only works if connected directly or indirectly'
-                    + ' to a segment with State / Country already set.',
-                setCityToConnectedSegCity: 'Set City to connected segment\'s City',
-                parkingCostButtons: 'Add PLA cost buttons',
-                parkingSpacesButtons: 'Add PLA estimated spaces buttons',
-                timeSaversGroup: 'TIME SAVERS',
-                discussionForumLinkText: 'Discussion Forum',
-                showAddAltCityButton: 'Show "Add alt city" button',
-                showSwapDrivingWalkingButton: 'Show "Swap driving<->walking segment type" button',
-                // eslint-disable-next-line camelcase
-                showSwapDrivingWalkingButton_Title: 'Swap between driving-type and walking-type segments. WARNING! This will DELETE and recreate the segment. Nodes may need to be reconnected.',
-                showSwapStreetNamesButton: 'Show swap primary and alternative street name button',
-                swapWholeAddress: 'Include city name when swapping street names',
-                addCompactColors: 'Add colors to compact mode road type buttons',
-                hideUncheckedRoadTypeButtons: 'Hide unchecked road type buttons in compact mode',
-                enableAddressRemovalButton: 'Enable address removal button',
-                addressRemovalButtonTooltipText: 'Select at least one, choosing both will combine the buttons',
-                showRemoveStreetNameButton: 'Show "Remove street" button',
-                removeStreetNameTooltipText: 'If you have different cities selected and you remove the street name, the street name will display as "No common street".',
-                showRemoveCityNameButton: 'Show "Remove city" button'
-            },
-            swapSegmentTypeWarning: 'This will DELETE the segment and recreate it. Any speed data will be lost, and nodes will need to be reconnected. This message will only be displayed once. Continue?',
-            // eslint-disable-next-line camelcase
-            swapSegmentTypeError_Paths: 'Paths must be removed from segment before changing between driving and pedestrian road type.',
-            addAltCityButtonText: 'Add alt city',
-            removeStreetNameButtonText: 'Remove street',
-            removeCityNameButtonText: 'Remove city',
-            removeStreetAndCityNameButtonText: 'Remove street+city',
-            segmentHasStreetNameAndHouseNumbers: 'Cannot remove street name from a segment with house numbers'
-        };
+    const TOOLTIP_TEXT = 'Your daily edit count from your profile. Click to open your profile.';
 
-        const roadTypeDropdownOption = {
-            DEFAULT: 'DEFAULT',
-            NONE: 'NONE',
-            CONNECTED_CITY: 'CONNECTED_CITY'
-        };
+    let $outputElem = null;
+    let $outputElemContainer = null;
+    let userName;
+    let savesWithoutIncrease = 0;
+    let lastProfile;
 
-        // Road types defined in the WME SDK documentation
-        const wmeRoadType = {
-            ALLEY: 22,
-            FERRY: 15,
-            FREEWAY: 3,
-            MAJOR_HIGHWAY: 6,
-            MINOR_HIGHWAY: 7,
-            OFF_ROAD: 8,
-            PARKING_LOT_ROAD: 20,
-            PEDESTRIAN_BOARDWALK: 10,
-            PRIMARY_STREET: 2,
-            PRIVATE_ROAD: 17,
-            RAILROAD: 18,
-            RAMP: 4,
-            RUNWAY_TAXIWAY: 19,
-            STAIRWAY: 16,
-            STREET: 1,
-            WALKING_TRAIL: 5,
-            WALKWAY: 9
-        };
-        const roadTypeSettings = {
-            St: { id: wmeRoadType.STREET, wmeColor: '#ffffeb', svColor: '#ffffff', category: 'streets', visible: true },
-            PS: { id: wmeRoadType.PRIMARY_STREET, wmeColor: '#f0ea58', svColor: '#cba12e', category: 'streets', visible: true },
-            Pw: { id: wmeRoadType.ALLEY, wmeColor: '#64799a', svColor: '#64799a', category: 'streets', visible: false },
-            mH: { id: wmeRoadType.MINOR_HIGHWAY, wmeColor: '#69bf88', svColor: '#ece589', category: 'highways', visible: true },
-            MH: { id: wmeRoadType.MAJOR_HIGHWAY, wmeColor: '#45b8d1', svColor: '#c13040', category: 'highways', visible: true },
-            Fw: { id: wmeRoadType.FREEWAY, wmeColor: '#c577d2', svColor: '#387fb8', category: 'highways', visible: false },
-            Rmp: { id: wmeRoadType.RAMP, wmeColor: '#b3bfb3', svColor: '#58c53b', category: 'highways', visible: false },
-            OR: { id: wmeRoadType.OFF_ROAD, wmeColor: '#867342', svColor: '#82614a', category: 'otherDrivable', visible: false },
-            PLR: { id: wmeRoadType.PARKING_LOT_ROAD, wmeColor: '#ababab', svColor: '#2282ab', category: 'otherDrivable', visible: true },
-            PR: { id: wmeRoadType.PRIVATE_ROAD, wmeColor: '#beba6c', svColor: '#00ffb3', category: 'otherDrivable', visible: true },
-            Fer: { id: wmeRoadType.FERRY, wmeColor: '#d7d8f8', svColor: '#ff8000', category: 'otherDrivable', visible: false },
-            RR: { id: wmeRoadType.RAILROAD, wmeColor: '#c62925', svColor: '#ffffff', category: 'nonDrivable', visible: false },
-            RT: { id: wmeRoadType.RUNWAY_TAXIWAY, wmeColor: '#ffffff', svColor: '#00ff00', category: 'nonDrivable', visible: false },
-            WT: { id: wmeRoadType.WALKING_TRAIL, wmeColor: '#b0a790', svColor: '#00ff00', category: 'pedestrian', visible: false },
-            PB: { id: wmeRoadType.PEDESTRIAN_BOARDWALK, wmeColor: '#9a9a9a', svColor: '#0000ff', category: 'pedestrian', visible: false },
-            Sw: { id: wmeRoadType.STAIRWAY, wmeColor: '#999999', svColor: '#b700ff', category: 'pedestrian', visible: false }
-        };
 
-        /* eslint-enable object-curly-newline */
-        let _settings = {};
-        let trans; // Translation object
+    // Session tracking variables
+    let sessionStartTime = Date.now();
+    let editedSegmentLength = 0;
+    let timeTrackingPaused = false; // Pause-Status für Zeit-Tracking
+    let timeTrackingVisible = true; // Sichtbarkeit der Zeit-Anzeige (Standard: sichtbar)
+    let timeTrackingData = []; // Array für gespeicherte Zeiten
+    let pausedTime = 0; // Akkumulierte Pause-Zeit
+    let pauseStartTime = 0; // Zeitpunkt, wann die Pause begonnen hat
 
-        // function log(message) {
-        //     console.log('ClickSaver:', message);
-        // }
+    // Real-time counter variables
+    let $realtimeCounterElem = null;
+    let realtimeUpdateInterval = null;
 
-        function logDebug(message) {
-            console.debug('ClickSaver:', message);
+    // Simple real-time counter update function
+    function updateRealtimeCounter() {
+        if (!$realtimeCounterElem) return;
+        
+        // Sichtbarkeit der Zeit-Anzeige prüfen - kompletten Container verstecken
+        const $realtimeContainer = $realtimeCounterElem.closest('.toolbar-button');
+        if (!timeTrackingVisible) {
+            $realtimeContainer.hide();
+            return;
+        } else {
+            $realtimeContainer.show();
         }
-
-        // function logWarning(message) {
-        //     console.warn('ClickSaver:', message);
-        // }
-
-        // function logError(message) {
-        //     console.error('ClickSaver:', message);
-        // }
-
-        function isChecked(checkboxId) {
-            return $(`#${checkboxId}`).is(':checked');
+        
+        // Wenn pausiert, Zeit nicht aktualisieren
+        if (timeTrackingPaused) {
+            return;
         }
+        
+        const currentSessionTime = Date.now() - sessionStartTime - pausedTime;
+        const formattedTime = formatSessionTime(currentSessionTime);
+        $realtimeCounterElem.text(formattedTime);
+    }
 
-        function isSwapPedestrianPermitted() {
-            const userInfo = sdk.State.getUserInfo();
-            const rank = userInfo.rank + 1;
-            return rank >= 4 || (rank === 3 && userInfo.isAreaManager);
-        }
-
-        function setChecked(checkboxId, checked) {
-            $(`#${checkboxId}`).prop('checked', checked);
-        }
-        function loadSettingsFromStorage() {
-            const loadedSettings = $.parseJSON(localStorage.getItem(settingsStoreName));
-            const defaultSettings = {
-                lastVersion: null,
-                roadButtons: true,
-                roadTypeButtons: ['St', 'PS', 'mH', 'MH', 'Fw', 'Rmp', 'PLR', 'PR', 'PB'],
-                parkingCostButtons: true,
-                parkingSpacesButtons: true,
-                setNewPLRCity: roadTypeDropdownOption.DEFAULT,
-                setNewPRCity: roadTypeDropdownOption.DEFAULT,
-                setNewRRCity: roadTypeDropdownOption.DEFAULT,
-                setNewPBCity: roadTypeDropdownOption.DEFAULT,
-                setNewORCity: roadTypeDropdownOption.DEFAULT,
-                addAltCityButton: true,
-                addSwapPedestrianButton: false,
-                useOldRoadColors: false,
-                warnOnPedestrianTypeSwap: true,
-                addCompactColors: true,
-                addSwapPrimaryNameButton: false,
-                swapWholeAddress: false,
-                hideUncheckedRoadTypeButtons: false,
-                addRemoveAddressButton: false,
-                removeStreetName: false,
-                removeCityName: false,
-                shortcuts: {}
-            };
-            _settings = { ...defaultSettings, ...loadedSettings };
-
-            setChecked('csRoadTypeButtonsCheckBox', _settings.roadButtons);
-            if (_settings.roadTypeButtons) {
-                Object.keys(roadTypeSettings).forEach(roadTypeAbbr => {
-                    const checked = _settings.roadTypeButtons.indexOf(roadTypeAbbr) !== -1;
-                    const selector = `cs${roadTypeAbbr}CheckBox`;
-                    setChecked(selector, checked);
-                    if (!checked) {
-                        $(`#${selector}`).siblings('.csDropdownContainer').hide();
-                    }
-                });
+    // Zeit-Tracking Local Storage Funktionen
+    function loadTimeTrackingSettings() {
+        try {
+            const saved = localStorage.getItem('wecm-time-tracking-settings');
+            if (saved) {
+                const settings = JSON.parse(saved);
+                timeTrackingPaused = settings.paused !== undefined ? settings.paused : false;
+                timeTrackingVisible = settings.visible !== undefined ? settings.visible : true;
             }
-
-            $('.csRoadTypeButtonsCheckBoxContainer').toggle(_settings.roadButtons);
-            $('.csAddRemoveAddressButtonCheckBoxContainer').toggle(_settings.addRemoveAddressButton);
-            $('.csAddSwapPrimaryNameCheckBoxContainer').toggle(_settings.addSwapPrimaryNameButton);
-
-            // setChecked('csParkingSpacesButtonsCheckBox', _settings.parkingSpacesButtons);
-            // setChecked('csParkingCostButtonsCheckBox', _settings.parkingCostButtons);
-            setDropdownValue('csSetPLRCityDropdown', _settings.setNewPLRCity);
-            setDropdownValue('csSetPRCityDropdown', _settings.setNewPRCity);
-            setDropdownValue('csSetRRCityDropdown', _settings.setNewRRCity);
-            setDropdownValue('csSetPBCityDropdown', _settings.setNewPBCity);
-            setDropdownValue('csSetORCityDropdown', _settings.setNewORCity);
-            setChecked('csUseOldRoadColorsCheckBox', _settings.useOldRoadColors);
-            setChecked('csAddAltCityButtonCheckBox', _settings.addAltCityButton);
-            setChecked('csAddSwapPedestrianButtonCheckBox', _settings.addSwapPedestrianButton);
-            setChecked('csAddCompactColorsCheckBox', _settings.addCompactColors);
-            setChecked('csAddSwapPrimaryNameCheckBox', _settings.addSwapPrimaryNameButton);
-            setChecked('csSwapWholeAddressCheckBox', _settings.swapWholeAddress);
-            setChecked('csHideUncheckedRoadTypeButtonsCheckBox', _settings.hideUncheckedRoadTypeButtons);
-            setChecked('csAddRemoveAddressButtonCheckBox', _settings.addRemoveAddressButton);
-            setChecked('csRemoveStreetNameCheckBox', _settings.removeStreetName);
-            setChecked('csRemoveCityNameCheckBox', _settings.removeCityName);
+        } catch (error) {
+            console.error('Fehler beim Laden der Zeit-Tracking Einstellungen:', error);
         }
+    }
 
-        function setDropdownValue(dropdownId, value) {
-            $(`#${dropdownId}`).val(value);
-        }
-
-        function saveSettingsToStorage() {
+    function saveTimeTrackingSettings() {
+        try {
             const settings = {
-                lastVersion: argsObject.scriptVersion,
-                roadButtons: _settings.roadButtons,
-                parkingCostButtons: _settings.parkingCostButtons,
-                parkingSpacesButtons: _settings.parkingSpacesButtons,
-                setNewPLRCity: _settings.setNewPLRCity,
-                setNewPRCity: _settings.setNewPRCity,
-                setNewRRCity: _settings.setNewRRCity,
-                setNewPBCity: _settings.setNewPBCity,
-                setNewORCity: _settings.setNewORCity,
-                useOldRoadColors: _settings.useOldRoadColors,
-                addAltCityButton: _settings.addAltCityButton,
-                addSwapPedestrianButton: _settings.addSwapPedestrianButton,
-                warnOnPedestrianTypeSwap: _settings.warnOnPedestrianTypeSwap,
-                addCompactColors: _settings.addCompactColors,
-                addSwapPrimaryNameButton: _settings.addSwapPrimaryNameButton,
-                swapWholeAddress: _settings.swapWholeAddress,
-                hideUncheckedRoadTypeButtons: _settings.hideUncheckedRoadTypeButtons,
-                addRemoveAddressButton: _settings.addRemoveAddressButton,
-                removeStreetName: _settings.removeStreetName,
-                removeCityName: _settings.removeCityName,
-                shortcuts: {}
+                paused: timeTrackingPaused,
+                visible: timeTrackingVisible
             };
-            sdk.Shortcuts.getAllShortcuts().forEach(shortcut => {
-                settings.shortcuts[shortcut.shortcutId] = shortcut.shortcutKeys;
-            });
-            settings.roadTypeButtons = [];
-            Object.keys(roadTypeSettings).forEach(roadTypeAbbr => {
-                if (_settings.roadTypeButtons.indexOf(roadTypeAbbr) !== -1) {
-                    settings.roadTypeButtons.push(roadTypeAbbr);
-                }
-            });
-            localStorage.setItem(settingsStoreName, JSON.stringify(settings));
-            logDebug('Settings saved');
+            localStorage.setItem('wecm-time-tracking-settings', JSON.stringify(settings));
+        } catch (error) {
+            console.error('Fehler beim Speichern der Zeit-Tracking Einstellungen:', error);
         }
+    }
 
-        function isPedestrianTypeSegment(segment) {
-            const pedRoadTypes = Object.values(roadTypeSettings)
-                .filter(roadType => roadType.category === 'pedestrian')
-                .map(roadType => roadType.id);
-            return pedRoadTypes.includes(segment.roadType);
-        }
-
-        function getConnectedSegmentIDs(segmentId) {
-            return [
-                ...sdk.DataModel.Segments.getConnectedSegments({ segmentId, reverseDirection: false }),
-                ...sdk.DataModel.Segments.getConnectedSegments({ segmentId, reverseDirection: true })
-            ].map(segment => segment.id);
-        }
-
-        function getFirstConnectedSegmentAddress(segmentId) {
-            const nonMatches = [];
-            const segmentIDsToSearch = [segmentId];
-            const hasAddress = id => !sdk.DataModel.Segments.getAddress({ segmentId: id }).isEmpty;
-            while (segmentIDsToSearch.length > 0) {
-                const startSegmentID = segmentIDsToSearch.pop();
-                const connectedSegmentIDs = getConnectedSegmentIDs(startSegmentID);
-                const hasAddrSegmentId = connectedSegmentIDs.find(hasAddress);
-                if (hasAddrSegmentId) return sdk.DataModel.Segments.getAddress({ segmentId: hasAddrSegmentId });
-
-                nonMatches.push(startSegmentID);
-                connectedSegmentIDs.forEach(segmentID => {
-                    if (nonMatches.indexOf(segmentID) === -1 && segmentIDsToSearch.indexOf(segmentID) === -1) {
-                        segmentIDsToSearch.push(segmentID);
-                    }
-                });
+    function loadTimeTrackingData() {
+        try {
+            const saved = localStorage.getItem('wecm-time-tracking-data');
+            if (saved) {
+                timeTrackingData = JSON.parse(saved);
             }
-            return null;
+        } catch (error) {
+            console.error('Fehler beim Laden der Zeit-Tracking Daten:', error);
+            timeTrackingData = [];
         }
+    }
 
-        function setStreetAndCity(setCity) {
-            const selection = sdk.Editing.getSelection();
-
-            selection?.ids.forEach(segmentId => {
-                if (sdk.DataModel.Segments.getAddress({ segmentId }).isEmpty) {
-                    const addr = getFirstConnectedSegmentAddress(segmentId);
-                    if (addr) {
-                        // Process the city
-                        const newCityProperties = {
-                            cityName: setCity && !addr.city?.isEmpty ? addr.city.name : '',
-                            countryId: addr.country.id,
-                            stateId: addr.state.id
-                        };
-                        let newCityId = sdk.DataModel.Cities.getCity(newCityProperties)?.id;
-                        if (newCityId == null) {
-                            newCityId = sdk.DataModel.Cities.addCity(newCityProperties).id;
-                        }
-
-                        // Process the street
-                        const newPrimaryStreetId = getOrCreateStreet('', newCityId).id;
-
-                        // Update the segment with the new street
-                        sdk.DataModel.Segments.updateAddress({ segmentId, primaryStreetId: newPrimaryStreetId });
-                    }
-                }
-            });
+    function saveTimeTrackingData() {
+        try {
+            localStorage.setItem('wecm-time-tracking-data', JSON.stringify(timeTrackingData));
+        } catch (error) {
+            console.error('Fehler beim Speichern der Zeit-Tracking Daten:', error);
         }
+    }
 
-        class WaitForElementError extends Error { }
-
-        function waitForElem(selector) {
-            return new Promise((resolve, reject) => {
-                function checkIt(tries = 0) {
-                    if (tries < 150) { // try for about 3 seconds;
-                        const elem = document.querySelector(selector);
-                        setTimeout(() => {
-                            if (!elem) {
-                                checkIt(++tries);
-                            } else {
-                                resolve(elem);
-                            }
-                        }, 20);
-                    } else {
-                        reject(new WaitForElementError(`Element was not found within 3 seconds: ${selector}`));
-                    }
-                }
-                checkIt();
-            });
+    function saveCurrentSessionTime() {
+        const currentSessionTime = Date.now() - sessionStartTime - pausedTime;
+        const now = new Date();
+        const sessionEntry = {
+            timestamp: now.getTime(), // Für Sortierung
+            date: now.toLocaleDateString('de-DE'),
+            time: now.toLocaleTimeString('de-DE'),
+            duration: Math.floor(currentSessionTime / 1000), // In Sekunden für formatDuration
+            formattedDuration: formatSessionTime(currentSessionTime),
+            segmentKm: editedSegmentLength.toFixed(1),
+            segmentCount: editedSegmentLength // Für die Tabelle
+        };
+        
+        timeTrackingData.unshift(sessionEntry); // Neueste Einträge zuerst
+        
+        // Begrenze auf 100 Einträge
+        if (timeTrackingData.length > 100) {
+            timeTrackingData = timeTrackingData.slice(0, 100);
         }
-
-        async function waitForShadowElem(parentElemSelector, shadowElemSelectors) {
-            const parentElem = await waitForElem(parentElemSelector);
-            return new Promise((resolve, reject) => {
-                shadowElemSelectors.forEach((shadowElemSelector, idx) => {
-                    function checkIt(parent, tries = 0) {
-                        if (tries < 150) { // try for about 3 seconds;
-                            const shadowElem = parent.shadowRoot.querySelector(shadowElemSelector);
-                            setTimeout(() => {
-                                if (!shadowElem) {
-                                    checkIt(parent, ++tries);
-                                } else if (idx === shadowElemSelectors.length - 1) {
-                                    resolve({ shadowElem, parentElem });
-                                } else {
-                                    checkIt(shadowElem, 0);
-                                }
-                            }, 20);
-                        } else {
-                            reject(new WaitForElementError(`Shadow element was not found within 3 seconds: ${shadowElemSelector}`));
-                        }
-                    }
-                    checkIt(parentElem);
-                });
-            });
+        
+        saveTimeTrackingData();
+        
+        // Session zurücksetzen für neue Session
+        sessionStartTime = Date.now();
+        editedSegmentLength = 0;
+        pausedTime = 0;
+        pauseStartTime = 0;
+        
+        // Tabelle aktualisieren falls sie existiert
+        if (typeof updateTimeHistoryTable === 'function') {
+            updateTimeHistoryTable();
         }
+    }
 
-        async function onAddAltCityButtonClick() {
-            const segmentId = sdk.Editing.getSelection().ids[0];
-            const addr = sdk.DataModel.Segments.getAddress({ segmentId });
 
-            $('wz-button[class="add-alt-street-btn"]').click();
-            await waitForElem('wz-autocomplete.alt-street-name');
 
-            // Set the street name field
-            let result = await waitForShadowElem('wz-autocomplete.alt-street-name', ['wz-text-input']);
-            result.shadowElem.focus();
-            result.shadowElem.value = addr?.street?.name ?? '';
+    // Language detection and text localization
+    function getLocalizedText() {
+        // Detect browser language
+        const lang = navigator.language.toLowerCase();
+        
+        // Determine language
+        const isEnglish = lang.startsWith('en');
+        const isGerman = lang.startsWith('de');
+        const isFrench = lang.startsWith('fr');
+        const isSpanish = lang.startsWith('es');
+        const isItalian = lang.startsWith('it');
+        const isDutch = lang.startsWith('nl');
 
-            // Clear the city name field
-            result = await waitForShadowElem('wz-autocomplete.alt-city-name', ['wz-text-input']);
-            result.shadowElem.focus();
-            result.shadowElem.value = null;
-        }
+        return {
+            tooltipHeader: isEnglish ? 'Your daily edit count from your profile. Click to open your profile.' : 
+                          isGerman ? 'Ihre tägliche Bearbeitungsanzahl aus Ihrem Profil. Klicken Sie, um Ihr Profil zu öffnen.' :
+                          isFrench ? 'Votre nombre de modifications quotidiennes de votre profil. Cliquez pour ouvrir votre profil.' :
+                          isSpanish ? 'Su recuento diario de ediciones de su perfil. Haga clic para abrir su perfil.' :
+                          isItalian ? 'Il tuo conteggio giornaliero di modifiche dal tuo profilo. Clicca per aprire il tuo profilo.' :
+                          isDutch ? 'Uw dagelijkse bewerkingsaantal uit uw profiel. Klik om uw profiel te openen.' : 'Ihre tägliche Bearbeitungsanzahl aus Ihrem Profil. Klicken Sie, um Ihr Profil zu öffnen.',
+                          
+            sessionInfo: isEnglish ? 'Session Info' : 
+                        isGerman ? 'Session-Info' :
+                        isFrench ? 'Infos session' :
+                        isSpanish ? 'Info sesión' :
+                        isItalian ? 'Info sessione' :
+                        isDutch ? 'Sessie-info' : 'Session-Info',
+                        
+            basicStats: isEnglish ? 'Basic Statistics' : 
+                        isGerman ? 'Grundstatistiken' :
+                        isFrench ? 'Stat. de base' :
+                        isSpanish ? 'Estadísticas básicas' :
+                        isItalian ? 'Statistiche base' :
+                        isDutch ? 'Basisstatistieken' : 'Grundstatistiken',
+                        
+            averageValues: isEnglish ? 'Average Values' : 
+                          isGerman ? 'Durchschnittswerte' :
+                          isFrench ? 'Moyennes' :
+                          isSpanish ? 'Valores promedio' :
+                          isItalian ? 'Valori medi' :
+                          isDutch ? 'Gemiddelde waarden' : 'Durchschnittswerte',
+                          
+            mapEdits: isEnglish ? 'Map Edits' : 
+                     isGerman ? 'Karten-Edits' :
+                     isFrench ? 'Modif. carte' :
+                     isSpanish ? 'Ediciones mapa' :
+                     isItalian ? 'Modifiche mappa' :
+                     isDutch ? 'Kaart bewerkingen' : 'Karten-Edits',
+                     
+            closures: isEnglish ? 'Closures' : 
+                     isGerman ? 'Schließungen' :
+                     isFrench ? 'Clôtures' :
+                     isSpanish ? 'Cierres' :
+                     isItalian ? 'Chiusure' :
+                     isDutch ? 'Sluitingen' : 'Schließungen',
 
-        function onRoadTypeButtonClick(roadType) {
-            const selection = sdk.Editing.getSelection();
+            sessionTime: isEnglish ? 'Session time' : 
+                        isGerman ? 'Sitzungszeit' :
+                        isFrench ? 'Temps session' :
+                        isSpanish ? 'Tiempo sesión' :
+                        isItalian ? 'Tempo sessione' :
+                        isDutch ? 'Sessietijd' : 'Sitzungszeit',
+                        
+            segmentsEdited: isEnglish ? 'Segments edited' : 
+                           isGerman ? 'Segmente bearbeitet' :
+                           isFrench ? 'Segments mod.' :
+                           isSpanish ? 'Segmentos editados' :
+                           isItalian ? 'Segmenti modificati' :
+                           isDutch ? 'Segmenten bewerkt' : 'Segmente bearbeitet',
 
-            // Temporarily remove this while bugs are worked out.
-            // WS.SDKMultiActionHack.groupActions(() => {
-            selection?.ids.forEach(segmentId => {
-                // Check for same roadType is necessary to prevent an error.
-                if (sdk.DataModel.Segments.getById({ segmentId }).roadType !== roadType) {
-                    sdk.DataModel.Segments.updateSegment({ segmentId, roadType });
-                }
-            });
+            totalEdits: isEnglish ? 'Total edits' : 
+                       isGerman ? 'Total edits' :
+                       isFrench ? 'Total modifs' :
+                       isSpanish ? 'Total ediciones' :
+                       isItalian ? 'Totale modifiche' :
+                       isDutch ? 'Totaal bewerkingen' : 'Total edits',
+                       
+            maxDailyEdits: isEnglish ? 'Max daily edits' : 
+                          isGerman ? 'Max Tagesedits' :
+                          isFrench ? 'Max quot.' :
+                          isSpanish ? 'Máx. diarias' :
+                          isItalian ? 'Max giornaliere' :
+                          isDutch ? 'Max dagelijks' : 'Max Tagesedits',
+                          
+            currentStreak: isEnglish ? 'Current streak' : 
+                          isGerman ? 'Aktuelle Serie' :
+                          isFrench ? 'Série actu.' :
+                          isSpanish ? 'Racha actual' :
+                          isItalian ? 'Serie attuale' :
+                          isDutch ? 'Huidige reeks' : 'Aktuelle Serie',
+                          
+            days: isEnglish ? 'days' : 
+                 isGerman ? 'Tage' :
+                 isFrench ? 'j.' :
+                 isSpanish ? 'días' :
+                 isItalian ? 'giorni' :
+                 isDutch ? 'dagen' : 'Tage',
 
-            if (_settings.roadTypeButtons.map(rtb => roadTypeSettings[rtb].id).includes(roadType)) {
-                const roadTypeSettingsMap = {
-                    [roadTypeSettings.PLR.id]: _settings.setNewPLRCity,
-                    [roadTypeSettings.PR.id]: _settings.setNewPRCity,
-                    [roadTypeSettings.RR.id]: _settings.setNewRRCity,
-                    [roadTypeSettings.PB.id]: _settings.setNewPBCity,
-                    [roadTypeSettings.OR.id]: _settings.setNewORCity
-                };
-                const setting = roadTypeSettingsMap[roadType];
+            avgLast7Days: isEnglish ? 'Avg last 7 days' : 
+                         isGerman ? 'Ø letzte 7 Tage' :
+                         isFrench ? 'Moy. 7j' :
+                         isSpanish ? 'Prom. 7 días' :
+                         isItalian ? 'Media 7 giorni' :
+                         isDutch ? 'Gem. 7 dagen' : 'Ø letzte 7 Tage',
+                         
+            avgLast30Days: isEnglish ? 'Avg last 30 days' : 
+                          isGerman ? 'Ø letzte 30 Tage' :
+                          isFrench ? 'Moy. 30j' :
+                          isSpanish ? 'Prom. 30 días' :
+                          isItalian ? 'Media 30 giorni' :
+                          isDutch ? 'Gem. 30 dagen' : 'Ø letzte 30 Tage',
 
-                if (!setting || setting === roadTypeDropdownOption.DEFAULT) {
-                    return;
-                }
-                setStreetAndCity(setting === roadTypeDropdownOption.CONNECTED_CITY);
+            avgLast90Days: isEnglish ? 'Avg last 90 days' : 
+                          isGerman ? 'Ø letzte 90 Tage' :
+                          isFrench ? 'Moy. 90j' :
+                          isSpanish ? 'Prom. 90 días' :
+                          isItalian ? 'Media 90 giorni' :
+                          isDutch ? 'Gem. 90 dagen' : 'Ø letzte 90 Tage',
+
+            segmentEdits: isEnglish ? 'Segment edits' : 
+                         isGerman ? 'Segment edits' :
+                         isFrench ? 'Modif. seg.' :
+                         isSpanish ? 'Edic. segmentos' :
+                         isItalian ? 'Modif. segmenti' :
+                         isDutch ? 'Segment bewerkingen' : 'Segment edits',
+                         
+            placeEdits: isEnglish ? 'Place edits' : 
+                       isGerman ? 'Place edits' :
+                       isFrench ? 'Modif. lieux' :
+                       isSpanish ? 'Edic. lugares' :
+                       isItalian ? 'Modif. luoghi' :
+                       isDutch ? 'Plaats bewerkingen' : 'Place edits',
+                       
+            houseNumberEdits: isEnglish ? 'House number edits' : 
+                             isGerman ? 'Hausnummern Edits' :
+                             isFrench ? 'Modif. num. maison' :
+                             isSpanish ? 'Edic. núm. casa' :
+                             isItalian ? 'Modif. num. civici' :
+                             isDutch ? 'Huisnummer bewerkingen' : 'Hausnummern Edits',
+                             
+            totalMapEdits: isEnglish ? 'Total map edits' : 
+                          isGerman ? 'Karten-Edits gesamt' :
+                          isFrench ? 'Total mod. carte' :
+                          isSpanish ? 'Total edic. mapa' :
+                          isItalian ? 'Totale modif. mappa' :
+                          isDutch ? 'Totaal kaart bewerkingen' : 'Karten-Edits gesamt',
+
+            ursClosed: isEnglish ? 'URs closed' : 
+                      isGerman ? 'URs closed' :
+                      isFrench ? 'URs clôtu.' :
+                      isSpanish ? 'URs cerrados' :
+                      isItalian ? 'UR chiusi' :
+                      isDutch ? 'URs gesloten' : 'URs closed',
+                      
+            pursClosed: isEnglish ? 'PURs closed' : 
+                       isGerman ? 'PURs closed' :
+                       isFrench ? 'PURs clôtu.' :
+                       isSpanish ? 'PURs cerrados' :
+                       isItalian ? 'PUR chiusi' :
+                       isDutch ? 'PURs gesloten' : 'PURs closed',
+                       
+            mpsClosed: isEnglish ? 'MPs closed' : 
+                      isGerman ? 'MPs closed' :
+                      isFrench ? 'MPs clôtu.' :
+                      isSpanish ? 'MPs cerrados' :
+                      isItalian ? 'MP chiusi' :
+                      isDutch ? 'MPs gesloten' : 'MPs closed',
+                      
+            totalClosures: isEnglish ? 'Total closures' : 
+                          isGerman ? 'Schließungen gesamt' :
+                          isFrench ? 'Total clôtu.' :
+                          isSpanish ? 'Total cierres' :
+                          isItalian ? 'Totale chiusure' :
+                          isDutch ? 'Totaal sluitingen' : 'Schließungen gesamt',
+
+            // Zeit-Tracking Texte
+            timeTracking: isEnglish ? 'Time Tracking' : 
+                         isGerman ? 'Zeit-Tracking' :
+                         isFrench ? 'Suivi du temps' :
+                         isSpanish ? 'Seguimiento de tiempo' :
+                         isItalian ? 'Tracciamento tempo' :
+                         isDutch ? 'Tijdregistratie' : 'Zeit-Tracking',
+
+            enableTimeTracking: isEnglish ? 'Enable time tracking' : 
+                               isGerman ? 'Zeit-Tracking aktivieren' :
+                               isFrench ? 'Activer le suivi du temps' :
+                               isSpanish ? 'Activar seguimiento de tiempo' :
+                               isItalian ? 'Attiva tracciamento tempo' :
+                               isDutch ? 'Tijdregistratie inschakelen' : 'Zeit-Tracking aktivieren',
+
+            saveCurrentTime: isEnglish ? 'Save Current Time' : 
+                            isGerman ? 'Aktuelle Zeit speichern' :
+                            isFrench ? 'Sauvegarder le temps actuel' :
+                            isSpanish ? 'Guardar tiempo actual' :
+                            isItalian ? 'Salva tempo corrente' :
+                            isDutch ? 'Huidige tijd opslaan' : 'Aktuelle Zeit speichern',
+
+            timeSaved: isEnglish ? 'Time saved successfully!' : 
+                      isGerman ? 'Zeit erfolgreich gespeichert!' :
+                      isFrench ? 'Temps sauvegardé avec succès!' :
+                      isSpanish ? '¡Tiempo guardado exitosamente!' :
+                      isItalian ? 'Tempo salvato con successo!' :
+                      isDutch ? 'Tijd succesvol opgeslagen!' : 'Zeit erfolgreich gespeichert!',
+
+            sessionHistory: isEnglish ? 'Session History' : 
+                           isGerman ? 'Session-Verlauf' :
+                           isFrench ? 'Historique des sessions' :
+                           isSpanish ? 'Historial de sesiones' :
+                           isItalian ? 'Cronologia sessioni' :
+                           isDutch ? 'Sessiegeschiedenis' : 'Session-Verlauf',
+
+            date: isEnglish ? 'Date' : 
+                 isGerman ? 'Datum' :
+                 isFrench ? 'Date' :
+                 isSpanish ? 'Fecha' :
+                 isItalian ? 'Data' :
+                 isDutch ? 'Datum' : 'Datum',
+
+            duration: isEnglish ? 'Duration' : 
+                     isGerman ? 'Dauer' :
+                     isFrench ? 'Durée' :
+                     isSpanish ? 'Duración' :
+                     isItalian ? 'Durata' :
+                     isDutch ? 'Duur' : 'Dauer',
+
+            segments: isEnglish ? 'Segments (km)' : 
+                     isGerman ? 'Segmente (km)' :
+                     isFrench ? 'Segments (km)' :
+                     isSpanish ? 'Segmentos (km)' :
+                     isItalian ? 'Segmenti (km)' :
+                     isDutch ? 'Segmenten (km)' : 'Segmente (km)',
+
+            clearHistory: isEnglish ? 'Clear History' : 
+                         isGerman ? 'Verlauf löschen' :
+                         isFrench ? 'Effacer l\'historique' :
+                         isSpanish ? 'Borrar historial' :
+                         isItalian ? 'Cancella cronologia' :
+                         isDutch ? 'Geschiedenis wissen' : 'Verlauf löschen',
+
+            confirmClear: isEnglish ? 'Are you sure you want to clear all session history?' : 
+                         isGerman ? 'Sind Sie sicher, dass Sie den gesamten Session-Verlauf löschen möchten?' :
+                         isFrench ? 'Êtes-vous sûr de vouloir effacer tout l\'historique des sessions?' :
+                         isSpanish ? '¿Está seguro de que desea borrar todo el historial de sesiones?' :
+                         isItalian ? 'Sei sicuro di voler cancellare tutta la cronologia delle sessioni?' :
+                         isDutch ? 'Weet u zeker dat u alle sessiegeschiedenis wilt wissen?' : 'Sind Sie sicher, dass Sie den gesamten Session-Verlauf löschen möchten?',
+
+            confirmDeleteSession: isEnglish ? 'Are you sure you want to delete this session?' : 
+                                 isGerman ? 'Sind Sie sicher, dass Sie diese Session löschen möchten?' :
+                                 isFrench ? 'Êtes-vous sûr de vouloir supprimer cette session?' :
+                                 isSpanish ? '¿Está seguro de que desea eliminar esta sesión?' :
+                                 isItalian ? 'Sei sicuro di voler eliminare questa sessione?' :
+                                 isDutch ? 'Weet u zeker dat u deze sessie wilt verwijderen?' : 'Sind Sie sicher, dass Sie diese Session löschen möchten?',
+
+            // Neue Texte für Pause und Sichtbarkeit
+            pauseTimeTracking: isEnglish ? 'Pause time' : 
+                              isGerman ? 'Zeit pausieren' :
+                              isFrench ? 'Pause temps' :
+                              isSpanish ? 'Pausar tiempo' :
+                              isItalian ? 'Pausa tempo' :
+                              isDutch ? 'Tijd pauzeren' : 'Zeit pausieren',
+
+            showTimeDisplay: isEnglish ? 'Show time display' : 
+                            isGerman ? 'Zeit anzeigen' :
+                            isFrench ? 'Afficher le temps' :
+                            isSpanish ? 'Mostrar tiempo' :
+                            isItalian ? 'Mostra tempo' :
+                            isDutch ? 'Tijd tonen' : 'Zeit anzeigen'
+        };
+    }
+
+    function log(message) {
+        console.log('Edit Count Monitor:', message);
+    }
+
+    // Hilfsfunktion zur Berechnung von Durchschnittswerten
+    function calculateAverage(array) {
+        if (!array || array.length === 0) return 0;
+        const sum = array.reduce((a, b) => a + b, 0);
+        return Math.round(sum / array.length);
+    }
+
+    // Hilfsfunktion zur Berechnung der letzten 7 Tage
+    function getLast7DaysAverage(dailyEditCount) {
+        if (!dailyEditCount || dailyEditCount.length === 0) return 0;
+        const last7Days = dailyEditCount.slice(-7);
+        return calculateAverage(last7Days);
+    }
+
+    // Hilfsfunktion zur Berechnung der letzten 30 Tage
+    function getLast30DaysAverage(dailyEditCount) {
+        if (!dailyEditCount || dailyEditCount.length === 0) return 0;
+        const last30Days = dailyEditCount.slice(-30);
+        return calculateAverage(last30Days);
+    }
+
+    // Hilfsfunktion zur Berechnung der letzten 90 Tage
+    function getLast90DaysAverage(dailyEditCount) {
+        if (!dailyEditCount || dailyEditCount.length === 0) return 0;
+        const last90Days = dailyEditCount.slice(-90);
+        return calculateAverage(last90Days);
+    }
+
+    // Hilfsfunktion zur Berechnung des höchsten Tageswerts
+    function getMaxDailyEdits(dailyEditCount) {
+        if (!dailyEditCount || dailyEditCount.length === 0) return 0;
+        return Math.max(...dailyEditCount);
+    }
+
+    // Hilfsfunktion zur Berechnung der Streak (aufeinanderfolgende Tage mit Edits)
+    function getCurrentStreak(dailyEditCount) {
+        if (!dailyEditCount || dailyEditCount.length === 0) return 0;
+        let streak = 0;
+        for (let i = dailyEditCount.length - 1; i >= 0; i--) {
+            if (dailyEditCount[i] > 0) {
+                streak++;
+            } else {
+                break;
             }
         }
+        return streak;
+    }
 
-        function addRoadTypeButtons() {
-            const selection = sdk.Editing.getSelection();
-            if (selection?.objectType !== 'segment') return;
-            const segmentId = selection.ids[0];
-            if (segmentId == null) return;
-            const segment = sdk.DataModel.Segments.getById({ segmentId });
-            if (!segment) return;
-            const isPed = isPedestrianTypeSegment(segment);
-            const $dropDown = $(roadTypeDropdownSelector);
-            $('#csRoadTypeButtonsContainer').remove();
-            const $container = $('<div>', { id: 'csRoadTypeButtonsContainer', class: 'cs-rt-buttons-container', style: 'display: inline-table;' });
-            const $street = $('<div>', { id: 'csStreetButtonContainer', class: 'cs-rt-buttons-group' });
-            const $highway = $('<div>', { id: 'csHighwayButtonContainer', class: 'cs-rt-buttons-group' });
-            const $otherDrivable = $('<div>', { id: 'csOtherDrivableButtonContainer', class: 'cs-rt-buttons-group' });
-            const $nonDrivable = $('<div>', { id: 'csNonDrivableButtonContainer', class: 'cs-rt-buttons-group' });
-            const $pedestrian = $('<div>', { id: 'csPedestrianButtonContainer', class: 'cs-rt-buttons-group' });
-            const divs = {
-                streets: $street,
-                highways: $highway,
-                otherDrivable: $otherDrivable,
-                nonDrivable: $nonDrivable,
-                pedestrian: $pedestrian
-            };
-            Object.keys(roadTypeSettings).forEach(roadTypeKey => {
-                if (_settings.roadTypeButtons.includes(roadTypeKey)) {
-                    const roadTypeSetting = roadTypeSettings[roadTypeKey];
-                    const isDisabled = $dropDown[0].hasAttribute('disabled') && $dropDown[0].getAttribute('disabled') === 'true';
-                    if (!isDisabled && ((roadTypeSetting.category === 'pedestrian' && isPed) || (roadTypeSetting.category !== 'pedestrian' && !isPed))) {
-                        const $div = divs[roadTypeSetting.category];
-                        $div.append(
-                            $('<div>', {
-                                class: `btn cs-rt-button cs-rt-button-${roadTypeKey} btn-positive`,
-                                title: I18n.t('segment.road_types')[roadTypeSetting.id]
-                            })
-                                .text(trans.roadTypeButtons[roadTypeKey].text)
-                                .prop('checked', roadTypeSetting.visible)
-                                .data('rtId', roadTypeSetting.id)
-                                .click(function rtbClick() { onRoadTypeButtonClick($(this).data('rtId')); })
+    // Hilfsfunktion zur Formatierung der Sitzungszeit
+    function formatSessionTime(milliseconds) {
+        const totalSeconds = Math.floor(milliseconds / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        if (hours > 0) {
+            return `${hours}h ${minutes}m`;
+        } else if (minutes > 0) {
+            return `${minutes}m ${seconds}s`;
+        } else {
+            return `${seconds}s`;
+        }
+    }
+
+    // Hilfsfunktion zur Berechnung der Distanz zwischen zwei Punkten (Haversine-Formel)
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Erdradius in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
+
+    // Segment length tracking (approximation based on edit events)
+    function trackSegmentEdits() {
+        try {
+            // Versuche Segment-Edits zu verfolgen
+            // Dies ist eine Approximation, da die genaue Segmentlänge schwer zu ermitteln ist
+            sdk.Events.on({ eventName: 'wme-segment-edited', eventHandler: function(segment) {
+                if (segment && segment.geometry && segment.geometry.coordinates) {
+                    // Grobe Schätzung der Segmentlänge basierend auf Koordinaten
+                    const coords = segment.geometry.coordinates;
+                    let segmentLength = 0;
+                    for (let i = 1; i < coords.length; i++) {
+                        segmentLength += calculateDistance(
+                            coords[i-1][1], coords[i-1][0],
+                            coords[i][1], coords[i][0]
                         );
                     }
+                    editedSegmentLength += segmentLength;
                 }
-            });
-            if (isPed) {
-                $container.append($pedestrian);
-            } else {
-                $container.append($street).append($highway).append($otherDrivable).append($nonDrivable);
-            }
-            $dropDown.before($container);
+            }});
+        } catch (error) {
+            // Segment tracking nicht verfügbar
         }
+    }
 
-        // Function to add an event listener to the chip select for the road type in compact mode
-        function addCompactRoadTypeChangeEvents() {
-            const chipSelect = document.getElementsByClassName('road-type-chip-select')[0];
-            chipSelect.addEventListener('chipSelected', evt => {
-                const rtValue = evt.detail.value;
-                onRoadTypeButtonClick(rtValue);
-            });
-        }
-
-        // Function to add road type colors to the chips in compact mode
-        async function addCompactRoadTypeColors() {
-            // TODO: Clean this up. Was combined from two functions.
-            try {
-                if (sdk.Settings.getUserSettings().isCompactMode
-                    && isChecked('csAddCompactColorsCheckBox')
-                    && sdk.Editing.getSelection()) {
-                    const useOldColors = _settings.useOldRoadColors;
-                    await waitForElem('.road-type-chip-select wz-checkable-chip');
-                    $('.road-type-chip-select wz-checkable-chip').addClass('cs-compact-button');
-                    Object.values(roadTypeSettings).forEach(roadType => {
-                        const bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
-                        const rtChip = $(`.road-type-chip-select wz-checkable-chip[value=${roadType.id}]`);
-                        if (rtChip.length !== 1) return;
-                        waitForShadowElem(`.road-type-chip-select wz-checkable-chip[value='${roadType.id}']`, ['div']).then(result => {
-                            const $elem = $(result.shadowElem);
-                            const padding = $elem.hasClass('checked') ? '0px 3px' : '0px 4px';
-                            $elem.css({ backgroundColor: bgColor, padding, color: 'black' });
-                        });
-                    });
-
-                    const result = await waitForShadowElem('.road-type-chip-select wz-checkable-chip[checked=""]', ['div']);
-                    $(result.shadowElem).css({ border: 'black 2px solid', padding: '0px 3px' });
-
-                    $('.road-type-chip-select wz-checkable-chip').each(function updateRoadTypeChip() {
-                        const style = {};
-                        if (this.checked) {
-                            style.border = 'black 2px solid';
-                            style.padding = '0px 3px';
-                        } else {
-                            style.border = '';
-                            style.padding = '0px 4px';
-                        }
-                        $(this.shadowRoot.querySelector('div')).css(style);
-                    });
-                }
-            } catch (ex) {
-                if (ex instanceof WaitForElementError) {
-                    // waitForElem will throw an error if Undo causes a deselection. Ignore it.
+    function updateEditCount() {
+        sdk.DataModel.Users.getUserProfile({ userName }).then(profile => {
+        // Add the counter div if it doesn't exist.
+            if ($('#wecm-count').length === 0) {
+                $outputElemContainer = $('<div>', { class: 'toolbar-button', style: 'font-weight: bold; font-size: 16px; border-radius: 10px; margin-left: 4px;' });
+                const $innerDiv = $('<div>', { class: 'item-container', style: 'padding-left: 10px; padding-right: 10px; cursor: default;' });
+                $outputElem = $('<a>', {
+                    id: 'wecm-count',
+                    href: sdk.DataModel.Users.getUserProfileLink({ userName }),
+                    target: '_blank',
+                    style: 'text-decoration:none',
+                    'data-original-title': TOOLTIP_TEXT
+                });
+                $innerDiv.append($outputElem);
+                $outputElemContainer.append($innerDiv);
+                if ($('#toolbar > div > div.secondary-toolbar > div.secondary-toolbar-actions > div.secondary-toolbar-actions-edit').length) {
+                // Production WME, as of 4/25/2023
+                    $('#toolbar > div > div.secondary-toolbar > div.secondary-toolbar-actions > div.secondary-toolbar-actions-edit').after($outputElemContainer);
                 } else {
-                    throw ex;
+                // Beta WME, as of 4/25/2023
+                    $('#toolbar > div > div.secondary-toolbar > div:nth-child(1)').after($outputElemContainer);
                 }
-            }
-        }
-
-        // function isPLA(item) {
-        //     return (item.model.type === 'venue') && item.model.attributes.categories.includes('PARKING_LOT');
-        // }
-
-        // function addParkingSpacesButtons() {
-        //     const $dropDown = $(PARKING_SPACES_DROPDOWN_SELECTOR);
-        //     const selItems = W.selectionManager.getSelectedFeatures();
-        //     const item = selItems[0];
-
-        //     // If it's not a PLA, exit.
-        //     if (!isPLA(item)) return;
-
-        //     $('#csParkingSpacesContainer').remove();
-        //     const $div = $('<div>', { id: 'csParkingSpacesContainer' });
-        //     const dropdownDisabled = $dropDown.attr('disabled') === 'disabled';
-        //     const optionNodes = $(`${PARKING_SPACES_DROPDOWN_SELECTOR} option`);
-
-        //     for (let i = 0; i < optionNodes.length; i++) {
-        //         const $option = $(optionNodes[i]);
-        //         const text = $option.text();
-        //         const selected = $option.val() === $dropDown.val();
-        //         $div.append(
-        //             // TODO css
-        //             $('<div>', {
-        //                 class: `btn waze-btn waze-btn-white${selected ? ' waze-btn-blue' : ''}${dropdownDisabled ? ' disabled' : ''}`,
-        //                 style: 'margin-bottom: 5px; height: 22px; padding: 2px 8px 0px 8px; margin-right: 3px;'
-        //             })
-        //                 .text(text)
-        //                 .data('val', $option.val())
-        //                 // eslint-disable-next-line func-names
-        //                 .hover(() => { })
-        //                 .click(function onParkingSpacesButtonClick() {
-        //                     if (!dropdownDisabled) {
-        //                         $(PARKING_SPACES_DROPDOWN_SELECTOR).val($(this).data('val')).change();
-        //                         addParkingSpacesButtons();
-        //                     }
-        //                 })
-        //         );
-        //     }
-
-        //     $dropDown.before($div);
-        //     $dropDown.hide();
-        // }
-
-        // function addParkingCostButtons() {
-        //     const $dropDown = $(PARKING_COST_DROPDOWN_SELECTOR);
-        //     const selItems = W.selectionManager.getSelectedFeatures();
-        //     const item = selItems[0];
-
-        //     // If it's not a PLA, exit.
-        //     if (!isPLA(item)) return;
-
-        //     $('#csParkingCostContainer').remove();
-        //     const $div = $('<div>', { id: 'csParkingCostContainer' });
-        //     const dropdownDisabled = $dropDown.attr('disabled') === 'disabled';
-        //     const optionNodes = $(`${PARKING_COST_DROPDOWN_SELECTOR} option`);
-        //     for (let i = 0; i < optionNodes.length; i++) {
-        //         const $option = $(optionNodes[i]);
-        //         const text = $option.text();
-        //         const selected = $option.val() === $dropDown.val();
-        //         $div.append(
-        //             $('<div>', {
-        //                 class: `btn waze-btn waze-btn-white${selected ? ' waze-btn-blue' : ''}${dropdownDisabled ? ' disabled' : ''}`,
-        //                 // TODO css
-        //                 style: 'margin-bottom: 5px; height: 22px; padding: 2px 8px 0px 8px; margin-right: 4px;'
-        //             })
-        //                 .text(text !== '' ? text : '?')
-        //                 .data('val', $option.val())
-        //                 // eslint-disable-next-line func-names
-        //                 .hover(() => { })
-        //                 .click(function onParkingCostButtonClick() {
-        //                     if (!dropdownDisabled) {
-        //                         $(PARKING_COST_DROPDOWN_SELECTOR).val($(this).data('val')).change();
-        //                         addParkingCostButtons();
-        //                     }
-        //                 })
-        //         );
-        //     }
-
-        //     $dropDown.before($div);
-        //     $dropDown.hide();
-        // }
-
-        function addAddAltCityButton() {
-            // Only show the button if every segment has the same primary city and street.
-            if (!selectedPrimaryStreetsAreEqual()) {
-                return;
-            }
-
-            const $button = $('<wz-button>')
-                .text(trans.addAltCityButtonText)
-                .click(onAddAltCityButtonClick)
-                .attr({
-                    size: 'sm',
-                    color: 'text'
+                $outputElem.tooltip({
+                    placement: 'auto top',
+                    delay: { show: 100, hide: 100 },
+                    html: true,
+                    template: '<div class="tooltip wecm-tooltip" role="tooltip"><div class="tooltip-arrow"></div>'
+                        + '<div class="wecm-tooltip-header"><b></b></div>'
+                        + '<div class="wecm-tooltip-body tooltip-inner""></div></div>'
                 });
 
-            $('#csAddressButtonContainer').append($button);
-        }
-
-        async function addSwapPrimaryNameButton() {
-            if (!isChecked('csAddSwapPrimaryNameCheckBox')) {
-                return;
-            }
-            if (!selectedPrimaryStreetsAreEqual() || !selectedAltStreetsAreEqual()) {
-                return;
-            }
-
-            await waitForElem('.alt-streets-control');
-
-            // eslint-disable-next-line func-names
-            $('span.alt-street-preview').each(function() {
-                const id = 'csAddSwapPrimaryName';
-                const altStreetId = Number($(this).attr('data-id'));
-                const swappingIconElement = $(this).find(`#${id}`);
-
-                if (streetEqualsPrimaryStreetName(altStreetId)) {
-                    swappingIconElement.remove();
-                    return;
-                }
-
-                const swappingIconExists = swappingIconElement.length > 0;
-                if (swappingIconExists) {
-                    return;
-                }
-                const swapStreetNameButton = $('<i>', {
-                    id,
-                    class: 'w-icon w-icon-arrow-up alt-edit-button'
-                });
-
-                $(this).append(swapStreetNameButton);
-                swapStreetNameButton.click(onSwapStreetNamesClick);
-            });
-        }
-
-        function onSwapStreetNamesClick() {
-            const selectedSegments = getSelectedSegments();
-            const currentPrimaryStreet = sdk.DataModel.Segments.getAddress({ segmentId: selectedSegments[0] });
-            const currentAltStreets = currentPrimaryStreet.altStreets.map(street => street.street);
-            const selectedStreetId = Number($(this).parent().attr('data-id'));
-            const newPrimary = currentAltStreets
-                .find(street => street.id === selectedStreetId);
-
-            // WS.SDKMultiActionHack.groupActions(() => {
-            const changeWithCityName = isChecked('csSwapWholeAddressCheckBox');
-
-            const newPrimaryStreet = getOrCreateStreet(
-                newPrimary.name,
-                changeWithCityName ? newPrimary.cityId : currentPrimaryStreet.city.id
-            );
-            const primaryToAltStreet = getOrCreateStreet(
-                currentPrimaryStreet.street.name,
-                changeWithCityName ? currentPrimaryStreet.city.id : newPrimary.cityId
-            );
-
-            const newAltStreetsIds = [
-                ...currentAltStreets.map(alt => alt.id)
-                    .filter(id => id !== selectedStreetId),
-                primaryToAltStreet.id
-            ];
-            selectedSegments.forEach(segmentId => sdk.DataModel.Segments.updateAddress({
-                segmentId,
-                primaryStreetId: newPrimaryStreet.id,
-                alternateStreetIds: newAltStreetsIds
-            }));
-            // });
-        }
-
-        function addRemoveAddressButton() {
-            if (!isChecked('csRemoveStreetNameCheckBox') && !isChecked('csRemoveCityNameCheckBox')) {
-                return;
-            }
-
-            const translation = getRemoveAddressButtonTranslation();
-            const hasHouseNumbers = segmentWithStreetNameHasHouseNumbers();
-            const $button = $('<wz-button>')
-                .text(translation)
-                .click(onRemoveAddressButton)
-                .attr({
-                    size: 'sm',
-                    color: 'text',
-                    disabled: hasHouseNumbers,
-                    title: hasHouseNumbers ? trans.segmentHasStreetNameAndHouseNumbers : ''
-                });
-
-            $('#csAddressButtonContainer').append($button);
-        }
-
-        function segmentWithStreetNameHasHouseNumbers() {
-            const selectedSegmentIds = getSelectedSegments();
-            if (!selectedSegmentIds) {
-                return false;
-            }
-
-            const isStreetNameChecked = isChecked('csRemoveStreetNameCheckBox');
-            if (!isStreetNameChecked) {
-                return false;
-            }
-
-            return selectedSegmentIds.some(segmentId => {
-                const segment = sdk.DataModel.Segments.getById({ segmentId });
-                return segment.hasHouseNumbers;
-            });
-        }
-
-        function getRemoveAddressButtonTranslation() {
-            if (isChecked('csRemoveStreetNameCheckBox') && isChecked('csRemoveCityNameCheckBox')) {
-                return trans.removeStreetAndCityNameButtonText;
-            }
-            if (isChecked('csRemoveCityNameCheckBox')) {
-                return trans.removeCityNameButtonText;
-            }
-            if (isChecked('csRemoveStreetNameCheckBox')) {
-                return trans.removeStreetNameButtonText;
-            }
-            return '';
-        }
-
-        async function onRemoveAddressButton() {
-            const selectedSegmentIds = getSelectedSegments();
-            if (!selectedSegmentIds) {
-                return;
-            }
-            const emptyCityId = getOrCreateEmptyCity().id;
-            const isStreetNameChecked = isChecked('csRemoveStreetNameCheckBox');
-            const isCityNameChecked = isChecked('csRemoveCityNameCheckBox');
-
-            selectedSegmentIds
-                .forEach(segmentId => {
-                    const address = sdk.DataModel.Segments.getAddress({ segmentId });
-                    const streetName = isStreetNameChecked ? '' : address.street?.name ?? '';
-                    const cityId = isCityNameChecked ? emptyCityId : address.city?.id ?? '';
-                    const newStreetId = getOrCreateStreet(streetName, cityId).id;
-
-                    sdk.DataModel.Segments.updateAddress({
-                        segmentId,
-                        primaryStreetId: newStreetId
+                // Add real-time counter element if it doesn't exist
+                if ($('#wecm-realtime-counter').length === 0) {
+                    const $realtimeContainer = $('<div>', { 
+                        class: 'toolbar-button', 
+                        style: 'font-weight: bold; font-size: 14px; border-radius: 10px; margin-left: 4px; background-color: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.3);' 
                     });
-                });
-        }
-
-        function getOrCreateEmptyCity() {
-            return sdk.DataModel.Cities.getAll().find(city => city.isEmpty)
-                ?? sdk.DataModel.Cities.addCity({ cityName: '' });
-        }
-
-        function addSwapPedestrianButton() { // Added displayMode argument to identify compact vs. regular mode.
-            const id = 'csSwapPedestrianContainer';
-            $(`#${id}`).remove();
-            const selection = sdk.Editing.getSelection();
-            if (selection?.ids.length === 1 && selection.objectType === 'segment') {
-                // TODO css
-                const $container = $('<div>', { id, style: 'white-space: nowrap;float: right;display: inline;' });
-                const $button = $('<div>', {
-                    id: 'csBtnSwapPedestrianRoadType',
-                    title: '',
-                    // TODO css
-                    style: 'display:inline-block;cursor:pointer;'
-                });
-                $button.append('<i class="w-icon w-icon-streetview w-icon-lg"></i><i class="fa fa-arrows-h fa-lg" style="color: #e84545;vertical-align: top;"></i><i class="w-icon w-icon-car w-icon-lg"></i>')
-                    .attr({
-                        title: trans.prefs.showSwapDrivingWalkingButton_Title
+                    const $realtimeInnerDiv = $('<div>', { 
+                        class: 'item-container', 
+                        style: 'padding-left: 8px; padding-right: 8px; cursor: default;' 
                     });
-                $container.append($button);
-
-                // Insert swap button in the correct location based on display mode.
-                const $label = $('#segment-edit-general > form > div > div.road-type-control > wz-label');
-                $label.css({ display: 'inline' }).append($container);
-
-                $('#csBtnSwapPedestrianRoadType').click(onSwapPedestrianButtonClick);
-            }
-        }
-
-        function onSwapPedestrianButtonClick() {
-            if (_settings.warnOnPedestrianTypeSwap) {
-                _settings.warnOnPedestrianTypeSwap = false;
-                saveSettingsToStorage();
-                if (!confirm(trans.swapSegmentTypeWarning)) {
-                    return;
+                    
+                    // Get localized tooltip text for real-time counter
+                    const lang = navigator.language.toLowerCase();
+                    const isEnglish = lang.startsWith('en');
+                    const isGerman = lang.startsWith('de');
+                    const isFrench = lang.startsWith('fr');
+                    const isSpanish = lang.startsWith('es');
+                    const isItalian = lang.startsWith('it');
+                    const isDutch = lang.startsWith('nl');
+                    
+                    const realtimeTooltip = isEnglish ? 'Current session time (updated every second)' :
+                                          isGerman ? 'Aktuelle Session-Zeit (wird jede Sekunde aktualisiert)' :
+                                          isFrench ? 'Temps de session actuel (mis à jour chaque seconde)' :
+                                          isSpanish ? 'Tiempo de sesión actual (actualizado cada segundo)' :
+                                          isItalian ? 'Tempo sessione corrente (aggiornato ogni secondo)' :
+                                          isDutch ? 'Huidige sessietijd (elke seconde bijgewerkt)' : 'Aktuelle Session-Zeit (wird jede Sekunde aktualisiert)';
+                    
+                    $realtimeCounterElem = $('<span>', {
+                        id: 'wecm-realtime-counter',
+                        style: 'color: #2196F3; text-decoration: none;',
+                        title: realtimeTooltip
+                    });
+                    
+                    $realtimeInnerDiv.append($realtimeCounterElem);
+                    $realtimeContainer.append($realtimeInnerDiv);
+                    $outputElemContainer.after($realtimeContainer);
+                    
+                    // Initial update
+                    updateRealtimeCounter();
                 }
             }
 
-            const originalSegment = sdk.DataModel.Segments.getById({ segmentId: sdk.Editing.getSelection().ids[0] });
-
-            // Copy the selected segment geometry and attributes, then delete it.
-            const oldPrimaryStreetId = originalSegment.primaryStreetId;
-            const oldAltStreetIds = originalSegment.alternateStreetIds;
-
-            // WS.SDKMultiActionHack.groupActions(() => {
-            const newRoadType = isPedestrianTypeSegment(originalSegment) ? wmeRoadType.STREET : wmeRoadType.WALKING_TRAIL;
-            try {
-                sdk.DataModel.Segments.deleteSegment({ segmentId: originalSegment.id });
-            } catch (ex) {
-                if (ex instanceof sdk.Errors.InvalidStateError) {
-                    WazeWrap.Alerts.error(scriptName, 'Something prevents this segment from being deleted.');
-                    return;
-                }
+            // log('edit count = ' + editCount + ', UR count = ' + urCount.count);
+            // TODO: check all editCountByType values here?
+            if (!lastProfile) {
+                lastProfile = profile;
+            } else if (lastProfile.dailyEditCount[lastProfile.dailyEditCount.length - 1] !== profile.dailyEditCount[profile.dailyEditCount.length - 1]
+                    || lastProfile.editCountByType.updateRequests !== profile.editCountByType.updateRequests
+                    || lastProfile.editCountByType.mapProblems !== profile.editCountByType.mapProblems
+                    || lastProfile.editCountByType.placeUpdateRequests !== profile.editCountByType.placeUpdateRequests
+                    || lastProfile.editCountByType.segmentHouseNumbers !== profile.editCountByType.segmentHouseNumbers
+                    || lastProfile.totalEditCount !== profile.totalEditCount) {
+                savesWithoutIncrease = 0;
+            } else {
+                savesWithoutIncrease++;
             }
 
-            // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
-
-            const newSegmentId = sdk.DataModel.Segments.addSegment({ geometry: originalSegment.geometry, roadType: newRoadType });
-
-            sdk.DataModel.Segments.updateAddress({
-                segmentId: newSegmentId,
-                primaryStreetId: oldPrimaryStreetId,
-                alternateStreetIds: oldAltStreetIds
-            });
-
-            sdk.Editing.setSelection({ selection: { ids: [newSegmentId], objectType: 'segment' } });
-            // });
-        }
-
-        function getSelectedSegments() {
-            const selection = sdk.Editing.getSelection();
-            if (selection?.objectType !== 'segment') {
-                return null;
+            let textColor;
+            let bgColor;
+            let warningStyleClass;
+            if (savesWithoutIncrease < 5) {
+                textColor = '#354148';
+                bgColor = 'white';
+                warningStyleClass = '';
+            } else if (savesWithoutIncrease < 10) {
+                textColor = '#354148';
+                bgColor = 'yellow';
+                warningStyleClass = 'yellow';
+            } else {
+                textColor = 'white';
+                bgColor = 'red';
+                warningStyleClass = 'red';
             }
-            return selection.ids;
-        }
+            $outputElemContainer.css('background-color', bgColor);
 
-        function selectedPrimaryStreetsAreEqual() {
-            const selection = getSelectedSegments();
-            if (!selection) {
-                return false;
+            $outputElem.css('color', textColor).html(profile.dailyEditCount[profile.dailyEditCount.length - 1].toLocaleString());
+
+            // Berechnung zusätzlicher Statistiken
+            const last7DaysAvg = getLast7DaysAverage(profile.dailyEditCount);
+            const last30DaysAvg = getLast30DaysAverage(profile.dailyEditCount);
+            const last90DaysAvg = getLast90DaysAverage(profile.dailyEditCount);
+            const maxDailyEdits = getMaxDailyEdits(profile.dailyEditCount);
+            const currentStreak = getCurrentStreak(profile.dailyEditCount);
+            const totalMapEdits = profile.editCountByType.segments + profile.editCountByType.venues;
+            const totalClosures = profile.editCountByType.updateRequests + profile.editCountByType.placeUpdateRequests + profile.editCountByType.mapProblems;
+
+            // Session-Statistiken
+            const editedSegmentKm = editedSegmentLength.toFixed(1);
+
+            // Get localized text
+            const texts = getLocalizedText();
+
+            // Bestehende Statistiken
+            const totalEditCountText = `<li>${texts.totalEdits}:&nbsp;${(profile.totalEditCount || 0).toLocaleString()}</li>`;
+            const urCountText = `<li>${texts.ursClosed}:&nbsp;${(profile.editCountByType.updateRequests || 0).toLocaleString()}</li>`;
+            const purCountText = `<li>${texts.pursClosed}:&nbsp;${(profile.editCountByType.placeUpdateRequests || 0).toLocaleString()}</li>`;
+            const mpCountText = `<li>${texts.mpsClosed}:&nbsp;${(profile.editCountByType.mapProblems || 0).toLocaleString()}</li>`;
+            const segmentEditCountText = `<li>${texts.segmentEdits}:&nbsp;${(profile.editCountByType.segments || 0).toLocaleString()}</li>`;
+            const placeEditCountText = `<li>${texts.placeEdits}:&nbsp;${(profile.editCountByType.venues || 0).toLocaleString()}</li>`;
+            const hnEditCountText = `<li>${texts.houseNumberEdits}:&nbsp;${(profile.editCountByType.segmentHouseNumbers || 0).toLocaleString()}</li>`;
+
+            // Neue erweiterte Statistiken
+            const last7DaysAvgText = `<li>${texts.avgLast7Days}:&nbsp;${last7DaysAvg.toLocaleString()}</li>`;
+            const last30DaysAvgText = `<li>${texts.avgLast30Days}:&nbsp;${last30DaysAvg.toLocaleString()}</li>`;
+            const last90DaysAvgText = `<li>${texts.avgLast90Days}:&nbsp;${last90DaysAvg.toLocaleString()}</li>`;
+            const maxDailyEditsText = `<li>${texts.maxDailyEdits}:&nbsp;${maxDailyEdits.toLocaleString()}</li>`;
+            const currentStreakText = `<li>${texts.currentStreak}:&nbsp;${currentStreak}&nbsp;${texts.days}</li>`;
+            const totalMapEditsText = `<li>${texts.totalMapEdits}:&nbsp;${totalMapEdits.toLocaleString()}</li>`;
+            const totalClosuresText = `<li>${texts.totalClosures}:&nbsp;${totalClosures.toLocaleString()}</li>`;
+
+            // Session-Statistiken
+            const editedSegmentText = editedSegmentLength > 0 ? `<li>${texts.segmentsEdited}:&nbsp;${editedSegmentKm}&nbsp;km</li>` : '';
+
+            let warningText = '';
+            if (savesWithoutIncrease) {
+                warningText = `<div class="wecm-warning ${warningStyleClass}">${savesWithoutIncrease} ${
+                    (savesWithoutIncrease > 1) ? 'consecutive saves' : 'save'} without an increase. ${
+                    (savesWithoutIncrease >= 5) ? '(Are you throttled?)' : ''}</div>`;
             }
-            if (selection.length === 1) {
-                return true;
+
+            // Erweiterte Tooltip-Anzeige mit Kategorien
+            $outputElem.attr('data-original-title', `${
+                texts.tooltipHeader}<br><br><strong>📊 ${texts.basicStats}:</strong><ul>${
+                totalEditCountText}${
+                maxDailyEditsText}${
+                currentStreakText}</ul><strong>📈 ${texts.averageValues}:</strong><ul>${
+                last7DaysAvgText}${
+                last30DaysAvgText}${
+                last90DaysAvgText}</ul><strong>🗺️ ${texts.mapEdits}:</strong><ul>${
+                segmentEditCountText}${
+                placeEditCountText}${
+                hnEditCountText}${
+                totalMapEditsText}</ul><strong>🔧 ${texts.closures}:</strong><ul>${
+                urCountText}${
+                purCountText}${
+                mpCountText}${
+                totalClosuresText}</ul>${editedSegmentText ? `<strong>📏 ${texts.sessionInfo}:</strong><ul>${editedSegmentText}</ul>` : ''}${warningText}`);
+            lastProfile = profile;
+        });
+    }
+
+    // Fallback-Funktion für Zeit-Tracking Panel
+    function createFallbackTimeTrackingPanel(texts, timeTrackingTab) {
+        log('WME SDK nicht verfügbar - Zeit-Tracking Tab wird als separates Element erstellt');
+        
+        // Erstelle einen Button zum Öffnen des Zeit-Tracking Panels
+        const timeTrackingButton = $(`
+            <div style="
+                position: fixed; 
+                top: 100px; 
+                right: 20px; 
+                z-index: 10000; 
+                background: #2196F3; 
+                color: white; 
+                padding: 10px 15px; 
+                border-radius: 5px; 
+                cursor: pointer; 
+                font-weight: bold;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            ">📊 ${texts.timeTracking}</div>
+        `);
+        
+        // Panel für Zeit-Tracking
+        const timeTrackingPanel = $(`
+            <div id="wecm-time-tracking-panel" style="
+                position: fixed; 
+                top: 150px; 
+                right: 20px; 
+                width: 400px; 
+                background: white; 
+                border: 2px solid #2196F3; 
+                border-radius: 8px; 
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3); 
+                z-index: 10001;
+                display: none;
+            "></div>
+        `);
+        
+        timeTrackingPanel.append(timeTrackingTab);
+        
+        // Event Listener für Button
+        timeTrackingButton.on('click', function() {
+            timeTrackingPanel.toggle();
+            if (timeTrackingPanel.is(':visible')) {
+                updateTimeHistoryTable();
             }
+        });
+        
+        // Zur Seite hinzufügen
+        $('body').append(timeTrackingButton);
+        $('body').append(timeTrackingPanel);
+        
+        // Tabelle initialisieren nachdem Panel im DOM ist
+        setTimeout(() => updateTimeHistoryTable(), 50);
+    }
 
-            const firstStreetId = sdk.DataModel.Segments.getAddress({ segmentId: selection[0] })?.street?.id;
-            return selection
-                .map(segmentId => sdk.DataModel.Segments.getAddress({ segmentId }))
-                .every(addr => addr.street?.id === firstStreetId);
-        }
+    // Zeit-Tracking Tab erstellen
+    function createTimeTrackingTab() {
+        const texts = getLocalizedText();
+        
+        // Tab-Inhalt erstellen
+        const tabContent = $(`
+            <div id="wecm-time-tracking-tab" style="padding: 15px;">
+                <div style="margin-bottom: 20px;">
+                    <label style="display: flex; align-items: center; font-weight: bold; margin-bottom: 10px;">
+                        <input type="checkbox" id="wecm-pause-tracking-checkbox" style="margin-right: 8px;" ${timeTrackingPaused ? 'checked' : ''}>
+                        ${texts.pauseTimeTracking}
+                    </label>
+                    
+                    <label style="display: flex; align-items: center; font-weight: bold; margin-bottom: 10px;">
+                        <input type="checkbox" id="wecm-show-time-checkbox" style="margin-right: 8px;" ${timeTrackingVisible ? 'checked' : ''}>
+                        ${texts.showTimeDisplay}
+                    </label>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <button id="wecm-save-time-btn" style="
+                        background: #2196F3; 
+                        color: white; 
+                        border: none; 
+                        padding: 10px 20px; 
+                        border-radius: 5px; 
+                        cursor: pointer; 
+                        font-weight: bold;
+                        transition: background 0.3s ease;
+                    ">${texts.saveCurrentTime}</button>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <h3 style="margin: 0 0 10px 0; color: #2196F3;">${texts.sessionHistory}</h3>
+                </div>
+                
+                <div id="wecm-time-history-table" style="
+                    max-height: 300px; 
+                    overflow-y: auto; 
+                    border: 1px solid #ddd; 
+                    border-radius: 5px;
+                    margin-bottom: 15px;
+                ">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead style="background: #f5f5f5; position: sticky; top: 0;">
+                            <tr>
+                                <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left;">${texts.date}</th>
+                                <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left;">${texts.duration}</th>
+                                <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left;">Gesamt</th>
+                                <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center; width: 40px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="wecm-time-history-body">
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button id="wecm-clear-history-btn" style="
+                        background: #f44336; 
+                        color: white; 
+                        border: none; 
+                        padding: 8px 16px; 
+                        border-radius: 3px; 
+                        cursor: pointer; 
+                        font-size: 12px;
+                        font-weight: bold;
+                    ">${texts.clearHistory}</button>
+                </div>
+            </div>
+        `);
 
-        function selectedAltStreetsAreEqual() {
-            const selection = getSelectedSegments();
-            if (!selection) {
-                return false;
+        // Event Listeners hinzufügen
+        tabContent.find('#wecm-pause-tracking-checkbox').on('change', function() {
+            const wasPaused = timeTrackingPaused;
+            timeTrackingPaused = $(this).is(':checked');
+            
+            if (timeTrackingPaused && !wasPaused) {
+                // Pause beginnt - Zeitpunkt merken
+                pauseStartTime = Date.now();
+            } else if (!timeTrackingPaused && wasPaused) {
+                // Pause endet - pausierte Zeit zur Gesamtpause hinzufügen
+                pausedTime += Date.now() - pauseStartTime;
+                pauseStartTime = 0;
             }
-            const addresses = selection.map(segmentId => sdk.DataModel.Segments.getAddress({ segmentId }))
-                .map(street => street.altStreets.map(altStreet => altStreet.street.id))
-                .map(addr => new Set(addr));
+            
+            saveTimeTrackingSettings();
+            log(`Zeit-Tracking ${timeTrackingPaused ? 'pausiert' : 'fortgesetzt'}`);
+        });
 
-            const firstAltAddresses = addresses[0];
-            return addresses
-                .every(address => address.size === firstAltAddresses.size && Array.from(address).every(value => firstAltAddresses.has(value)));
-        }
-
-        function getOrCreateStreet(streetName, cityId) {
-            return sdk.DataModel.Streets.getStreet({ streetName, cityId })
-                ?? sdk.DataModel.Streets.addStreet({ streetName, cityId });
-        }
-
-        function streetEqualsPrimaryStreetName(altStreetId) {
-            const selection = getSelectedSegments();
-            const primaryStreetName = selection
-                .map(segmentId => sdk.DataModel.Segments.getAddress({ segmentId }))[0].street?.name;
-            const selectedStreetName = sdk.DataModel.Streets.getById({ streetId: altStreetId })?.name;
-            return primaryStreetName === selectedStreetName;
-        }
-
-        /* eslint-disable no-bitwise, no-mixed-operators */
-        function shadeColor2(color, percent) {
-            const f = parseInt(color.slice(1), 16);
-            const t = percent < 0 ? 0 : 255;
-            const p = percent < 0 ? percent * -1 : percent;
-            const R = f >> 16;
-            const G = f >> 8 & 0x00FF;
-            const B = f & 0x0000FF;
-            return `#${(0x1000000 + (Math.round((t - R) * p) + R) * 0x10000 + (Math.round((t - G) * p) + G)
-                * 0x100 + (Math.round((t - B) * p) + B)).toString(16).slice(1)}`;
-        }
-        /* eslint-enable no-bitwise, no-mixed-operators */
-
-        function buildRoadTypeButtonCss() {
-            const lines = [];
-            const useOldColors = _settings.useOldRoadColors;
-            Object.keys(roadTypeSettings).forEach(roadTypeAbbr => {
-                const roadType = roadTypeSettings[roadTypeAbbr];
-                const bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
-                let output = `.cs-rt-buttons-container .cs-rt-button-${roadTypeAbbr} {background-color:${
-                    bgColor};box-shadow:0 2px ${shadeColor2(bgColor, -0.5)};border-color:${shadeColor2(bgColor, -0.15)};}`;
-                output += ` .cs-rt-buttons-container .cs-rt-button-${roadTypeAbbr}:hover {background-color:${
-                    shadeColor2(bgColor, 0.2)}}`;
-                lines.push(output);
-            });
-            return lines.join(' ');
-        }
-
-        function injectCss() {
-            const css = [
-                // Road type button formatting
-                '.csRoadTypeButtonsCheckBoxContainer {margin-left:15px;}',
-                '.cs-rt-buttons-container {margin-bottom:5px;height:21px;}',
-                '.cs-rt-buttons-container .cs-rt-button {font-size:11px;line-height:20px;color:black;padding:0px 4px;height:20px;'
-                + 'margin-right:2px;border-style:solid;border-width:1px;}',
-                buildRoadTypeButtonCss(),
-                '.btn.cs-rt-button:active {box-shadow:none;transform:translateY(2px)}',
-                'div .cs-rt-buttons-group {float:left; margin: 0px 5px 5px 0px;}',
-                '#sidepanel-clicksaver .controls-container {padding:0px;}',
-                '#sidepanel-clicksaver .controls-container label {white-space: normal;}',
-                '#sidepanel-clicksaver {font-size:13px;}',
-
-                // Compact moad road type button formatting.
-                '.cs-compact-button[checked="false"] {opacity: 0.65;}',
-
-                // Lock button formatting
-                '.cs-group-label {font-size: 11px; width: 100%; font-family: Poppins, sans-serif;'
-                + ' text-transform: uppercase; font-weight: 700; color: #354148; margin-bottom: 6px;}'
-            ].join(' ');
-            $(`<style type="text/css">${css}</style>`).appendTo('head');
-        }
-
-        function createSettingsDropdown(id, settingName, titleText, divCss, options, optionalAttributes) {
-            const $container = $('<div>', { class: 'controls-container' });
-            const $select = $('<select>', {
-                class: 'csSettingsControl',
-                id,
-                // TODO css
-                style: 'font-size: 12px; border-color: #cbcbcb;border-radius: 10px; white-space: nowrap; width: 100%; text-overflow: ellipsis;',
-                'data-setting-name': settingName
-            }).appendTo($container);
-            // TODO css
-            if (divCss) $container.css(divCss);
-            // TODO css
-            if (titleText) $container.attr({ title: titleText });
-            if (optionalAttributes) $select.attr(optionalAttributes);
-            options.forEach(option => {
-                $select.append($('<option>', {
-                    value: option.value,
-                    text: option.text
-                }));
-            });
-
-            return $container;
-        }
-
-        function createSettingsCheckbox(id, settingName, labelText, titleText, divCss, labelCss, optionalAttributes) {
-            const $container = $('<div>', { class: 'controls-container' });
-            const $input = $('<input>', {
-                type: 'checkbox',
-                class: 'csSettingsControl',
-                name: id,
-                id,
-                'data-setting-name': settingName
-            }).appendTo($container);
-            if (titleText) {
-                labelText += '*';
-            }
-            const $label = $('<label>', { for: id }).text(labelText).appendTo($container);
-            // TODO css
-            if (divCss) $container.css(divCss);
-            // TODO css
-            if (labelCss) $label.css(labelCss);
-            if (titleText) $container.attr({ title: titleText });
-            if (optionalAttributes) $input.attr(optionalAttributes);
-            return $container;
-        }
-
-        async function initUserPanel() {
-            const $roadTypesDiv = $('<div>', { class: 'csRoadTypeButtonsCheckBoxContainer' });
-            $roadTypesDiv.append(
-                createSettingsCheckbox('csUseOldRoadColorsCheckBox', 'useOldRoadColors', trans.prefs.useOldRoadColors)
-            );
-            Object.keys(roadTypeSettings).forEach(roadTypeAbbr => {
-                const roadType = roadTypeSettings[roadTypeAbbr];
-                const id = `cs${roadTypeAbbr}CheckBox`;
-                const title = I18n.t('segment.road_types')[roadType.id];
-                const $roadTypeContainer = createSettingsCheckbox(id, 'roadType', title, null, null, null, {
-                    'data-road-type': roadTypeAbbr
-                });
-                $roadTypesDiv.append($roadTypeContainer);
-                if (['PLR', 'PR', 'RR', 'PB', 'OR'].includes(roadTypeAbbr)) { // added RR & PB by jm6087
-                    const $dropdownContainer = $('<div>', { class: 'csDropdownContainer' });
-                    const options = [
-                        { value: roadTypeDropdownOption.DEFAULT, text: trans.prefs.setCityToDefault },
-                        { value: roadTypeDropdownOption.NONE, text: trans.prefs.setStreetCityToNone },
-                        { value: roadTypeDropdownOption.CONNECTED_CITY, text: trans.prefs.setCityToConnectedSegCity }
-                    ];
-                    $dropdownContainer.append(
-                        // TODO css
-                        createSettingsDropdown(
-                            `csSet${roadTypeAbbr}CityDropdown`,
-                            `setNew${roadTypeAbbr}City`,
-                            '',
-                            { paddingLeft: '20px', marginRight: '4px' },
-                            options
-                        )
-                    );
-                    $roadTypeContainer.append($dropdownContainer);
-                }
-            });
-
-            const $streetDetailDiv = $('<div>', { class: 'csAddRemoveAddressButtonCheckBoxContainer' }).append(
-                createSettingsCheckbox(
-                    'csRemoveStreetNameCheckBox',
-                    'removeStreetName',
-                    trans.prefs.showRemoveStreetNameButton,
-                    trans.prefs.removeStreetNameTooltipText,
-                    { paddingLeft: '20px' }
-                ),
-                createSettingsCheckbox(
-                    'csRemoveCityNameCheckBox',
-                    'removeCityName',
-                    trans.prefs.showRemoveCityNameButton,
-                    '',
-                    { paddingLeft: '20px' }
-                )
-            );
-
-            const $swapStreetDetailsDiv = $('<div>', { class: 'csAddSwapPrimaryNameCheckBoxContainer' }).append(
-                createSettingsCheckbox(
-                    'csSwapWholeAddressCheckBox',
-                    'swapWholeAddress',
-                    trans.prefs.swapWholeAddress,
-                    '',
-                    { paddingLeft: '20px' }
-                )
-            );
-
-            const $panel = $('<div>', { id: 'sidepanel-clicksaver' }).append(
-                $('<div>', { class: 'side-panel-section>' }).append(
-                    // TODO css
-                    $('<div>', { style: 'margin-bottom:8px;' }).append(
-                        $('<div>', { class: 'form-group' }).append(
-                            $('<label>', { class: 'cs-group-label' }).text(trans.prefs.dropdownHelperGroup),
-                            $('<div>').append(
-                                createSettingsCheckbox(
-                                    'csRoadTypeButtonsCheckBox',
-                                    'roadButtons',
-                                    trans.prefs.roadTypeButtons
-                                )
-                            ).append($roadTypesDiv),
-                            createSettingsCheckbox(
-                                'csAddCompactColorsCheckBox',
-                                'addCompactColors',
-                                trans.prefs.addCompactColors
-                            ),
-                            createSettingsCheckbox(
-                                'csHideUncheckedRoadTypeButtonsCheckBox',
-                                'hideUncheckedRoadTypeButtons',
-                                trans.prefs.hideUncheckedRoadTypeButtons
-                            )
-                        ),
-                        $('<label>', { class: 'cs-group-label' }).text(trans.prefs.timeSaversGroup),
-                        $('<div>', { style: 'margin-bottom:8px;' }).append(
-                            createSettingsCheckbox(
-                                'csAddAltCityButtonCheckBox',
-                                'addAltCityButton',
-                                trans.prefs.showAddAltCityButton
-                            ),
-                            createSettingsCheckbox(
-                                'csAddRemoveAddressButtonCheckBox',
-                                'addRemoveAddressButton',
-                                trans.prefs.enableAddressRemovalButton,
-                                trans.prefs.addressRemovalButtonTooltipText
-                            ).append($streetDetailDiv),
-                            isSwapPedestrianPermitted() ? createSettingsCheckbox(
-                                'csAddSwapPedestrianButtonCheckBox',
-                                'addSwapPedestrianButton',
-                                trans.prefs.showSwapDrivingWalkingButton
-                            ) : '',
-                            createSettingsCheckbox(
-                                'csAddSwapPrimaryNameCheckBox',
-                                'addSwapPrimaryNameButton',
-                                trans.prefs.showSwapStreetNamesButton
-                            ).append($swapStreetDetailsDiv)
-                        )
-                    )
-                )
-            );
-
-            $panel.append(
-                // TODO css
-                $('<div>', { style: 'margin-top:20px;font-size:10px;color:#999999;' }).append(
-                    $('<div>').text(`v. ${argsObject.scriptVersion}${argsObject.scriptName.toLowerCase().includes('beta') ? ' beta' : ''}`),
-                    $('<div>').append(
-                        $('<a>', { href: argsObject.forumUrl, target: '__blank' }).text(trans.prefs.discussionForumLinkText)
-                    )
-                )
-            );
-
-            const { tabLabel, tabPane } = await sdk.Sidebar.registerScriptTab();
-            $(tabLabel).text('CS');
-            $(tabPane).append($panel);
-            // Decrease spacing around the tab contents.
-            $(tabPane).parent().css({ 'padding-top': '0px', 'padding-left': '8px' });
-
-            // Add change events
-            // Simple checkbox hierarchy
-            setupCheckboxChangeHandler('#csRoadTypeButtonsCheckBox', '.csRoadTypeButtonsCheckBoxContainer');
-            setupCheckboxChangeHandler('#csAddRemoveAddressButtonCheckBox', '.csAddRemoveAddressButtonCheckBoxContainer');
-            setupCheckboxChangeHandler('#csAddSwapPrimaryNameCheckBox', '.csAddSwapPrimaryNameCheckBoxContainer');
-
-            $('.csSettingsControl').change(function onSettingsCheckChanged() {
-                const { checked } = this;
-                const $this = $(this);
-                const settingName = $this.data('setting-name');
-                $this.siblings('.csDropdownContainer').toggle(checked);
-
-                if (settingName === 'roadType') {
-                    const roadType = $this.data('road-type');
-                    const array = _settings.roadTypeButtons;
-                    const index = array.indexOf(roadType);
-                    if (checked && index === -1) {
-                        array.push(roadType);
-                    } else if (!checked && index !== -1) {
-                        array.splice(index, 1);
-                    }
-                } else if (settingName.includes('setNew') && settingName.includes('City')) {
-                    _settings[settingName] = $this.val();
+        tabContent.find('#wecm-show-time-checkbox').on('change', function() {
+            timeTrackingVisible = $(this).is(':checked');
+            saveTimeTrackingSettings();
+            
+            // Sofort die Sichtbarkeit der Zeit-Anzeige aktualisieren - kompletten Container
+            const $realtimeContainer = $realtimeCounterElem ? $realtimeCounterElem.closest('.toolbar-button') : null;
+            if ($realtimeContainer) {
+                if (timeTrackingVisible) {
+                    $realtimeContainer.show();
                 } else {
-                    _settings[settingName] = checked;
-                }
-                saveSettingsToStorage();
-            });
-        }
-
-        function setupCheckboxChangeHandler(checkboxSelector, containerSelector) {
-            $(checkboxSelector).change(function() {
-                $(containerSelector).toggle(this.checked);
-                saveSettingsToStorage();
-            });
-        }
-
-        function updateControls() {
-            if ($(roadTypeDropdownSelector).length > 0) {
-                if (isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
-            }
-            addCompactRoadTypeColors();
-            if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
-                addSwapPedestrianButton();
-            }
-            // if ($(PARKING_SPACES_DROPDOWN_SELECTOR).length > 0 && isChecked('csParkingSpacesButtonsCheckBox')) {
-            //     addParkingSpacesButtons(); // TODO - add option setting
-            // }
-            // if ($(PARKING_COST_DROPDOWN_SELECTOR).length > 0 && isChecked('csParkingCostButtonsCheckBox')) {
-            //     addParkingCostButtons(); // TODO - add option setting
-            // }
-        }
-
-        function replaceWord(target, searchWord, replaceWithWord) {
-            return target.replace(new RegExp(`\\b${searchWord}\\b`, 'g'), replaceWithWord);
-        }
-
-        function titleCase(word) {
-            return word.charAt(0).toUpperCase() + word.substring(1).toLowerCase();
-        }
-        function mcCase(word) {
-            return word.charAt(0).toUpperCase() + word.charAt(1).toLowerCase()
-                + word.charAt(2).toUpperCase() + word.substring(3).toLowerCase();
-        }
-        function upperCase(word) {
-            return word.toUpperCase();
-        }
-
-        function processSubstring(target, substringRegex, processFunction) {
-            const substrings = target.match(substringRegex);
-            if (substrings) {
-                for (let idx = 0; idx < substrings.length; idx++) {
-                    const substring = substrings[idx];
-                    const newSubstring = processFunction(substring);
-                    target = replaceWord(target, substring, newSubstring);
+                    $realtimeContainer.hide();
                 }
             }
-            return target;
-        }
+            
+            log(`Zeit-Anzeige ${timeTrackingVisible ? 'eingeblendet' : 'ausgeblendet'}`);
+        });
 
-        function onPaste(e) {
-            const targetNode = e.target;
-            if (targetNode.name === 'streetName' || targetNode.className.includes('street-name')) {
-                // Get the text that's being pasted.
-                let pastedText = e.clipboardData.getData('text/plain');
+        tabContent.find('#wecm-save-time-btn').on('click', function() {
+            saveCurrentSessionTime();
+            updateTimeHistoryTable();
+            
+            // Feedback für den Benutzer
+            const button = $(this);
+            const originalText = button.text();
+            button.text(texts.timeSaved).css('background', '#4CAF50');
+            setTimeout(() => {
+                button.text(originalText).css('background', '#2196F3');
+            }, 2000);
+        });
 
-                // If pasting text in ALL CAPS...
-                if (/^[^a-z]*$/.test(pastedText)) {
-                    [
-                        // Title case all words first.
-                        [/\b[a-zA-Z]+(?:'S)?\b/g, titleCase],
-
-                        // Then process special cases.
-                        [/\bMC\w+\b/ig, mcCase], // e.g. McCaulley
-                        [/\b(?:I|US|SH|SR|CH|CR|CS|PR|PS)\s*-?\s*\d+\w*\b/ig, upperCase], // e.g. US-25, US25
-                        /* eslint-disable-next-line max-len */
-                        [/\b(?:AL|AK|AS|AZ|AR|CA|CO|CT|DE|DC|FM|FL|GA|GU|HI|ID|IL|IN|IA|KS|KY|LA|ME|MH|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|MP|OH|OK|OR|PW|PA|PR|RI|SC|SD|TN|TX|UT|VT|VI|VA|WA|WV|WI|WY)\s*-?\s*\d+\w*\b/ig, upperCase], // e.g. WV-52
-                        [/\b(?:NE|NW|SE|SW)\b/ig, upperCase]
-                    ].forEach(item => {
-                        pastedText = processSubstring(pastedText, item[0], item[1]);
-                    });
-
-                    // Insert new text in the focused node.
-                    document.execCommand('insertText', false, pastedText);
-
-                    // Prevent the default paste behavior.
-                    e.preventDefault();
-                    return false;
-                }
+        tabContent.find('#wecm-clear-history-btn').on('click', function() {
+            if (confirm(texts.confirmClear)) {
+                timeTrackingData = [];
+                saveTimeTrackingData();
+                updateTimeHistoryTable();
+                log('Zeit-Verlauf gelöscht');
             }
-            return true;
-        }
+        });
 
-        function getTranslationObject() {
-            if (argsObject.useDefaultTranslation) {
-                return defaultTranslation;
+        // Hover-Effekte für Buttons
+        tabContent.find('#wecm-save-time-btn').hover(
+            function() { $(this).css('background', '#1976D2'); },
+            function() { $(this).css('background', '#2196F3'); }
+        );
+
+        tabContent.find('#wecm-clear-history-btn').hover(
+            function() { $(this).css('background', '#d32f2f'); },
+            function() { $(this).css('background', '#f44336'); }
+        );
+
+        // Event-Listener für einzelne Session-Löschung (delegiert)
+        tabContent.on('click', '.wecm-delete-session-btn', function() {
+            const timestamp = parseInt($(this).data('timestamp'));
+            const texts = getLocalizedText();
+            
+            if (confirm(texts.confirmDeleteSession)) {
+                // Session aus dem Array entfernen
+                timeTrackingData = timeTrackingData.filter(entry => entry.timestamp !== timestamp);
+                saveTimeTrackingData();
+                updateTimeHistoryTable();
+                log('Session gelöscht');
             }
-            let locale = I18n.currentLocale().toLowerCase();
-            if (!argsObject.translations.hasOwnProperty(locale)) {
-                locale = 'en-us';
-            }
-            return argsObject.translations[locale];
-        }
+        });
 
-        function errorHandler(callback) {
-            try {
-                callback();
-            } catch (ex) {
-                console.error(`${argsObject.scriptName}:`, ex);
-            }
-        }
+        // Hover-Effekte für Löschen-Buttons (delegiert)
+        tabContent.on('mouseenter', '.wecm-delete-session-btn', function() {
+            $(this).css('background', '#d32f2f');
+        });
+        
+        tabContent.on('mouseleave', '.wecm-delete-session-btn', function() {
+            $(this).css('background', '#f44336');
+        });
 
-        /**
-         * This event handler is needed in the following scenarios:
-         * 1. When the user changes the selected compact road type chip to adjust its styling.
-         * 2. When the swap alternative name button is clicked.
-         */
-        function onSegmentsChanged() {
-            addCompactRoadTypeColors();
-            addSwapPrimaryNameButton();
-        }
+        // Tabelle sofort beim Erstellen der UI initialisieren
+        // updateTimeHistoryTable(); // Entfernt - wird nach DOM-Einfügung aufgerufen
 
-        async function onCopyCoordinatesShortcut() {
-            try {
-                const center = sdk.Map.getMapCenter();
-                const output = `${center.lat.toFixed(5)}, ${center.lon.toFixed(5)}`;
-                await navigator.clipboard.writeText(output);
-                WazeWrap.Alerts.info('WME ClickSaver', `Map center coordinate copied to clipboard:\n${output}`, false, false, 2000);
-                // console.debug('Map coordinates copied to clipboard:', center);
-            } catch (err) {
-                console.error('Failed to copy map center coordinates to clipboard: ', err);
-            }
-        }
-
-        function onToggleDrawNewRoadsAsTwoWayShortcut() {
-            const options = sdk.Settings.getUserSettings();
-            options.isCreateRoadsAsTwoWay = !options.isCreateRoadsAsTwoWay;
-            sdk.Settings.setUserSettings(options);
-            WazeWrap.Alerts.info('WME ClickSaver', `New segments will be drawn as <b>${options.isCreateRoadsAsTwoWay ? 'two-way' : 'one-way'}</b>.`, false, false, 2000);
-        }
-
-        function createShortcut(shortcutId, description, callback) {
-            let shortcutKeys = _settings.shortcuts?.[shortcutId] ?? null;
-            if (shortcutKeys && sdk.Shortcuts.areShortcutKeysInUse({ shortcutKeys })) {
-                shortcutKeys = null;
-            }
-            sdk.Shortcuts.createShortcut({
-                shortcutId,
-                shortcutKeys,
-                description,
-                callback
-            });
-        }
-
-        function hideUncheckedRoadTypeButtons() {
-            const selection = getSelectedSegments();
-            if (!selection) {
-                return;
-            }
-            const selectedRoadTypes = selection
-                .map(segmentId => sdk.DataModel.Segments.getById({ segmentId }))
-                .map(segment => segment.roadType);
-
-            const checkedRoadTypes = new Set(
-                _settings.roadTypeButtons
-                    .map(roadType => roadTypeSettings[roadType])
-                    .map(setting => setting.id)
-                    .concat(selectedRoadTypes)
-                    .map(id => id)
-            );
-
-            // eslint-disable-next-line func-names
-            $('wz-chip-select.road-type-chip-select wz-checkable-chip').each(function() {
-                const buttonValue = this.value;
-                if (buttonValue === 'MIXED') {
-                    return;
-                }
-                if (!checkedRoadTypes.has(buttonValue)) {
-                    $(this).parent().parent().remove();
-                }
-            });
-        }
-
-        async function init() {
-            logDebug('Initializing...');
-
-            trans = getTranslationObject();
-            Object.keys(roadTypeSettings).forEach(rtName => {
-                roadTypeSettings[rtName].text = trans.roadTypeButtons[rtName].text;
-            });
-
-            document.addEventListener('paste', onPaste);
-
-            sdk.Events.trackDataModelEvents({ dataModelName: 'segments' });
-            sdk.Events.on({
-                eventName: 'wme-data-model-objects-changed',
-                eventHandler: () => errorHandler(onSegmentsChanged)
-            });
-            sdk.Events.on({
-                eventName: 'wme-selection-changed',
-                eventHandler: () => errorHandler(updateControls)
-            });
-
-            // check for changes in the edit-panel
-            const observer = new MutationObserver(mutations => {
-                mutations.forEach(mutation => {
-                    for (let i = 0; i < mutation.addedNodes.length; i++) {
-                        const addedNode = mutation.addedNodes[i];
-
-                        if (addedNode.nodeType === Node.ELEMENT_NODE) {
-                            // Checks to identify if this is a segment in regular display mode.
-                            if (addedNode.querySelector(roadTypeDropdownSelector)) {
-                                if (isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
-                                if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
-                                    addSwapPedestrianButton();
-                                }
-                            }
-                            // Checks to identify if this is a segment in compact display mode.
-                            if (addedNode.querySelector(roadTypeChipSelector)) {
-                                if (isChecked('csRoadTypeButtonsCheckBox')) {
-                                    addCompactRoadTypeChangeEvents();
-                                }
-                                if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
-                                    addSwapPedestrianButton();
-                                }
-                                if (isChecked('csHideUncheckedRoadTypeButtonsCheckBox')) {
-                                    hideUncheckedRoadTypeButtons();
-                                }
-                            }
-                            // if (addedNode.querySelector(PARKING_SPACES_DROPDOWN_SELECTOR) && isChecked('csParkingSpacesButtonsCheckBox')) {
-                            //     addParkingSpacesButtons();
-                            // }
-                            // if (addedNode.querySelector(PARKING_COST_DROPDOWN_SELECTOR)
-                            //     && isChecked('csParkingCostButtonsCheckBox')) {
-                            //     addParkingCostButtons();
-                            // }
-                            if (addedNode.querySelector('.side-panel-section')
-                                && (isChecked('csAddAltCityButtonCheckBox') || isChecked('csAddRemoveAddressButtonCheckBox'))) {
-                                createSharedAddressButtonContainer();
-                                if (isChecked('csAddRemoveAddressButtonCheckBox')) {
-                                    addRemoveAddressButton();
-                                }
-                                if (isChecked('csAddAltCityButtonCheckBox')) {
-                                    addAddAltCityButton();
-                                }
-                            }
-                            if (addedNode.querySelector('.alt-streets') && isChecked('csAddSwapPrimaryNameCheckBox')) {
-                                // Cancel button doesn't change the datamodel so re-add the swap arrow on cancel click
-                                // eslint-disable-next-line func-names
-                                addedNode.addEventListener('click', event => {
-                                    if (event.target.classList.contains('alt-address-cancel-button')) {
-                                        addSwapPrimaryNameButton();
-                                    }
-                                });
-                                addSwapPrimaryNameButton();
-                            }
-                        }
-                    }
-                });
-            });
-
-            observer.observe(document.getElementById('edit-panel'), { childList: true, subtree: true });
-            await initUserPanel();
-            loadSettingsFromStorage();
-            createShortcut('toggleTwoWaySegDrawingShortcut', 'Toggle new segment two-way drawing', onToggleDrawNewRoadsAsTwoWayShortcut);
-            createShortcut('copyCoordinatesShortcut', 'Copy map center coordinates', onCopyCoordinatesShortcut);
-            window.addEventListener('beforeunload', saveSettingsToStorage, false);
-            injectCss();
-            updateControls(); // In case of PL w/ segments selected.
-
-            logDebug('Initialized');
-        }
-
-        function createSharedAddressButtonContainer() {
-            const $addressEdit = $('#segment-edit-general div.address-edit');
-            const $wzLabel = $addressEdit.prev('wz-label');
-            const $container = $('<div>', {
-                style: 'display: flex; gap: 0.5em; place-content: flex-end;',
-                id: 'csAddressButtonContainer'
-            });
-
-            if ($wzLabel.css('display') === 'none') {
-                $container.css('padding-bottom', '4px');
-            } else {
-                $container.append($wzLabel);
-            }
-
-            $addressEdit.before($container);
-        }
-
-        function skipLoginDialog(tries = 0) {
-            if (sdk || tries === 1000) return;
-            if ($('wz-button.do-login').length) {
-                $('wz-button.do-login').click();
-                return;
-            }
-            setTimeout(skipLoginDialog, 100, ++tries);
-        }
-        skipLoginDialog();
-
-        sdk = await bootstrap({ scriptUpdateMonitor: { downloadUrl } });
-
-        init();
-    } // END clicksaver function (used to be injected, now just runs as a function)
-
-    // function exists(...objects) {
-    //     return objects.every(object => typeof object !== 'undefined' && object !== null);
-    // }
-
-    function injectScript(argsObject) {
-        // 3/31/2023 - removing script injection due to loading errors that I can't track down ("require is not defined").
-        // Not sure if injection is needed anymore. I believe it was to get around an issue with Greasemonkey / Firefox.
-        clicksaver(argsObject);
-        // if (exists(require, $)) {
-        //     GM_addElement('script', {
-        //         textContent: `(function(){${clicksaver.toString()}\n clicksaver(${JSON.stringify(argsObject).replace('\'', '\\\'')})})();`
-        //     });
-        // } else {
-        //     setTimeout(() => injectScript(argsObject), 250);
-        // }
+        return tabContent;
     }
 
-    function setValue(object, path, value) {
-        const pathParts = path.split('.');
-        for (let i = 0; i < pathParts.length - 1; i++) {
-            const pathPart = pathParts[i];
-            if (pathPart in object) {
-                object = object[pathPart];
-            } else {
-                object[pathPart] = {};
-                object = object[pathPart];
-            }
+    // Zeit-Verlauf Tabelle aktualisieren
+    function updateTimeHistoryTable() {
+        const tbody = $('#wecm-time-history-body');
+        tbody.empty();
+
+        // Entferne vorherige Zusammenfassung
+        $('#wecm-time-history-table').next('.wecm-total-summary').remove();
+
+        if (timeTrackingData.length === 0) {
+            tbody.append(`
+                <tr>
+                    <td colspan="4" style="padding: 20px; text-align: center; color: #666; font-style: italic;">
+                        Keine Daten verfügbar
+                    </td>
+                </tr>
+            `);
+            return;
         }
-        object[pathParts[pathParts.length - 1]] = value;
+
+        // Daten nach Datum sortieren (neueste zuerst)
+        const sortedData = [...timeTrackingData].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        // Gesamtdauer berechnen
+        let totalDuration = 0;
+        let totalSessions = sortedData.length;
+
+        sortedData.forEach((entry, index) => {
+            totalDuration += entry.duration;
+            
+            const date = new Date(entry.timestamp);
+            const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+            const duration = formatDuration(entry.duration);
+            const totalDurationStr = formatDuration(totalDuration);
+
+            const row = $(`
+                <tr style="border-bottom: 1px solid #eee; ${index % 2 === 0 ? 'background: #fafafa;' : ''}" data-session-index="${index}">
+                    <td style="padding: 8px; font-size: 12px;">${dateStr}</td>
+                    <td style="padding: 8px; font-weight: bold; color: #2196F3;">${duration}</td>
+                    <td style="padding: 8px; font-weight: bold; color: #4CAF50;">${totalDurationStr}</td>
+                    <td style="padding: 8px; text-align: center;">
+                        <button class="wecm-delete-session-btn" data-timestamp="${entry.timestamp}" style="
+                            background: #f44336; 
+                            color: white; 
+                            border: none; 
+                            padding: 4px 8px; 
+                            border-radius: 3px; 
+                            cursor: pointer; 
+                            font-size: 12px;
+                            font-weight: bold;
+                        " title="Session löschen">×</button>
+                    </td>
+                </tr>
+            `);
+
+            tbody.append(row);
+        });
+
+        // Gesamtwert unter der Tabelle hinzufügen (ohne grünes Styling)
+        const totalSummary = formatDurationDetailed(totalDuration);
+        const summaryRow = $(`
+            <div class="wecm-total-summary" style="
+                margin-top: 15px; 
+                padding: 12px; 
+                background: #f5f5f5; 
+                color: #333; 
+                border: 1px solid #ddd;
+                border-radius: 8px; 
+                text-align: center; 
+                font-weight: bold; 
+                font-size: 14px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            ">
+                Gesamt: ${totalSessions} Sessions<br>${totalSummary}
+            </div>
+        `);
+        
+        // Füge die Zusammenfassung nach der Tabelle hinzu
+        $('#wecm-time-history-table').after(summaryRow);
     }
 
-    function convertTranslationsArrayToObject(arrayIn) {
-        const translations = {};
-        let iRow;
-        let iCol;
-        const languages = arrayIn[0].map(lang => lang.toLowerCase());
-        for (iCol = 1; iCol < languages.length; iCol++) {
-            translations[languages[iCol]] = {};
-        }
-        for (iRow = 1; iRow < arrayIn.length; iRow++) {
-            const row = arrayIn[iRow];
-            const propertyPath = row[0];
-            for (iCol = 1; iCol < row.length; iCol++) {
-                setValue(translations[languages[iCol]], propertyPath, row[iCol]);
-            }
-        }
-        return translations;
-    }
+    // Dauer formatieren (Stunden:Minuten:Sekunden)
+    function formatDuration(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
 
-    function loadTranslations() {
-        if (typeof $ === 'undefined') {
-            setTimeout(loadTranslations, 250);
-            console.debug('ClickSaver:', 'jQuery not ready. Retry loading translations...');
+        if (hours > 0) {
+            return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         } else {
-            // This call retrieves the data from the translations spreadsheet and then injects
-            // the main code into the page.  If the spreadsheet call fails, the default English
-            // translation is used.
-            const args = {
-                scriptName,
-                scriptVersion,
-                forumUrl
-            };
-            $.getJSON(`${translationsUrl}?${DEC(apiKey)}`).then(res => {
-                args.translations = convertTranslationsArrayToObject(res.values);
-                console.debug('ClickSaver:', 'Translations loaded.');
-            }).fail(() => {
-                console.error('ClickSaver: Error loading translations spreadsheet. Using default translation (English).');
-                args.useDefaultTranslation = true;
-            }).always(() => {
-                // Leave this document.ready function. Some people randomly get a "require is not defined" error unless the injectMain function
-                // is called late enough.  Even with a "typeof require !== 'undefined'" check.
-                $(document).ready(() => {
-                    injectScript(args);
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        }
+    }
+
+    // Detaillierte Dauer formatieren (Tage, Stunden, Minuten, Sekunden)
+    function formatDurationDetailed(seconds) {
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+
+        let result = [];
+        
+        // Immer Tage anzeigen, auch wenn 0
+        result.push(`${days} ${days === 1 ? 'Tag' : 'Tage'}`);
+        
+        if (hours > 0) {
+            result.push(`${hours} ${hours === 1 ? 'Stunde' : 'Stunden'}`);
+        }
+        if (minutes > 0) {
+            result.push(`${minutes} min`);
+        }
+        // Sekunden immer anzeigen, auch wenn 0 (außer wenn bereits Minuten oder Stunden vorhanden sind)
+        if (secs > 0 || (hours === 0 && minutes === 0)) {
+            result.push(`${secs} sec`);
+        }
+
+        // Verbinde mit "und" für das letzte Element
+        if (result.length > 1) {
+            const last = result.pop();
+            return result.join(', ') + ' und ' + last;
+        }
+        
+        return result[0] || '0 Tage';
+    }
+
+    async function init() {
+        userName = sdk.State.getUserInfo().userName;
+
+        GM_addStyle(`
+            .wecm-tooltip li {text-align: left; margin: 2px 0;}
+            .wecm-tooltip ul {margin: 5px 0; padding-left: 20px;}
+            .wecm-tooltip strong {color: #2196F3; display: block; margin-top: 8px; margin-bottom: 4px;}
+            .wecm-tooltip .wecm-warning {border-radius:8px; padding:3px; margin-top:8px; margin-bottom:5px;}
+            .wecm-tooltip .wecm-warning.yellow {background-color:yellow; color:black;}
+            .wecm-tooltip .wecm-warning.red {background-color:red; color:white;}
+            .wecm-tooltip {max-width: 400px;}
+            
+            /* Enhanced tooltip styling for sections */
+            .wecm-tooltip-section {
+                margin-bottom: 12px;
+                padding: 8px;
+                background-color: rgba(33, 150, 243, 0.05);
+                border-radius: 6px;
+                border-left: 3px solid #2196F3;
+            }
+            
+            .wecm-section-header {
+                font-weight: bold;
+                color: #2196F3;
+                margin-bottom: 6px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .wecm-stat-line {
+                display: flex;
+                justify-content: space-between;
+                margin: 4px 0;
+                padding: 2px 0;
+                border-bottom: 1px dotted rgba(33, 150, 243, 0.2);
+            }
+            
+            .wecm-stat-line:last-child {
+                border-bottom: none;
+            }
+            
+            .wecm-stat-value {
+                font-weight: bold;
+                color: #1976D2;
+            }
+            
+            /* Real-time counter styling */
+            #wecm-realtime-counter {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-weight: 600;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                transition: all 0.3s ease;
+            }
+            
+            #wecm-realtime-counter:hover {
+                color: #1976D2 !important;
+                transform: scale(1.05);
+            }
+            
+            /* Animation for counter updates */
+            @keyframes pulse {
+                0% { opacity: 1; }
+                50% { opacity: 0.7; }
+                100% { opacity: 1; }
+            }
+            
+            .wecm-counter-update {
+                animation: pulse 0.5s ease-in-out;
+            }
+        `);
+
+        // Zeit-Tracking Einstellungen laden
+        loadTimeTrackingSettings();
+        loadTimeTrackingData();
+
+        // Zeit-Tracking Tab registrieren
+        const texts = getLocalizedText();
+        const timeTrackingTab = createTimeTrackingTab();
+        
+        // Prüfe ob WME SDK verfügbar ist
+        if (sdk && sdk.Sidebar && sdk.Sidebar.registerScriptTab) {
+            try {
+                const { tabLabel, tabPane } = await sdk.Sidebar.registerScriptTab();
+                
+                // Tab-Label mit Emoji setzen
+                tabLabel.textContent = '📊';
+                tabLabel.title = texts.timeTracking;
+                
+                // Tab-Inhalt hinzufügen
+                tabPane.appendChild(timeTrackingTab.get(0));
+                
+                // Tabelle initialisieren nachdem sie im DOM ist
+                setTimeout(() => updateTimeHistoryTable(), 50);
+                
+                // Event Listener für Tab-Aktivierung
+                tabLabel.addEventListener('click', function() {
+                    // Tabelle aktualisieren wenn Tab geöffnet wird
+                    setTimeout(() => updateTimeHistoryTable(), 100);
                 });
-            });
-        }
-    }
-
-    function sandboxBootstrap() {
-        if (WazeWrap?.Ready) {
-            WazeWrap.Interface.ShowScriptUpdate(scriptName, scriptVersion, updateMessage, forumUrl);
+                
+                log('Zeit-Tracking Tab erfolgreich registriert');
+            } catch (error) {
+                log('Fehler beim Registrieren des Zeit-Tracking Tabs: ' + error.message);
+                // Fallback zur alten Methode
+                createFallbackTimeTrackingPanel(texts, timeTrackingTab);
+            }
         } else {
-            setTimeout(sandboxBootstrap, 250);
+            // Fallback für Test-Umgebung oder ältere WME-Versionen
+            createFallbackTimeTrackingPanel(texts, timeTrackingTab);
+        }
+
+        // Segment edit tracking setup
+        trackSegmentEdits();
+
+        // Start real-time counter update interval (update every second)
+        if (realtimeUpdateInterval) {
+            clearInterval(realtimeUpdateInterval);
+        }
+        realtimeUpdateInterval = setInterval(updateRealtimeCounter, 1000);
+
+        sdk.Events.on({ eventName: 'wme-save-finished', eventHandler: onSaveFinished });
+        // Update the edit count first time.
+        updateEditCount();
+        log('Initialized with extended statistics including session tracking, real-time counter and time tracking tab.');
+    }
+
+    function onSaveFinished(result) {
+        if (result.success) {
+            updateEditCount();
+            
+            // Automatische Zeit-Speicherung beim erfolgreichen WME-Speichern
+            // Nur speichern wenn Zeit-Tracking nicht pausiert ist
+            if (!timeTrackingPaused) {
+                saveCurrentSessionTime();
+            }
         }
     }
 
-    // Go ahead and start loading translations, and inject the main code into the page.
-    loadTranslations();
-
-    // Start the "sandboxed" code.
-    sandboxBootstrap();
+    init();
 })();
