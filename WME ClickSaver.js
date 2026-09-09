@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2026.05.21.001
+// @version         2026.09.09.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -24,7 +24,7 @@
 (function main() {
     'use strict';
 
-    const updateMessage = 'Swapping the segment type from pedestrian to a drivable street or vice versa will now keep the house numbers';
+    const updateMessage = 'Replace deprecated updateAddress usage (and hopefully get rid of disappearing state value)';
     const scriptName = GM_info.script.name;
     const scriptVersion = GM_info.script.version;
     const downloadUrl = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
@@ -322,22 +322,17 @@
                 if (sdk.DataModel.Segments.getAddress({ segmentId }).isEmpty) {
                     const addr = getFirstConnectedSegmentAddress(segmentId);
                     if (addr) {
-                        // Process the city
-                        const newCityProperties = {
+                        const addressData = {
                             cityName: setCity && !addr.city?.isEmpty ? addr.city.name : '',
+                            streetName: '',
                             countryId: addr.country.id,
                             stateId: addr.state.id
                         };
-                        let newCityId = sdk.DataModel.Cities.getCity(newCityProperties)?.id;
-                        if (newCityId == null) {
-                            newCityId = sdk.DataModel.Cities.addCity(newCityProperties).id;
-                        }
 
-                        // Process the street
-                        const newPrimaryStreetId = getOrCreateStreet('', newCityId).id;
-
-                        // Update the segment with the new street
-                        sdk.DataModel.Segments.updateAddress({ segmentId, primaryStreetId: newPrimaryStreetId });
+                        sdk.DataModel.Segments.updateAddress({
+                            segmentId,
+                            addressData
+                        });
                     }
                 }
             });
@@ -703,8 +698,10 @@
             ];
             selectedSegments.forEach(segmentId => sdk.DataModel.Segments.updateAddress({
                 segmentId,
-                primaryStreetId: newPrimaryStreet.id,
-                alternateStreetIds: newAltStreetsIds
+                addressData: {
+                    primaryStreetId: newPrimaryStreet.id,
+                    alternateStreetIds: newAltStreetsIds
+                }
             }));
             // });
         }
@@ -761,10 +758,9 @@
 
         async function onRemoveAddressButton() {
             const selectedSegmentIds = getSelectedSegments();
-            if (!selectedSegmentIds) {
+            if (!selectedSegmentIds?.length) {
                 return;
             }
-            const emptyCityId = getOrCreateEmptyCity().id;
             const isStreetNameChecked = isChecked('csRemoveStreetNameCheckBox');
             const isCityNameChecked = isChecked('csRemoveCityNameCheckBox');
 
@@ -772,19 +768,20 @@
                 .forEach(segmentId => {
                     const address = sdk.DataModel.Segments.getAddress({ segmentId });
                     const streetName = isStreetNameChecked ? '' : address.street?.name ?? '';
-                    const cityId = isCityNameChecked ? emptyCityId : address.city?.id ?? '';
-                    const newStreetId = getOrCreateStreet(streetName, cityId).id;
+                    const cityName = isCityNameChecked ? '' : address.city?.name ?? '';
+
+                    const addressData = {
+                        cityName,
+                        streetName,
+                        stateId: address.state?.id,
+                        countryId: address.country?.id
+                    };
 
                     sdk.DataModel.Segments.updateAddress({
                         segmentId,
-                        primaryStreetId: newStreetId
+                        addressData
                     });
                 });
-        }
-
-        function getOrCreateEmptyCity() {
-            return sdk.DataModel.Cities.getAll().find(city => city.isEmpty)
-                ?? sdk.DataModel.Cities.addCity({ cityName: '' });
         }
 
         function addSwapPedestrianButton() {
@@ -867,8 +864,10 @@
 
             sdk.DataModel.Segments.updateAddress({
                 segmentId: newSegmentId,
-                primaryStreetId,
-                alternateStreetIds
+                addressData: {
+                    primaryStreetId,
+                    alternateStreetIds
+                }
             });
 
             for (const houseNumber of houseNumbers) {
