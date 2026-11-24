@@ -37,7 +37,7 @@
     // This function is injected into the page.
     async function clicksaver(argsObject) {
         /* eslint-disable object-curly-newline */
-        const roadTypeDropdownSelector = 'div[class="road-type-select"]';
+        const roadTypeDropdownSelector = 'div.road-type-select, div[class*="roadTypeSelect--"]';
         const roadTypeChipSelector = 'wz-chip-select[class="road-type-chip-select"]';
         // const PARKING_SPACES_DROPDOWN_SELECTOR = 'select[name="estimatedNumberOfSpots"]';
         // const PARKING_COST_DROPDOWN_SELECTOR = 'select[name="costType"]';
