@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            WME ClickSaver
 // @namespace       https://greasyfork.org/users/45389
-// @version         2026.09.09.001
+// @version         2026.11.24.001
 // @description     Various UI changes to make editing faster and easier.
 // @author          MapOMatic
 // @include         /^https:\/\/(www|beta)\.waze\.com\/(?!user\/)(.{2,6}\/)?editor\/?.*$/
@@ -15,6 +15,7 @@
 // @require         https://update.greasyfork.org/scripts/509664/WME%20Utils%20-%20Bootstrap.js
 // ==/UserScript==
 
+/* global $ */
 /* global I18n */
 /* global WazeWrap */
 /* global bootstrap */
@@ -24,7 +25,9 @@
 (function main() {
     'use strict';
 
-    const updateMessage = 'Replace deprecated updateAddress usage (and hopefully get rid of disappearing state value)';
+    const updateMessage = '1. Swapping the segment type from pedestrian to a drivable street or vice versa will now keep the house numbers<br>' +
+        '2. Replace deprecated updateAddress usage (and hopefully get rid of disappearing state value)<br>' +
+        '3. Compatibility fix. Thank you, jushag!';
     const scriptName = GM_info.script.name;
     const scriptVersion = GM_info.script.version;
     const downloadUrl = 'https://greasyfork.org/scripts/369629-wme-clicksaver/code/WME%20ClickSaver.user.js';
@@ -126,27 +129,29 @@
             WALKWAY: 9
         };
         const roadTypeSettings = {
-            St: { id: wmeRoadType.STREET, wmeColor: '#ffffeb', svColor: '#ffffff', category: 'streets', visible: true },
-            PS: { id: wmeRoadType.PRIMARY_STREET, wmeColor: '#f0ea58', svColor: '#cba12e', category: 'streets', visible: true },
-            Pw: { id: wmeRoadType.ALLEY, wmeColor: '#64799a', svColor: '#64799a', category: 'streets', visible: false },
-            mH: { id: wmeRoadType.MINOR_HIGHWAY, wmeColor: '#69bf88', svColor: '#ece589', category: 'highways', visible: true },
-            MH: { id: wmeRoadType.MAJOR_HIGHWAY, wmeColor: '#45b8d1', svColor: '#c13040', category: 'highways', visible: true },
-            Fw: { id: wmeRoadType.FREEWAY, wmeColor: '#c577d2', svColor: '#387fb8', category: 'highways', visible: false },
-            Rmp: { id: wmeRoadType.RAMP, wmeColor: '#b3bfb3', svColor: '#58c53b', category: 'highways', visible: false },
-            OR: { id: wmeRoadType.OFF_ROAD, wmeColor: '#867342', svColor: '#82614a', category: 'otherDrivable', visible: false },
-            PLR: { id: wmeRoadType.PARKING_LOT_ROAD, wmeColor: '#ababab', svColor: '#2282ab', category: 'otherDrivable', visible: true },
-            PR: { id: wmeRoadType.PRIVATE_ROAD, wmeColor: '#beba6c', svColor: '#00ffb3', category: 'otherDrivable', visible: true },
-            Fer: { id: wmeRoadType.FERRY, wmeColor: '#d7d8f8', svColor: '#ff8000', category: 'otherDrivable', visible: false },
-            RR: { id: wmeRoadType.RAILROAD, wmeColor: '#c62925', svColor: '#ffffff', category: 'nonDrivable', visible: false },
-            RT: { id: wmeRoadType.RUNWAY_TAXIWAY, wmeColor: '#ffffff', svColor: '#00ff00', category: 'nonDrivable', visible: false },
-            WT: { id: wmeRoadType.WALKING_TRAIL, wmeColor: '#b0a790', svColor: '#00ff00', category: 'pedestrian', visible: false },
-            PB: { id: wmeRoadType.PEDESTRIAN_BOARDWALK, wmeColor: '#9a9a9a', svColor: '#0000ff', category: 'pedestrian', visible: false },
-            Sw: { id: wmeRoadType.STAIRWAY, wmeColor: '#999999', svColor: '#b700ff', category: 'pedestrian', visible: false }
+            St: { id: wmeRoadType.STREET, wmeColor: '#ffffeb', svColor: '#ffffff', category: 'streets' },
+            PS: { id: wmeRoadType.PRIMARY_STREET, wmeColor: '#f0ea58', svColor: '#cba12e', category: 'streets' },
+            Pw: { id: wmeRoadType.ALLEY, wmeColor: '#64799a', svColor: '#64799a', category: 'streets' },
+            mH: { id: wmeRoadType.MINOR_HIGHWAY, wmeColor: '#69bf88', svColor: '#ece589', category: 'highways' },
+            MH: { id: wmeRoadType.MAJOR_HIGHWAY, wmeColor: '#45b8d1', svColor: '#c13040', category: 'highways' },
+            Fw: { id: wmeRoadType.FREEWAY, wmeColor: '#c577d2', svColor: '#387fb8', category: 'highways' },
+            Rmp: { id: wmeRoadType.RAMP, wmeColor: '#b3bfb3', svColor: '#58c53b', category: 'highways' },
+            OR: { id: wmeRoadType.OFF_ROAD, wmeColor: '#867342', svColor: '#82614a', category: 'otherDrivable' },
+            PLR: { id: wmeRoadType.PARKING_LOT_ROAD, wmeColor: '#ababab', svColor: '#2282ab', category: 'otherDrivable' },
+            PR: { id: wmeRoadType.PRIVATE_ROAD, wmeColor: '#beba6c', svColor: '#00ffb3', category: 'otherDrivable' },
+            Fer: { id: wmeRoadType.FERRY, wmeColor: '#d7d8f8', svColor: '#ff8000', category: 'otherDrivable' },
+            RR: { id: wmeRoadType.RAILROAD, wmeColor: '#c62925', svColor: '#ffffff', category: 'nonDrivable' },
+            RT: { id: wmeRoadType.RUNWAY_TAXIWAY, wmeColor: '#ffffff', svColor: '#00ff00', category: 'nonDrivable' },
+            WT: { id: wmeRoadType.WALKING_TRAIL, wmeColor: '#b0a790', svColor: '#00ff00', category: 'pedestrian' },
+            PB: { id: wmeRoadType.PEDESTRIAN_BOARDWALK, wmeColor: '#9a9a9a', svColor: '#0000ff', category: 'pedestrian' },
+            Sw: { id: wmeRoadType.STAIRWAY, wmeColor: '#999999', svColor: '#b700ff', category: 'pedestrian' }
         };
 
         /* eslint-enable object-curly-newline */
         let _settings = {};
         let trans; // Translation object
+        let swapPedestrianPermitted = false;
+        let roadTypeButtonsRequestId = 0;
 
         // function log(message) {
         //     console.log('ClickSaver:', message);
@@ -168,8 +173,8 @@
             return $(`#${checkboxId}`).is(':checked');
         }
 
-        function isSwapPedestrianPermitted() {
-            const userInfo = sdk.State.getUserInfo();
+        async function isSwapPedestrianPermitted() {
+            const userInfo = await sdk.State.getUserInfo();
             const rank = userInfo.rank + 1;
             return rank >= 4 || (rank === 3 && userInfo.isAreaManager);
         }
@@ -177,8 +182,18 @@
         function setChecked(checkboxId, checked) {
             $(`#${checkboxId}`).prop('checked', checked);
         }
+
+        function readSettingsFromStorage() {
+            try {
+                return JSON.parse(localStorage.getItem(settingsStoreName)) ?? {};
+            } catch (ex) {
+                console.error(`${argsObject.scriptName}: Stored settings are corrupted. Using defaults.`, ex);
+                return {};
+            }
+        }
+
         function loadSettingsFromStorage() {
-            const loadedSettings = $.parseJSON(localStorage.getItem(settingsStoreName));
+            const loadedSettings = readSettingsFromStorage();
             const defaultSettings = {
                 lastVersion: null,
                 roadButtons: true,
@@ -244,39 +259,18 @@
             $(`#${dropdownId}`).val(value);
         }
 
-        function saveSettingsToStorage() {
+        async function saveSettingsToStorage() {
+            const shortcuts = await sdk.Shortcuts.getAllShortcuts();
+            _settings.shortcuts = Object.fromEntries(shortcuts.map(shortcut => [shortcut.shortcutId, shortcut.shortcutKeys]));
+            writeSettingsToStorage();
+        }
+
+        function writeSettingsToStorage() {
             const settings = {
+                ..._settings,
                 lastVersion: argsObject.scriptVersion,
-                roadButtons: _settings.roadButtons,
-                parkingCostButtons: _settings.parkingCostButtons,
-                parkingSpacesButtons: _settings.parkingSpacesButtons,
-                setNewPLRCity: _settings.setNewPLRCity,
-                setNewPRCity: _settings.setNewPRCity,
-                setNewRRCity: _settings.setNewRRCity,
-                setNewPBCity: _settings.setNewPBCity,
-                setNewORCity: _settings.setNewORCity,
-                useOldRoadColors: _settings.useOldRoadColors,
-                addAltCityButton: _settings.addAltCityButton,
-                addSwapPedestrianButton: _settings.addSwapPedestrianButton,
-                warnOnPedestrianTypeSwap: _settings.warnOnPedestrianTypeSwap,
-                addCompactColors: _settings.addCompactColors,
-                addSwapPrimaryNameButton: _settings.addSwapPrimaryNameButton,
-                swapWholeAddress: _settings.swapWholeAddress,
-                hideUncheckedRoadTypeButtons: _settings.hideUncheckedRoadTypeButtons,
-                addRemoveAddressButton: _settings.addRemoveAddressButton,
-                removeStreetName: _settings.removeStreetName,
-                removeCityName: _settings.removeCityName,
-                shortcuts: {}
+                roadTypeButtons: Object.keys(roadTypeSettings).filter(roadTypeAbbr => _settings.roadTypeButtons.includes(roadTypeAbbr))
             };
-            sdk.Shortcuts.getAllShortcuts().forEach(shortcut => {
-                settings.shortcuts[shortcut.shortcutId] = shortcut.shortcutKeys;
-            });
-            settings.roadTypeButtons = [];
-            Object.keys(roadTypeSettings).forEach(roadTypeAbbr => {
-                if (_settings.roadTypeButtons.indexOf(roadTypeAbbr) !== -1) {
-                    settings.roadTypeButtons.push(roadTypeAbbr);
-                }
-            });
             localStorage.setItem(settingsStoreName, JSON.stringify(settings));
             logDebug('Settings saved');
         }
@@ -288,26 +282,29 @@
             return pedRoadTypes.includes(segment.roadType);
         }
 
-        function getConnectedSegmentIDs(segmentId) {
-            return [
-                ...sdk.DataModel.Segments.getConnectedSegments({ segmentId, reverseDirection: false }),
-                ...sdk.DataModel.Segments.getConnectedSegments({ segmentId, reverseDirection: true })
-            ].map(segment => segment.id);
+        async function getConnectedSegmentIDs(segmentId) {
+            const [forward, reverse] = await Promise.all([
+                sdk.DataModel.Segments.getConnectedSegments({ segmentId, reverseDirection: false }),
+                sdk.DataModel.Segments.getConnectedSegments({ segmentId, reverseDirection: true })
+            ]);
+            return [...forward, ...reverse].map(segment => segment.id);
         }
 
-        function getFirstConnectedSegmentAddress(segmentId) {
-            const nonMatches = [];
+        async function getFirstConnectedSegmentAddress(segmentId) {
+            const visited = new Set([segmentId]);
             const segmentIDsToSearch = [segmentId];
-            const hasAddress = id => !sdk.DataModel.Segments.getAddress({ segmentId: id }).isEmpty;
             while (segmentIDsToSearch.length > 0) {
                 const startSegmentID = segmentIDsToSearch.pop();
-                const connectedSegmentIDs = getConnectedSegmentIDs(startSegmentID);
-                const hasAddrSegmentId = connectedSegmentIDs.find(hasAddress);
-                if (hasAddrSegmentId) return sdk.DataModel.Segments.getAddress({ segmentId: hasAddrSegmentId });
+                const connectedSegmentIDs = await getConnectedSegmentIDs(startSegmentID);
+                const connectedAddresses = await Promise.all(
+                    connectedSegmentIDs.map(id => sdk.DataModel.Segments.getAddress({ segmentId: id }))
+                );
+                const firstAddress = connectedAddresses.find(address => !address.isEmpty);
+                if (firstAddress) return firstAddress;
 
-                nonMatches.push(startSegmentID);
                 connectedSegmentIDs.forEach(segmentID => {
-                    if (nonMatches.indexOf(segmentID) === -1 && segmentIDsToSearch.indexOf(segmentID) === -1) {
+                    if (!visited.has(segmentID)) {
+                        visited.add(segmentID);
                         segmentIDsToSearch.push(segmentID);
                     }
                 });
@@ -315,27 +312,26 @@
             return null;
         }
 
-        function setStreetAndCity(setCity) {
-            const selection = sdk.Editing.getSelection();
-
-            selection?.ids.forEach(segmentId => {
-                if (sdk.DataModel.Segments.getAddress({ segmentId }).isEmpty) {
-                    const addr = getFirstConnectedSegmentAddress(segmentId);
+        async function setStreetAndCity(setCity, segmentIds) {
+            for (const segmentId of segmentIds) {
+                const address = await sdk.DataModel.Segments.getAddress({ segmentId });
+                if (address.isEmpty) {
+                    const addr = await getFirstConnectedSegmentAddress(segmentId);
                     if (addr) {
                         const addressData = {
                             cityName: setCity && !addr.city?.isEmpty ? addr.city.name : '',
                             streetName: '',
-                            countryId: addr.country.id,
-                            stateId: addr.state.id
+                            countryId: addr.country?.id,
+                            stateId: addr.state?.id
                         };
 
-                        sdk.DataModel.Segments.updateAddress({
+                        await sdk.DataModel.Segments.updateAddress({
                             segmentId,
                             addressData
                         });
                     }
                 }
-            });
+            }
         }
 
         class WaitForElementError extends Error { }
@@ -360,60 +356,57 @@
             });
         }
 
-        async function waitForShadowElem(parentElemSelector, shadowElemSelectors) {
+        async function waitForShadowElem(parentElemSelector, shadowElemSelector) {
             const parentElem = await waitForElem(parentElemSelector);
             return new Promise((resolve, reject) => {
-                shadowElemSelectors.forEach((shadowElemSelector, idx) => {
-                    function checkIt(parent, tries = 0) {
-                        if (tries < 150) { // try for about 3 seconds;
-                            const shadowElem = parent.shadowRoot.querySelector(shadowElemSelector);
-                            setTimeout(() => {
-                                if (!shadowElem) {
-                                    checkIt(parent, ++tries);
-                                } else if (idx === shadowElemSelectors.length - 1) {
-                                    resolve({ shadowElem, parentElem });
-                                } else {
-                                    checkIt(shadowElem, 0);
-                                }
-                            }, 20);
-                        } else {
-                            reject(new WaitForElementError(`Shadow element was not found within 3 seconds: ${shadowElemSelector}`));
-                        }
+                function checkIt(tries = 0) {
+                    if (tries < 150) { // try for about 3 seconds;
+                        const shadowElem = parentElem.shadowRoot?.querySelector(shadowElemSelector);
+                        setTimeout(() => {
+                            if (!shadowElem) {
+                                checkIt(++tries);
+                            } else {
+                                resolve({ shadowElem, parentElem });
+                            }
+                        }, 20);
+                    } else {
+                        reject(new WaitForElementError(`Shadow element was not found within 3 seconds: ${shadowElemSelector}`));
                     }
-                    checkIt(parentElem);
-                });
+                }
+                checkIt();
             });
         }
 
         async function onAddAltCityButtonClick() {
-            const segmentId = sdk.Editing.getSelection().ids[0];
-            const addr = sdk.DataModel.Segments.getAddress({ segmentId });
+            const segmentId = (await sdk.Editing.getSelection()).ids[0];
+            const addr = await sdk.DataModel.Segments.getAddress({ segmentId });
 
             $('wz-button[class="add-alt-street-btn"]').click();
             await waitForElem('wz-autocomplete.alt-street-name');
 
             // Set the street name field
-            let result = await waitForShadowElem('wz-autocomplete.alt-street-name', ['wz-text-input']);
+            let result = await waitForShadowElem('wz-autocomplete.alt-street-name', 'wz-text-input');
             result.shadowElem.focus();
             result.shadowElem.value = addr?.street?.name ?? '';
 
             // Clear the city name field
-            result = await waitForShadowElem('wz-autocomplete.alt-city-name', ['wz-text-input']);
+            result = await waitForShadowElem('wz-autocomplete.alt-city-name', 'wz-text-input');
             result.shadowElem.focus();
             result.shadowElem.value = null;
         }
 
-        function onRoadTypeButtonClick(roadType) {
-            const selection = sdk.Editing.getSelection();
+        async function onRoadTypeButtonClick(roadType) {
+            const selection = await sdk.Editing.getSelection();
 
             // Temporarily remove this while bugs are worked out.
             // WS.SDKMultiActionHack.groupActions(() => {
-            selection?.ids.forEach(segmentId => {
+            for (const segmentId of selection?.ids ?? []) {
+                const segment = await sdk.DataModel.Segments.getById({ segmentId });
                 // Check for same roadType is necessary to prevent an error.
-                if (sdk.DataModel.Segments.getById({ segmentId }).roadType !== roadType) {
-                    sdk.DataModel.Segments.updateSegment({ segmentId, roadType });
+                if (segment.roadType !== roadType) {
+                    await sdk.DataModel.Segments.updateSegment({ segmentId, roadType });
                 }
-            });
+            }
 
             if (_settings.roadTypeButtons.map(rtb => roadTypeSettings[rtb].id).includes(roadType)) {
                 const roadTypeSettingsMap = {
@@ -428,19 +421,22 @@
                 if (!setting || setting === roadTypeDropdownOption.DEFAULT) {
                     return;
                 }
-                setStreetAndCity(setting === roadTypeDropdownOption.CONNECTED_CITY);
+                await setStreetAndCity(setting === roadTypeDropdownOption.CONNECTED_CITY, selection?.ids ?? []);
             }
         }
 
-        function addRoadTypeButtons() {
-            const selection = sdk.Editing.getSelection();
+        async function addRoadTypeButtons() {
+            const requestId = ++roadTypeButtonsRequestId;
+            const selection = await sdk.Editing.getSelection();
             if (selection?.objectType !== 'segment') return;
             const segmentId = selection.ids[0];
             if (segmentId == null) return;
-            const segment = sdk.DataModel.Segments.getById({ segmentId });
-            if (!segment) return;
+            const segment = await sdk.DataModel.Segments.getById({ segmentId });
+            if (!segment || requestId !== roadTypeButtonsRequestId) return;
             const isPed = isPedestrianTypeSegment(segment);
             const $dropDown = $(roadTypeDropdownSelector);
+            if (!$dropDown.length) return;
+            const isDisabled = $dropDown[0].getAttribute('disabled') === 'true';
             $('#csRoadTypeButtonsContainer').remove();
             const $container = $('<div>', { id: 'csRoadTypeButtonsContainer', class: 'cs-rt-buttons-container', style: 'display: inline-table;' });
             const $street = $('<div>', { id: 'csStreetButtonContainer', class: 'cs-rt-buttons-group' });
@@ -458,7 +454,6 @@
             Object.keys(roadTypeSettings).forEach(roadTypeKey => {
                 if (_settings.roadTypeButtons.includes(roadTypeKey)) {
                     const roadTypeSetting = roadTypeSettings[roadTypeKey];
-                    const isDisabled = $dropDown[0].hasAttribute('disabled') && $dropDown[0].getAttribute('disabled') === 'true';
                     if (!isDisabled && ((roadTypeSetting.category === 'pedestrian' && isPed) || (roadTypeSetting.category !== 'pedestrian' && !isPed))) {
                         const $div = divs[roadTypeSetting.category];
                         $div.append(
@@ -467,9 +462,11 @@
                                 title: I18n.t('segment.road_types')[roadTypeSetting.id]
                             })
                                 .text(trans.roadTypeButtons[roadTypeKey].text)
-                                .prop('checked', roadTypeSetting.visible)
                                 .data('rtId', roadTypeSetting.id)
-                                .click(function rtbClick() { onRoadTypeButtonClick($(this).data('rtId')); })
+                                .click(function rtbClick() {
+                                    const roadTypeId = $(this).data('rtId');
+                                    errorHandler(() => onRoadTypeButtonClick(roadTypeId));
+                                })
                         );
                     }
                 }
@@ -487,7 +484,7 @@
             const chipSelect = document.getElementsByClassName('road-type-chip-select')[0];
             chipSelect.addEventListener('chipSelected', evt => {
                 const rtValue = evt.detail.value;
-                onRoadTypeButtonClick(rtValue);
+                errorHandler(() => onRoadTypeButtonClick(rtValue));
             });
         }
 
@@ -495,9 +492,10 @@
         async function addCompactRoadTypeColors() {
             // TODO: Clean this up. Was combined from two functions.
             try {
-                if (sdk.Settings.getUserSettings().isCompactMode
+                const userSettings = await sdk.Settings.getUserSettings();
+                if (userSettings.isCompactMode
                     && isChecked('csAddCompactColorsCheckBox')
-                    && sdk.Editing.getSelection()) {
+                    && (await sdk.Editing.getSelection())?.objectType === 'segment') {
                     const useOldColors = _settings.useOldRoadColors;
                     await waitForElem('.road-type-chip-select wz-checkable-chip');
                     $('.road-type-chip-select wz-checkable-chip').addClass('cs-compact-button');
@@ -505,14 +503,16 @@
                         const bgColor = useOldColors ? roadType.svColor : roadType.wmeColor;
                         const rtChip = $(`.road-type-chip-select wz-checkable-chip[value=${roadType.id}]`);
                         if (rtChip.length !== 1) return;
-                        waitForShadowElem(`.road-type-chip-select wz-checkable-chip[value='${roadType.id}']`, ['div']).then(result => {
+                        waitForShadowElem(`.road-type-chip-select wz-checkable-chip[value='${roadType.id}']`, 'div').then(result => {
                             const $elem = $(result.shadowElem);
                             const padding = $elem.hasClass('checked') ? '0px 3px' : '0px 4px';
                             $elem.css({ backgroundColor: bgColor, padding, color: 'black' });
+                        }).catch(ex => {
+                            if (!(ex instanceof WaitForElementError)) console.error(`${argsObject.scriptName}:`, ex);
                         });
                     });
 
-                    const result = await waitForShadowElem('.road-type-chip-select wz-checkable-chip[checked=""]', ['div']);
+                    const result = await waitForShadowElem('.road-type-chip-select wz-checkable-chip[checked=""]', 'div');
                     $(result.shadowElem).css({ border: 'black 2px solid', padding: '0px 3px' });
 
                     $('.road-type-chip-select wz-checkable-chip').each(function updateRoadTypeChip() {
@@ -619,9 +619,9 @@
         //     $dropDown.hide();
         // }
 
-        function addAddAltCityButton() {
+        async function addAddAltCityButton($container) {
             // Only show the button if every segment has the same primary city and street.
-            if (!selectedPrimaryStreetsAreEqual()) {
+            if (!(await selectedPrimaryStreetsAreEqual())) {
                 return;
             }
 
@@ -633,26 +633,35 @@
                     color: 'text'
                 });
 
-            $('#csAddressButtonContainer').append($button);
+            $container.append($button);
         }
 
         async function addSwapPrimaryNameButton() {
             if (!isChecked('csAddSwapPrimaryNameCheckBox')) {
                 return;
             }
-            if (!selectedPrimaryStreetsAreEqual() || !selectedAltStreetsAreEqual()) {
+            if (!(await selectedPrimaryStreetsAreEqual()) || !(await selectedAltStreetsAreEqual())) {
                 return;
             }
 
             await waitForElem('.alt-streets-control');
 
-            // eslint-disable-next-line func-names
-            $('span.alt-street-preview').each(function() {
-                const id = 'csAddSwapPrimaryName';
-                const altStreetId = Number($(this).attr('data-id'));
-                const swappingIconElement = $(this).find(`#${id}`);
+            const selection = await getSelectedSegments();
+            if (!selection) {
+                return;
+            }
 
-                if (streetEqualsPrimaryStreetName(altStreetId)) {
+            const id = 'csAddSwapPrimaryName';
+            const altStreetSpans = $('span.alt-street-preview').toArray();
+            const [primaryAddress, ...altStreets] = await Promise.all([
+                sdk.DataModel.Segments.getAddress({ segmentId: selection[0] }),
+                ...altStreetSpans.map(span => sdk.DataModel.Streets.getById({ streetId: Number($(span).attr('data-id')) }))
+            ]);
+
+            altStreetSpans.forEach((altStreetSpan, index) => {
+                const isPrimaryStreetName = primaryAddress.street?.name === altStreets[index]?.name;
+                const swappingIconElement = $(altStreetSpan).find(`#${id}`);
+                if (isPrimaryStreetName) {
                     swappingIconElement.remove();
                     return;
                 }
@@ -666,27 +675,35 @@
                     class: 'w-icon w-icon-arrow-up alt-edit-button'
                 });
 
-                $(this).append(swapStreetNameButton);
-                swapStreetNameButton.click(onSwapStreetNamesClick);
+                $(altStreetSpan).append(swapStreetNameButton);
+                swapStreetNameButton.click(function onSwapIconClick() {
+                    const selectedStreetId = Number($(this).parent().attr('data-id'));
+                    errorHandler(() => onSwapStreetNamesClick(selectedStreetId));
+                });
             });
         }
 
-        function onSwapStreetNamesClick() {
-            const selectedSegments = getSelectedSegments();
-            const currentPrimaryStreet = sdk.DataModel.Segments.getAddress({ segmentId: selectedSegments[0] });
+        async function onSwapStreetNamesClick(selectedStreetId) {
+            const selectedSegments = await getSelectedSegments();
+            if (!selectedSegments?.length) {
+                return;
+            }
+            const currentPrimaryStreet = await sdk.DataModel.Segments.getAddress({ segmentId: selectedSegments[0] });
             const currentAltStreets = currentPrimaryStreet.altStreets.map(street => street.street);
-            const selectedStreetId = Number($(this).parent().attr('data-id'));
             const newPrimary = currentAltStreets
                 .find(street => street.id === selectedStreetId);
+            if (!newPrimary || !currentPrimaryStreet.street || !currentPrimaryStreet.city) {
+                return;
+            }
 
             // WS.SDKMultiActionHack.groupActions(() => {
             const changeWithCityName = isChecked('csSwapWholeAddressCheckBox');
 
-            const newPrimaryStreet = getOrCreateStreet(
+            const newPrimaryStreet = await getOrCreateStreet(
                 newPrimary.name,
                 changeWithCityName ? newPrimary.cityId : currentPrimaryStreet.city.id
             );
-            const primaryToAltStreet = getOrCreateStreet(
+            const primaryToAltStreet = await getOrCreateStreet(
                 currentPrimaryStreet.street.name,
                 changeWithCityName ? currentPrimaryStreet.city.id : newPrimary.cityId
             );
@@ -696,23 +713,25 @@
                     .filter(id => id !== selectedStreetId),
                 primaryToAltStreet.id
             ];
-            selectedSegments.forEach(segmentId => sdk.DataModel.Segments.updateAddress({
-                segmentId,
-                addressData: {
-                    primaryStreetId: newPrimaryStreet.id,
-                    alternateStreetIds: newAltStreetsIds
-                }
-            }));
+            for (const segmentId of selectedSegments) {
+                await sdk.DataModel.Segments.updateAddress({
+                    segmentId,
+                    addressData: {
+                        primaryStreetId: newPrimaryStreet.id,
+                        alternateStreetIds: newAltStreetsIds
+                    }
+                });
+            }
             // });
         }
 
-        function addRemoveAddressButton() {
+        async function addRemoveAddressButton($container) {
             if (!isChecked('csRemoveStreetNameCheckBox') && !isChecked('csRemoveCityNameCheckBox')) {
                 return;
             }
 
             const translation = getRemoveAddressButtonTranslation();
-            const hasHouseNumbers = segmentWithStreetNameHasHouseNumbers();
+            const hasHouseNumbers = await segmentWithStreetNameHasHouseNumbers();
             const $button = $('<wz-button>')
                 .text(translation)
                 .click(onRemoveAddressButton)
@@ -723,11 +742,11 @@
                     title: hasHouseNumbers ? trans.segmentHasStreetNameAndHouseNumbers : ''
                 });
 
-            $('#csAddressButtonContainer').append($button);
+            $container.append($button);
         }
 
-        function segmentWithStreetNameHasHouseNumbers() {
-            const selectedSegmentIds = getSelectedSegments();
+        async function segmentWithStreetNameHasHouseNumbers() {
+            const selectedSegmentIds = await getSelectedSegments();
             if (!selectedSegmentIds) {
                 return false;
             }
@@ -737,10 +756,8 @@
                 return false;
             }
 
-            return selectedSegmentIds.some(segmentId => {
-                const segment = sdk.DataModel.Segments.getById({ segmentId });
-                return segment.hasHouseNumbers;
-            });
+            const segments = await getSegments(selectedSegmentIds);
+            return segments.some(segment => segment.hasHouseNumbers);
         }
 
         function getRemoveAddressButtonTranslation() {
@@ -757,38 +774,37 @@
         }
 
         async function onRemoveAddressButton() {
-            const selectedSegmentIds = getSelectedSegments();
+            const selectedSegmentIds = await getSelectedSegments();
             if (!selectedSegmentIds?.length) {
                 return;
             }
             const isStreetNameChecked = isChecked('csRemoveStreetNameCheckBox');
             const isCityNameChecked = isChecked('csRemoveCityNameCheckBox');
 
-            selectedSegmentIds
-                .forEach(segmentId => {
-                    const address = sdk.DataModel.Segments.getAddress({ segmentId });
-                    const streetName = isStreetNameChecked ? '' : address.street?.name ?? '';
-                    const cityName = isCityNameChecked ? '' : address.city?.name ?? '';
+            for (const segmentId of selectedSegmentIds) {
+                const address = await sdk.DataModel.Segments.getAddress({ segmentId });
+                const streetName = isStreetNameChecked ? '' : address.street?.name ?? '';
+                const cityName = isCityNameChecked ? '' : address.city?.name ?? '';
 
-                    const addressData = {
-                        cityName,
-                        streetName,
-                        stateId: address.state?.id,
-                        countryId: address.country?.id
-                    };
+                const addressData = {
+                    cityName,
+                    streetName,
+                    stateId: address.state?.id,
+                    countryId: address.country?.id
+                };
 
-                    sdk.DataModel.Segments.updateAddress({
-                        segmentId,
-                        addressData
-                    });
+                await sdk.DataModel.Segments.updateAddress({
+                    segmentId,
+                    addressData
                 });
+            }
         }
 
-        function addSwapPedestrianButton() {
+        async function addSwapPedestrianButton() {
             const CONTAINER_ID = 'csSwapPedestrianContainer';
+            const selectedSegmentsIds = await getSelectedSegments();
             $(`#${CONTAINER_ID}`).remove();
 
-            const selectedSegmentsIds = getSelectedSegments();
             if (selectedSegmentsIds?.length !== 1) {
                 return;
             }
@@ -819,25 +835,25 @@
         async function onSwapPedestrianButtonClick() {
             if (_settings.warnOnPedestrianTypeSwap) {
                 _settings.warnOnPedestrianTypeSwap = false;
-                saveSettingsToStorage();
+                await saveSettingsToStorage();
                 if (!confirm(trans.swapSegmentTypeWarning)) {
                     return;
                 }
             }
 
-            const selectedSegmentId = getSelectedSegments()[0];
+            const selectedSegmentId = (await getSelectedSegments())?.[0];
             if (!selectedSegmentId) {
                 return;
             }
 
-            const originalSegment = sdk.DataModel.Segments.getById({ segmentId: selectedSegmentId });
+            const originalSegment = await sdk.DataModel.Segments.getById({ segmentId: selectedSegmentId });
             if (!originalSegment) {
                 return;
             }
 
             // DataModel throws an error if the swapped segment is out of view
             // Jump to the segment and wait for the map to properly load
-            sdk.Map.centerMapOnGeometry({ geometry: originalSegment.geometry });
+            await sdk.Map.centerMapOnGeometry({ geometry: originalSegment.geometry });
             await waitForMapDataLoad();
 
             // Copy the selected segment geometry and attributes, then delete it.
@@ -848,21 +864,20 @@
             const newRoadType = isPedestrianTypeSegment(originalSegment) ? wmeRoadType.STREET : wmeRoadType.WALKING_TRAIL;
 
             try {
-                sdk.DataModel.Segments.deleteSegment({ segmentId: originalSegment.id });
+                await sdk.DataModel.Segments.deleteSegment({ segmentId: originalSegment.id });
             } catch (ex) {
-                if (ex instanceof sdk.Errors.InvalidStateError) {
-                    WazeWrap.Alerts.error(scriptName, 'Something prevents this segment from being deleted.');
-                    return;
-                }
+                console.error(`${scriptName}:`, ex);
+                WazeWrap.Alerts.error(scriptName, 'Something prevents this segment from being deleted.');
+                return;
             }
 
             // create the replacement segment in the other segment type (pedestrian -> road & vice versa)
-            const newSegmentId = sdk.DataModel.Segments.addSegment({
+            const newSegmentId = await sdk.DataModel.Segments.addSegment({
                 geometry,
                 roadType: newRoadType
             });
 
-            sdk.DataModel.Segments.updateAddress({
+            await sdk.DataModel.Segments.updateAddress({
                 segmentId: newSegmentId,
                 addressData: {
                     primaryStreetId,
@@ -871,14 +886,14 @@
             });
 
             for (const houseNumber of houseNumbers) {
-                sdk.DataModel.HouseNumbers.addHouseNumber({
+                await sdk.DataModel.HouseNumbers.addHouseNumber({
                     number: houseNumber.number,
                     point: houseNumber.geometry,
                     segmentId: newSegmentId
                 });
             }
 
-            sdk.Editing.setSelection({ selection: { ids: [newSegmentId], objectType: 'segment' } });
+            await sdk.Editing.setSelection({ selection: { ids: [newSegmentId], objectType: 'segment' } });
             // });
         }
 
@@ -902,16 +917,24 @@
             });
         }
 
-        function getSelectedSegments() {
-            const selection = sdk.Editing.getSelection();
+        async function getSelectedSegments() {
+            const selection = await sdk.Editing.getSelection();
             if (selection?.objectType !== 'segment') {
                 return null;
             }
             return selection.ids;
         }
 
-        function selectedPrimaryStreetsAreEqual() {
-            const selection = getSelectedSegments();
+        function getAddresses(segmentIds) {
+            return Promise.all(segmentIds.map(segmentId => sdk.DataModel.Segments.getAddress({ segmentId })));
+        }
+
+        function getSegments(segmentIds) {
+            return Promise.all(segmentIds.map(segmentId => sdk.DataModel.Segments.getById({ segmentId })));
+        }
+
+        async function selectedPrimaryStreetsAreEqual() {
+            const selection = await getSelectedSegments();
             if (!selection) {
                 return false;
             }
@@ -919,18 +942,17 @@
                 return true;
             }
 
-            const firstStreetId = sdk.DataModel.Segments.getAddress({ segmentId: selection[0] })?.street?.id;
-            return selection
-                .map(segmentId => sdk.DataModel.Segments.getAddress({ segmentId }))
-                .every(addr => addr.street?.id === firstStreetId);
+            const addresses = await getAddresses(selection);
+            const firstStreetId = addresses[0]?.street?.id;
+            return addresses.every(addr => addr.street?.id === firstStreetId);
         }
 
-        function selectedAltStreetsAreEqual() {
-            const selection = getSelectedSegments();
+        async function selectedAltStreetsAreEqual() {
+            const selection = await getSelectedSegments();
             if (!selection) {
                 return false;
             }
-            const addresses = selection.map(segmentId => sdk.DataModel.Segments.getAddress({ segmentId }))
+            const addresses = (await getAddresses(selection))
                 .map(street => street.altStreets.map(altStreet => altStreet.street.id))
                 .map(addr => new Set(addr));
 
@@ -939,17 +961,9 @@
                 .every(address => address.size === firstAltAddresses.size && Array.from(address).every(value => firstAltAddresses.has(value)));
         }
 
-        function getOrCreateStreet(streetName, cityId) {
-            return sdk.DataModel.Streets.getStreet({ streetName, cityId })
-                ?? sdk.DataModel.Streets.addStreet({ streetName, cityId });
-        }
-
-        function streetEqualsPrimaryStreetName(altStreetId) {
-            const selection = getSelectedSegments();
-            const primaryStreetName = selection
-                .map(segmentId => sdk.DataModel.Segments.getAddress({ segmentId }))[0].street?.name;
-            const selectedStreetName = sdk.DataModel.Streets.getById({ streetId: altStreetId })?.name;
-            return primaryStreetName === selectedStreetName;
+        async function getOrCreateStreet(streetName, cityId) {
+            const street = await sdk.DataModel.Streets.getStreet({ streetName, cityId });
+            return street ?? sdk.DataModel.Streets.addStreet({ streetName, cityId });
         }
 
         /* eslint-disable no-bitwise, no-mixed-operators */
@@ -1112,7 +1126,7 @@
             );
 
             const $panel = $('<div>', { id: 'sidepanel-clicksaver' }).append(
-                $('<div>', { class: 'side-panel-section>' }).append(
+                $('<div>').append(
                     // TODO css
                     $('<div>', { style: 'margin-bottom:8px;' }).append(
                         $('<div>', { class: 'form-group' }).append(
@@ -1148,7 +1162,7 @@
                                 trans.prefs.enableAddressRemovalButton,
                                 trans.prefs.addressRemovalButtonTooltipText
                             ).append($streetDetailDiv),
-                            isSwapPedestrianPermitted() ? createSettingsCheckbox(
+                            swapPedestrianPermitted ? createSettingsCheckbox(
                                 'csAddSwapPedestrianButtonCheckBox',
                                 'addSwapPedestrianButton',
                                 trans.prefs.showSwapDrivingWalkingButton
@@ -1168,7 +1182,7 @@
                 $('<div>', { style: 'margin-top:20px;font-size:10px;color:#999999;' }).append(
                     $('<div>').text(`v. ${argsObject.scriptVersion}${argsObject.scriptName.toLowerCase().includes('beta') ? ' beta' : ''}`),
                     $('<div>').append(
-                        $('<a>', { href: argsObject.forumUrl, target: '__blank' }).text(trans.prefs.discussionForumLinkText)
+                        $('<a>', { href: argsObject.forumUrl, target: '_blank', rel: 'noopener' }).text(trans.prefs.discussionForumLinkText)
                     )
                 )
             );
@@ -1205,24 +1219,24 @@
                 } else {
                     _settings[settingName] = checked;
                 }
-                saveSettingsToStorage();
+                errorHandler(saveSettingsToStorage);
             });
         }
 
         function setupCheckboxChangeHandler(checkboxSelector, containerSelector) {
             $(checkboxSelector).change(function() {
                 $(containerSelector).toggle(this.checked);
-                saveSettingsToStorage();
+                errorHandler(saveSettingsToStorage);
             });
         }
 
-        function updateControls() {
+        async function updateControls() {
             if ($(roadTypeDropdownSelector).length > 0) {
-                if (isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
+                if (isChecked('csRoadTypeButtonsCheckBox')) await addRoadTypeButtons();
             }
-            addCompactRoadTypeColors();
-            if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
-                addSwapPedestrianButton();
+            await addCompactRoadTypeColors();
+            if (swapPedestrianPermitted && isChecked('csAddSwapPedestrianButtonCheckBox')) {
+                await addSwapPedestrianButton();
             }
             // if ($(PARKING_SPACES_DROPDOWN_SELECTOR).length > 0 && isChecked('csParkingSpacesButtonsCheckBox')) {
             //     addParkingSpacesButtons(); // TODO - add option setting
@@ -1300,12 +1314,18 @@
             if (!argsObject.translations.hasOwnProperty(locale)) {
                 locale = 'en-us';
             }
-            return argsObject.translations[locale];
+            const loaded = argsObject.translations[locale] ?? {};
+            return {
+                ...defaultTranslation,
+                ...loaded,
+                roadTypeButtons: { ...defaultTranslation.roadTypeButtons, ...loaded.roadTypeButtons },
+                prefs: { ...defaultTranslation.prefs, ...loaded.prefs }
+            };
         }
 
-        function errorHandler(callback) {
+        async function errorHandler(callback) {
             try {
-                callback();
+                await callback();
             } catch (ex) {
                 console.error(`${argsObject.scriptName}:`, ex);
             }
@@ -1317,13 +1337,12 @@
          * 2. When the swap alternative name button is clicked.
          */
         function onSegmentsChanged() {
-            addCompactRoadTypeColors();
-            addSwapPrimaryNameButton();
+            return Promise.all([addCompactRoadTypeColors(), addSwapPrimaryNameButton()]);
         }
 
         async function onCopyCoordinatesShortcut() {
             try {
-                const center = sdk.Map.getMapCenter();
+                const center = await sdk.Map.getMapCenter();
                 const output = `${center.lat.toFixed(5)}, ${center.lon.toFixed(5)}`;
                 await navigator.clipboard.writeText(output);
                 WazeWrap.Alerts.info('WME ClickSaver', `Map center coordinate copied to clipboard:\n${output}`, false, false, 2000);
@@ -1333,19 +1352,19 @@
             }
         }
 
-        function onToggleDrawNewRoadsAsTwoWayShortcut() {
-            const options = sdk.Settings.getUserSettings();
+        async function onToggleDrawNewRoadsAsTwoWayShortcut() {
+            const options = await sdk.Settings.getUserSettings();
             options.isCreateRoadsAsTwoWay = !options.isCreateRoadsAsTwoWay;
-            sdk.Settings.setUserSettings(options);
+            await sdk.Settings.setUserSettings(options);
             WazeWrap.Alerts.info('WME ClickSaver', `New segments will be drawn as <b>${options.isCreateRoadsAsTwoWay ? 'two-way' : 'one-way'}</b>.`, false, false, 2000);
         }
 
-        function createShortcut(shortcutId, description, callback) {
+        async function createShortcut(shortcutId, description, callback) {
             let shortcutKeys = _settings.shortcuts?.[shortcutId] ?? null;
-            if (shortcutKeys && sdk.Shortcuts.areShortcutKeysInUse({ shortcutKeys })) {
+            if (shortcutKeys && await sdk.Shortcuts.areShortcutKeysInUse({ shortcutKeys })) {
                 shortcutKeys = null;
             }
-            sdk.Shortcuts.createShortcut({
+            await sdk.Shortcuts.createShortcut({
                 shortcutId,
                 shortcutKeys,
                 description,
@@ -1353,13 +1372,12 @@
             });
         }
 
-        function hideUncheckedRoadTypeButtons() {
-            const selection = getSelectedSegments();
+        async function hideUncheckedRoadTypeButtons() {
+            const selection = await getSelectedSegments();
             if (!selection) {
                 return;
             }
-            const selectedRoadTypes = selection
-                .map(segmentId => sdk.DataModel.Segments.getById({ segmentId }))
+            const selectedRoadTypes = (await getSegments(selection))
                 .map(segment => segment.roadType);
 
             const checkedRoadTypes = new Set(
@@ -1367,7 +1385,6 @@
                     .map(roadType => roadTypeSettings[roadType])
                     .map(setting => setting.id)
                     .concat(selectedRoadTypes)
-                    .map(id => id)
             );
 
             // eslint-disable-next-line func-names
@@ -1386,13 +1403,11 @@
             logDebug('Initializing...');
 
             trans = getTranslationObject();
-            Object.keys(roadTypeSettings).forEach(rtName => {
-                roadTypeSettings[rtName].text = trans.roadTypeButtons[rtName].text;
-            });
 
             document.addEventListener('paste', onPaste);
 
-            sdk.Events.trackDataModelEvents({ dataModelName: 'segments' });
+            swapPedestrianPermitted = await isSwapPedestrianPermitted();
+            await sdk.Events.trackDataModelEvents({ dataModelName: 'segments' });
             sdk.Events.on({
                 eventName: 'wme-data-model-objects-changed',
                 eventHandler: () => errorHandler(onSegmentsChanged)
@@ -1403,17 +1418,17 @@
             });
 
             // check for changes in the edit-panel
-            const observer = new MutationObserver(mutations => {
-                mutations.forEach(mutation => {
+            const observer = new MutationObserver(mutations => errorHandler(async () => {
+                for (const mutation of mutations) {
                     for (let i = 0; i < mutation.addedNodes.length; i++) {
                         const addedNode = mutation.addedNodes[i];
 
                         if (addedNode.nodeType === Node.ELEMENT_NODE) {
                             // Checks to identify if this is a segment in regular display mode.
                             if (addedNode.querySelector(roadTypeDropdownSelector)) {
-                                if (isChecked('csRoadTypeButtonsCheckBox')) addRoadTypeButtons();
-                                if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
-                                    addSwapPedestrianButton();
+                                if (isChecked('csRoadTypeButtonsCheckBox')) await addRoadTypeButtons();
+                                if (swapPedestrianPermitted && isChecked('csAddSwapPedestrianButtonCheckBox')) {
+                                    await addSwapPedestrianButton();
                                 }
                             }
                             // Checks to identify if this is a segment in compact display mode.
@@ -1421,11 +1436,11 @@
                                 if (isChecked('csRoadTypeButtonsCheckBox')) {
                                     addCompactRoadTypeChangeEvents();
                                 }
-                                if (isSwapPedestrianPermitted() && isChecked('csAddSwapPedestrianButtonCheckBox')) {
-                                    addSwapPedestrianButton();
+                                if (swapPedestrianPermitted && isChecked('csAddSwapPedestrianButtonCheckBox')) {
+                                    await addSwapPedestrianButton();
                                 }
                                 if (isChecked('csHideUncheckedRoadTypeButtonsCheckBox')) {
-                                    hideUncheckedRoadTypeButtons();
+                                    await hideUncheckedRoadTypeButtons();
                                 }
                             }
                             // if (addedNode.querySelector(PARKING_SPACES_DROPDOWN_SELECTOR) && isChecked('csParkingSpacesButtonsCheckBox')) {
@@ -1437,12 +1452,12 @@
                             // }
                             if (addedNode.querySelector('.side-panel-section')
                                 && (isChecked('csAddAltCityButtonCheckBox') || isChecked('csAddRemoveAddressButtonCheckBox'))) {
-                                createSharedAddressButtonContainer();
+                                const $addressButtonContainer = createSharedAddressButtonContainer();
                                 if (isChecked('csAddRemoveAddressButtonCheckBox')) {
-                                    addRemoveAddressButton();
+                                    await addRemoveAddressButton($addressButtonContainer);
                                 }
                                 if (isChecked('csAddAltCityButtonCheckBox')) {
-                                    addAddAltCityButton();
+                                    await addAddAltCityButton($addressButtonContainer);
                                 }
                             }
                             if (addedNode.querySelector('.alt-streets') && isChecked('csAddSwapPrimaryNameCheckBox')) {
@@ -1450,24 +1465,27 @@
                                 // eslint-disable-next-line func-names
                                 addedNode.addEventListener('click', event => {
                                     if (event.target.classList.contains('alt-address-cancel-button')) {
-                                        addSwapPrimaryNameButton();
+                                        errorHandler(addSwapPrimaryNameButton);
                                     }
                                 });
-                                addSwapPrimaryNameButton();
+                                await addSwapPrimaryNameButton();
                             }
                         }
                     }
-                });
-            });
+                }
+            }));
 
             observer.observe(document.getElementById('edit-panel'), { childList: true, subtree: true });
             await initUserPanel();
             loadSettingsFromStorage();
-            createShortcut('toggleTwoWaySegDrawingShortcut', 'Toggle new segment two-way drawing', onToggleDrawNewRoadsAsTwoWayShortcut);
-            createShortcut('copyCoordinatesShortcut', 'Copy map center coordinates', onCopyCoordinatesShortcut);
-            window.addEventListener('beforeunload', saveSettingsToStorage, false);
             injectCss();
-            updateControls(); // In case of PL w/ segments selected.
+            await errorHandler(() => createShortcut('toggleTwoWaySegDrawingShortcut', 'Toggle new segment two-way drawing', onToggleDrawNewRoadsAsTwoWayShortcut));
+            await errorHandler(() => createShortcut('copyCoordinatesShortcut', 'Copy map center coordinates', onCopyCoordinatesShortcut));
+            window.addEventListener('beforeunload', writeSettingsToStorage, false);
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') errorHandler(saveSettingsToStorage);
+            });
+            errorHandler(updateControls); // In case of PL w/ segments selected.
 
             logDebug('Initialized');
         }
@@ -1487,6 +1505,7 @@
             }
 
             $addressEdit.before($container);
+            return $container;
         }
 
         function skipLoginDialog(tries = 0) {
@@ -1499,9 +1518,9 @@
         }
         skipLoginDialog();
 
-        sdk = await bootstrap({ scriptUpdateMonitor: { downloadUrl } });
+        sdk = await bootstrap({ mode: 'async', scriptUpdateMonitor: { downloadUrl } });
 
-        init();
+        init().catch(ex => console.error(`${argsObject.scriptName}: Initialization failed.`, ex));
     } // END clicksaver function (used to be injected, now just runs as a function)
 
     // function exists(...objects) {
